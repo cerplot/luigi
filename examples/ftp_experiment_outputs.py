@@ -14,8 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import luigi
-from luigi.contrib.ftp import RemoteTarget
+import trun
+from trun.contrib.ftp import RemoteTarget
 
 #: the FTP server
 HOST = "some_host"
@@ -25,7 +25,7 @@ USER = "user"
 PWD = "some_password"
 
 
-class ExperimentStep(luigi.ExternalStep):
+class ExperimentStep(trun.ExternalStep):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
@@ -37,7 +37,7 @@ class ExperimentStep(luigi.ExternalStep):
         In this case, a successful execution of this step will create a file that will be created in a FTP server.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`~luigi.target.Target`)
+        :rtype: object (:py:class:`~trun.target.Target`)
         """
         return RemoteTarget('/experiment/output1.txt', HOST, username=USER, password=PWD)
 
@@ -52,7 +52,7 @@ class ExperimentStep(luigi.ExternalStep):
             print("data 3 195 1 52 60", file=outfile)
 
 
-class ProcessingStep(luigi.Step):
+class ProcessingStep(trun.Step):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
@@ -64,7 +64,7 @@ class ProcessingStep(luigi.Step):
 
         * :py:class:`~.ExperimentStep`
 
-        :return: object (:py:class:`luigi.step.Step`)
+        :return: object (:py:class:`trun.step.Step`)
         """
         return ExperimentStep()
 
@@ -74,9 +74,9 @@ class ProcessingStep(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`~luigi.target.Target`)
+        :rtype: object (:py:class:`~trun.target.Target`)
         """
-        return luigi.LocalTarget('/tmp/processeddata.txt')
+        return trun.LocalTarget('/tmp/processeddata.txt')
 
     def run(self):
         avg = 0.0
@@ -100,4 +100,4 @@ class ProcessingStep(luigi.Step):
 
 
 if __name__ == '__main__':
-    luigi.run()
+    trun.run()

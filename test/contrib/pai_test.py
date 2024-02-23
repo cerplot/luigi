@@ -17,7 +17,7 @@
 
 
 """
-Tests for OpenPAI wrapper for Luigi.
+Tests for OpenPAI wrapper for Trun.
 
 
 Written and maintained by Liu, Dongqing (@liudongqing).
@@ -26,10 +26,10 @@ from helpers import unittest
 import responses
 
 import time
-import luigi
+import trun
 import logging
-from luigi.contrib.pai import PaiStep
-from luigi.contrib.pai import StepRole
+from trun.contrib.pai import PaiStep
+from trun.contrib.pai import StepRole
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -72,7 +72,7 @@ class TestPaiStep(unittest.TestCase):
         responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_step.name),
                       body='{"jobStatus": {"state":"SUCCEED"}}', status=200)
 
-        success = luigi.build([sk_step], local_scheduler=True)
+        success = trun.build([sk_step], local_scheduler=True)
         self.assertTrue(success)
         self.assertTrue(sk_step.complete())
 
@@ -94,6 +94,6 @@ class TestPaiStep(unittest.TestCase):
         responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_step.name),
                       body='{"jobStatus": {"state":"FAILED"}}', status=200)
 
-        success = luigi.build([fail_step], local_scheduler=True)
+        success = trun.build([fail_step], local_scheduler=True)
         self.assertFalse(success)
         self.assertFalse(fail_step.complete())

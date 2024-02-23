@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 
-import luigi
-from luigi.contrib import scalding
+import trun
+from trun.contrib import scalding
 
 import mock
 import os
@@ -29,7 +29,7 @@ import pytest
 
 
 class MyScaldingStep(scalding.ScaldingJobStep):
-    scala_source = luigi.Parameter()
+    scala_source = trun.Parameter()
 
     def source(self):
         return self.scala_source
@@ -58,8 +58,8 @@ class ScaldingTest(unittest.TestCase):
         shutil.rmtree(self.scalding_home)
 
     @mock.patch('subprocess.check_call')
-    @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @mock.patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_scalding(self, check_call, track_job):
-        success = luigi.run(['MyScaldingStep', '--scala-source', self.scala_source, '--local-scheduler', '--no-lock'])
+        success = trun.run(['MyScaldingStep', '--scala-source', self.scala_source, '--local-scheduler', '--no-lock'])
         self.assertTrue(success)
         # TODO: check more stuff

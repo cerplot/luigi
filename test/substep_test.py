@@ -18,11 +18,11 @@
 import abc
 from helpers import unittest
 
-import luigi
+import trun
 
 
-class AbstractStep(luigi.Step):
-    k = luigi.IntParameter()
+class AbstractStep(trun.Step):
+    k = trun.IntParameter()
 
     @property
     @abc.abstractmethod

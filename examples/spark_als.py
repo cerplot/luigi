@@ -17,16 +17,16 @@
 
 import random
 
-import luigi
-import luigi.format
-import luigi.contrib.hdfs
-from luigi.contrib.spark import SparkSubmitStep
+import trun
+import trun.format
+import trun.contrib.hdfs
+from trun.contrib.spark import SparkSubmitStep
 
 
-class UserItemMatrix(luigi.Step):
+class UserItemMatrix(trun.Step):
 
     #: the size of the data being generated
-    data_size = luigi.IntParameter()
+    data_size = trun.IntParameter()
 
     def run(self):
         """
@@ -52,31 +52,31 @@ class UserItemMatrix(luigi.Step):
         In this case, a successful execution of this step will create a file in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`~luigi.target.Target`)
+        :rtype: object (:py:class:`~trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget('data-matrix', format=luigi.format.Gzip)
+        return trun.contrib.hdfs.HdfsTarget('data-matrix', format=trun.format.Gzip)
 
 
 class SparkALS(SparkSubmitStep):
     """
-    This step runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
+    This step runs a :py:class:`trun.contrib.spark.SparkSubmitStep` step
     over the target data returned by :py:meth:`~/.UserItemMatrix.output` and
     writes the result into its :py:meth:`~.SparkALS.output` target (a file in HDFS).
 
-    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitStep.run`.
+    This class uses :py:meth:`trun.contrib.spark.SparkSubmitStep.run`.
 
-    Example luigi configuration::
+    Example trun configuration::
 
         [spark]
         spark-submit: /usr/local/spark/bin/spark-submit
         master: yarn-client
 
     """
-    data_size = luigi.IntParameter(default=1000)
+    data_size = trun.IntParameter(default=1000)
 
     driver_memory = '2g'
     executor_memory = '3g'
-    num_executors = luigi.IntParameter(default=100)
+    num_executors = trun.IntParameter(default=100)
 
     app = 'my-spark-assembly.jar'
     entry_class = 'com.spotify.spark.ImplicitALS'
@@ -91,7 +91,7 @@ class SparkALS(SparkSubmitStep):
 
         * :py:class:`~.UserItemMatrix`
 
-        :return: object (:py:class:`luigi.step.Step`)
+        :return: object (:py:class:`trun.step.Step`)
         """
         return UserItemMatrix(self.data_size)
 
@@ -101,16 +101,16 @@ class SparkALS(SparkSubmitStep):
         In this case, a successful execution of this step will create a file in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`~luigi.target.Target`)
+        :rtype: object (:py:class:`~trun.target.Target`)
         """
         # The corresponding Spark job outputs as GZip format.
-        return luigi.contrib.hdfs.HdfsTarget('als-output/', format=luigi.format.Gzip)
+        return trun.contrib.hdfs.HdfsTarget('als-output/', format=trun.format.Gzip)
 
 
 '''
 // Corresponding example Spark Job, a wrapper around the MLLib ALS job.
 // This class would have to be jarred into my-spark-assembly.jar
-// using sbt assembly (or package) and made available to the Luigi job
+// using sbt assembly (or package) and made available to the Trun job
 // above.
 
 package com.spotify.spark

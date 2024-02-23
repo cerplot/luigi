@@ -1,6 +1,6 @@
 [report]
 omit =
-    luigi/mrrunner.py
+    trun/mrrunner.py
     test/_test_time_generated_module*.py
     */python?.?/*
     */site-packages/nose/*
@@ -8,7 +8,7 @@ omit =
     *test/*
     */.tox/*
     */setup.py
-    */bin/luigidc
+    */bin/trundc
     hadoop_test.py
     minicluster.py
 

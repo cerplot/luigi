@@ -2,7 +2,7 @@ import itertools
 import threading
 import unittest
 
-from luigi.contrib.hdfs import get_autoconfig_client
+from trun.contrib.hdfs import get_autoconfig_client
 
 
 class HdfsClientTest(unittest.TestCase):

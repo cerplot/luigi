@@ -4,9 +4,9 @@ from helpers import unittest
 import mock
 import time
 
-from luigi.contrib.datadog_metric import DatadogMetricsCollector
-from luigi.metrics import MetricsCollectors
-from luigi.scheduler import Scheduler
+from trun.contrib.datadog_metric import DatadogMetricsCollector
+from trun.metrics import MetricsCollectors
+from trun.scheduler import Scheduler
 
 WORKER = 'myworker'
 
@@ -63,17 +63,17 @@ class DatadogMetricTest(unittest.TestCase):
                                                  tags=['step_name:DDStepName',
                                                        'step_state:STARTED',
                                                        'environment:development',
-                                                       'application:luigi'],
+                                                       'application:trun'],
                                                  text='A step has been started in the pipeline named: DDStepName',
-                                                 title='Luigi: A step has been started!')
+                                                 title='Trun: A step has been started!')
 
     def test_send_increment_on_step_started(self):
         step = self.startStep()
         self.collector.handle_step_started(step)
 
-        self.mock_increment.assert_called_once_with('luigi.step.started', 1, tags=['step_name:DDStepName',
+        self.mock_increment.assert_called_once_with('trun.step.started', 1, tags=['step_name:DDStepName',
                                                                                    'environment:development',
-                                                                                   'application:luigi'])
+                                                                                   'application:trun'])
 
     def test_send_event_on_step_failed(self):
         step = self.startStep()
@@ -84,17 +84,17 @@ class DatadogMetricTest(unittest.TestCase):
                                                  tags=['step_name:DDStepName',
                                                        'step_state:FAILED',
                                                        'environment:development',
-                                                       'application:luigi'],
+                                                       'application:trun'],
                                                  text='A step has failed in the pipeline named: DDStepName',
-                                                 title='Luigi: A step has failed!')
+                                                 title='Trun: A step has failed!')
 
     def test_send_increment_on_step_failed(self):
         step = self.startStep()
         self.collector.handle_step_failed(step)
 
-        self.mock_increment.assert_called_once_with('luigi.step.failed', 1, tags=['step_name:DDStepName',
+        self.mock_increment.assert_called_once_with('trun.step.failed', 1, tags=['step_name:DDStepName',
                                                                                   'environment:development',
-                                                                                  'application:luigi'])
+                                                                                  'application:trun'])
 
     def test_send_event_on_step_disabled(self):
         s = Scheduler(metrics_collector=MetricsCollectors.datadog, disable_persist=10, retry_count=2, disable_window=2)
@@ -106,19 +106,19 @@ class DatadogMetricTest(unittest.TestCase):
                                                  tags=['step_name:DDStepName',
                                                        'step_state:DISABLED',
                                                        'environment:development',
-                                                       'application:luigi'],
+                                                       'application:trun'],
                                                  text='A step has been disabled in the pipeline named: DDStepName. ' +
                                                       'The step has failed 2 times in the last 2 seconds' +
                                                       ', so it is being disabled for 10 seconds.',
-                                                 title='Luigi: A step has been disabled!')
+                                                 title='Trun: A step has been disabled!')
 
     def test_send_increment_on_step_disabled(self):
         step = self.startStep()
         self.collector.handle_step_disabled(step, self.s._config)
 
-        self.mock_increment.assert_called_once_with('luigi.step.disabled', 1, tags=['step_name:DDStepName',
+        self.mock_increment.assert_called_once_with('trun.step.disabled', 1, tags=['step_name:DDStepName',
                                                                                     'environment:development',
-                                                                                    'application:luigi'])
+                                                                                    'application:trun'])
 
     def test_send_event_on_step_done(self):
         step = self.startStep()
@@ -129,23 +129,23 @@ class DatadogMetricTest(unittest.TestCase):
                                                  tags=['step_name:DDStepName',
                                                        'step_state:DONE',
                                                        'environment:development',
-                                                       'application:luigi'],
+                                                       'application:trun'],
                                                  text='A step has completed in the pipeline named: DDStepName',
-                                                 title='Luigi: A step has been completed!')
+                                                 title='Trun: A step has been completed!')
 
     def test_send_increment_on_step_done(self):
         step = self.startStep()
         self.collector.handle_step_done(step)
 
-        self.mock_increment.assert_called_once_with('luigi.step.done', 1, tags=['step_name:DDStepName',
+        self.mock_increment.assert_called_once_with('trun.step.done', 1, tags=['step_name:DDStepName',
                                                                                 'environment:development',
-                                                                                'application:luigi'])
+                                                                                'application:trun'])
 
     def test_send_gauge_on_step_done(self):
         self.setTime(0)
         step = self.startStep()
         self.collector.handle_step_done(step)
 
-        self.mock_gauge.assert_called_once_with('luigi.step.execution_time', 0, tags=['step_name:DDStepName',
+        self.mock_gauge.assert_called_once_with('trun.step.execution_time', 0, tags=['step_name:DDStepName',
                                                                                       'environment:development',
-                                                                                      'application:luigi'])
+                                                                                      'application:trun'])

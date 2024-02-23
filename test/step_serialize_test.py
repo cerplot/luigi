@@ -26,14 +26,14 @@ We use the hypothesis package to do property-based tests.
 """
 
 import string
-import luigi
+import trun
 import json
 from datetime import datetime
 
 import hypothesis as hyp
 from hypothesis.strategies import datetimes as hyp_datetimes
 
-_no_value = luigi.parameter._no_value
+_no_value = trun.parameter._no_value
 
 
 def _mk_param_strategy(param_cls, param_value_strat, with_default=None):
@@ -50,20 +50,20 @@ def _mk_param_strategy(param_cls, param_value_strat, with_default=None):
 
 
 def _mk_step(name, params):
-    return type(name, (luigi.Step, ), params)
+    return type(name, (trun.Step, ), params)
 
 
 # identifiers must be str not unicode in Python2
 identifiers = hyp.strategies.builds(str, hyp.strategies.text(alphabet=string.ascii_letters, min_size=1, max_size=16))
 text = hyp.strategies.text(alphabet=string.printable)
 
-# Luigi parameters with a default
-parameters_def = _mk_param_strategy(luigi.Parameter, text, True)
-int_parameters_def = _mk_param_strategy(luigi.IntParameter, hyp.strategies.integers(), True)
-float_parameters_def = _mk_param_strategy(luigi.FloatParameter,
+# Trun parameters with a default
+parameters_def = _mk_param_strategy(trun.Parameter, text, True)
+int_parameters_def = _mk_param_strategy(trun.IntParameter, hyp.strategies.integers(), True)
+float_parameters_def = _mk_param_strategy(trun.FloatParameter,
                                           hyp.strategies.floats(min_value=-1e100, max_value=+1e100), True)
-bool_parameters_def = _mk_param_strategy(luigi.BoolParameter, hyp.strategies.booleans(), True)
-date_parameters_def = _mk_param_strategy(luigi.DateParameter, hyp_datetimes(min_value=datetime(1900, 1, 1)), True)
+bool_parameters_def = _mk_param_strategy(trun.BoolParameter, hyp.strategies.booleans(), True)
+date_parameters_def = _mk_param_strategy(trun.DateParameter, hyp_datetimes(min_value=datetime(1900, 1, 1)), True)
 
 any_default_parameters = hyp.strategies.one_of(
     parameters_def, int_parameters_def, float_parameters_def, bool_parameters_def, date_parameters_def

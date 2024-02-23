@@ -15,17 +15,17 @@
 # limitations under the License.
 #
 
-import luigi
+import trun
 import tempfile
 import shlex
 from helpers import unittest
-from luigi.contrib.hadoop_jar import HadoopJarJobError, HadoopJarJobStep, fix_paths
+from trun.contrib.hadoop_jar import HadoopJarJobError, HadoopJarJobStep, fix_paths
 from mock import patch, Mock
 import pytest
 
 
 class TestHadoopJarJob(HadoopJarJobStep):
-    path = luigi.Parameter()
+    path = trun.Parameter()
 
     def jar(self):
         return self.path
@@ -46,7 +46,7 @@ class TestRemoteMissingJarJob(TestHadoopJarJob):
 
 
 class TestRemoteHadoopJarTwoParamJob(TestRemoteHadoopJarJob):
-    param2 = luigi.Parameter()
+    param2 = trun.Parameter()
 
 
 @pytest.mark.apache
@@ -66,27 +66,27 @@ class FixPathsTest(unittest.TestCase):
 
 
 class HadoopJarJobStepTest(unittest.TestCase):
-    @patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_good(self, mock_job):
         mock_job.return_value = None
         with tempfile.NamedTemporaryFile() as temp_file:
             step = TestHadoopJarJob(temp_file.name)
             step.run()
 
-    @patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_missing_jar(self, mock_job):
         mock_job.return_value = None
         step = TestMissingJarJob()
         self.assertRaises(HadoopJarJobError, step.run)
 
-    @patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_remote_job(self, mock_job):
         mock_job.return_value = None
         with tempfile.NamedTemporaryFile() as temp_file:
             step = TestRemoteHadoopJarJob(temp_file.name)
             step.run()
 
-    @patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_remote_job_with_space_in_step_id(self, mock_job):
         with tempfile.NamedTemporaryFile() as temp_file:
 
@@ -104,7 +104,7 @@ class HadoopJarJobStepTest(unittest.TestCase):
             mock_job.side_effect = lambda x, _: check_space(x, str(step))
             step.run()
 
-    @patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_remote_job_missing_config(self, mock_job):
         mock_job.return_value = None
         with tempfile.NamedTemporaryFile() as temp_file:

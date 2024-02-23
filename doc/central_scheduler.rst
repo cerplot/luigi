@@ -20,14 +20,14 @@ we believe that it makes things far more intuitive and easy to understand.
 .. figure:: dependency_graph.png
    :alt: Dependency graph in the visualiser
 
-The luigid server
+The trund server
 ~~~~~~~~~~~~~~~~~
 
 To run the server as a daemon run:
 
 .. code-block:: console
 
-    $ luigid --background --pidfile <PATH_TO_PIDFILE> --logdir <PATH_TO_LOGDIR> --state-path <PATH_TO_STATEFILE>
+    $ trund --background --pidfile <PATH_TO_PIDFILE> --logdir <PATH_TO_LOGDIR> --state-path <PATH_TO_STATEFILE>
 
 Note that this requires ``python-daemon``.
 By default, the server starts on AF_INET and AF_INET6 port ``8082``
@@ -36,8 +36,8 @@ To use an AF_UNIX socket use the ``--unix-socket`` flag.
 
 For a full list of configuration options and defaults,
 see the :ref:`scheduler configuration section <scheduler-config>`.
-Note that ``luigid`` uses the same configuration files as the Luigi client
-(i.e. ``luigi.cfg`` or ``/etc/luigi/client.cfg`` by default).
+Note that ``trund`` uses the same configuration files as the Trun client
+(i.e. ``trun.cfg`` or ``/etc/trun/client.cfg`` by default).
 
 .. _StepHistory:
 
@@ -51,12 +51,12 @@ This information is exposed via the Central Scheduler at ``/history``.
 
 To enable the step history,
 specify ``record_step_history = True`` in the
-``[scheduler]`` section of ``luigi.cfg`` and
+``[scheduler]`` section of ``trun.cfg`` and
 specify ``db_connection`` under ``[step_history]``.
 The ``db_connection`` string is used to configure the `SQLAlchemy engine
 <http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html>`_.
 When starting up,
-``luigid`` will create all the necessary tables using `create_all
+``trund`` will create all the necessary tables using `create_all
 <http://docs.sqlalchemy.org/en/rel_0_9/core/metadata.html#sqlalchemy.schema.MetaData.create_all>`_.
 
 Example configuration
@@ -65,10 +65,10 @@ Example configuration
 
     [scheduler]
     record_step_history = True
-    state_path = /usr/local/var/luigi-state.pickle
+    state_path = /usr/local/var/trun-state.pickle
 
     [step_history]
-    db_connection = sqlite:////usr/local/var/luigi-step-hist.db
+    db_connection = sqlite:////usr/local/var/trun-step-hist.db
 
 The step history has the following pages:
 

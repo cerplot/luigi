@@ -15,25 +15,25 @@
 # limitations under the License.
 #
 
-import luigi
-import luigi.contrib.hadoop
-import luigi.contrib.hdfs
+import trun
+import trun.contrib.hadoop
+import trun.contrib.hdfs
 
 
-# To make this run, you probably want to edit /etc/luigi/client.cfg and add something like:
+# To make this run, you probably want to edit /etc/trun/client.cfg and add something like:
 #
 # [hadoop]
 # jar: /usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar
 
 
-class InputText(luigi.ExternalStep):
+class InputText(trun.ExternalStep):
     """
-    This step is a :py:class:`luigi.step.ExternalStep` which means it doesn't generate the
-    :py:meth:`~.InputText.output` target on its own instead relying on the execution something outside of Luigi
+    This step is a :py:class:`trun.step.ExternalStep` which means it doesn't generate the
+    :py:meth:`~.InputText.output` target on its own instead relying on the execution something outside of Trun
     to produce it.
     """
 
-    date = luigi.DateParameter()
+    date = trun.DateParameter()
 
     def output(self):
         """
@@ -41,21 +41,21 @@ class InputText(luigi.ExternalStep):
         In this case, it expects a file to be present in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('/tmp/text/%Y-%m-%d.txt'))
+        return trun.contrib.hdfs.HdfsTarget(self.date.strftime('/tmp/text/%Y-%m-%d.txt'))
 
 
-class WordCount(luigi.contrib.hadoop.JobStep):
+class WordCount(trun.contrib.hadoop.JobStep):
     """
-    This step runs a :py:class:`luigi.contrib.hadoop.JobStep`
+    This step runs a :py:class:`trun.contrib.hadoop.JobStep`
     over the target data returned by :py:meth:`~/.InputText.output` and
     writes the result into its :py:meth:`~.WordCount.output` target.
 
-    This class uses :py:meth:`luigi.contrib.hadoop.JobStep.run`.
+    This class uses :py:meth:`trun.contrib.hadoop.JobStep.run`.
     """
 
-    date_interval = luigi.DateIntervalParameter()
+    date_interval = trun.DateIntervalParameter()
 
     def requires(self):
         """
@@ -63,7 +63,7 @@ class WordCount(luigi.contrib.hadoop.JobStep):
 
         * :py:class:`~.InputText`
 
-        :return: list of object (:py:class:`luigi.step.Step`)
+        :return: list of object (:py:class:`trun.step.Step`)
         """
         return [InputText(date) for date in self.date_interval.dates()]
 
@@ -73,9 +73,9 @@ class WordCount(luigi.contrib.hadoop.JobStep):
         In this case, a successful execution of this step will create a file in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget('/tmp/text-count/%s' % self.date_interval)
+        return trun.contrib.hdfs.HdfsTarget('/tmp/text-count/%s' % self.date_interval)
 
     def mapper(self, line):
         for word in line.strip().split():
@@ -86,4 +86,4 @@ class WordCount(luigi.contrib.hadoop.JobStep):
 
 
 if __name__ == '__main__':
-    luigi.run()
+    trun.run()

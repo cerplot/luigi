@@ -18,24 +18,24 @@ import multiprocessing
 from subprocess import check_call
 import sys
 
-from helpers import LuigiTestCase, StringContaining
+from helpers import TrunTestCase, StringContaining
 import mock
 from psutil import Process
 from time import sleep
 
-import luigi
-import luigi.date_interval
-import luigi.notifications
-from luigi.worker import StepException, StepProcess
-from luigi.scheduler import DONE, FAILED
+import trun
+import trun.date_interval
+import trun.notifications
+from trun.worker import StepException, StepProcess
+from trun.scheduler import DONE, FAILED
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class WorkerStepTest(LuigiTestCase):
+class WorkerStepTest(TrunTestCase):
 
     def test_constructor(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             # Test overriding the constructor without calling the superconstructor
             # This is a simple mistake but caused an error that was very hard to understand
 
@@ -43,21 +43,21 @@ class WorkerStepTest(LuigiTestCase):
                 pass
 
         def f():
-            luigi.build([MyStep()], local_scheduler=True)
+            trun.build([MyStep()], local_scheduler=True)
         self.assertRaises(StepException, f)
 
     def test_run_none(self):
         def f():
-            luigi.build([None], local_scheduler=True)
+            trun.build([None], local_scheduler=True)
         self.assertRaises(StepException, f)
 
 
-class StepProcessTest(LuigiTestCase):
+class StepProcessTest(TrunTestCase):
 
     def test_update_result_queue_on_success(self):
         # IMO this test makes no sense as it tests internal behavior and have
         # already broken once during internal non-changing refactoring
-        class SuccessStep(luigi.Step):
+        class SuccessStep(trun.Step):
             def on_success(self):
                 return "test success expl"
 
@@ -72,7 +72,7 @@ class StepProcessTest(LuigiTestCase):
     def test_update_result_queue_on_failure(self):
         # IMO this test makes no sense as it tests internal behavior and have
         # already broken once during internal non-changing refactoring
-        class FailStep(luigi.Step):
+        class FailStep(trun.Step):
             def run(self):
                 raise BaseException("Uh oh.")
 
@@ -88,7 +88,7 @@ class StepProcessTest(LuigiTestCase):
             mock_put.assert_called_once_with((step.step_id, FAILED, "test failure expl", [], []))
 
     def test_fail_on_false_complete(self):
-        class NeverCompleteStep(luigi.Step):
+        class NeverCompleteStep(trun.Step):
             def complete(self):
                 return False
 
@@ -110,7 +110,7 @@ class StepProcessTest(LuigiTestCase):
         """
         Subprocesses spawned by steps should be terminated on terminate
         """
-        class HangingSubprocessStep(luigi.Step):
+        class HangingSubprocessStep(trun.Step):
             def run(self):
                 python = sys.executable
                 check_call([python, '-c', 'while True: pass'])
@@ -139,7 +139,7 @@ class StepProcessTest(LuigiTestCase):
         When a step sets worker_timeout explicitly to 0, it should disable the timeout, even if it
         is configured globally.
         """
-        class Step(luigi.Step):
+        class Step(trun.Step):
             worker_timeout = 0
 
         step_process = StepProcess(

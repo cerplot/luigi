@@ -19,49 +19,49 @@ import datetime
 import pickle
 from helpers import unittest
 
-import luigi
-import luigi.notifications
-from luigi.mock import MockTarget
-from luigi.parameter import MissingParameterException
-from luigi.util import common_params, copies, delegates, inherits, requires
+import trun
+import trun.notifications
+from trun.mock import MockTarget
+from trun.parameter import MissingParameterException
+from trun.util import common_params, copies, delegates, inherits, requires
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class A(luigi.Step):
+class A(trun.Step):
     step_namespace = 'decorator'  # to prevent step name conflict between tests
-    param1 = luigi.Parameter("class A-specific default")
+    param1 = trun.Parameter("class A-specific default")
 
 
 @inherits(A)
-class B(luigi.Step):
-    param2 = luigi.Parameter("class B-specific default")
+class B(trun.Step):
+    param2 = trun.Parameter("class B-specific default")
 
 
 @inherits(B)
-class C(luigi.Step):
-    param3 = luigi.Parameter("class C-specific default")
+class C(trun.Step):
+    param3 = trun.Parameter("class C-specific default")
 
 
 @inherits(B)
-class D(luigi.Step):
-    param1 = luigi.Parameter("class D overwriting class A's default")
+class D(trun.Step):
+    param1 = trun.Parameter("class D overwriting class A's default")
 
 
 @inherits(B)
-class D_null(luigi.Step):
+class D_null(trun.Step):
     param1 = None
 
 
 @inherits(A, B)
-class E(luigi.Step):
-    param4 = luigi.Parameter("class E-specific default")
+class E(trun.Step):
+    param4 = trun.Parameter("class E-specific default")
 
 
 @inherits(A)
 @inherits(B)
-class E_stacked(luigi.Step):
-    param4 = luigi.Parameter("class E-specific default")
+class E_stacked(trun.Step):
+    param4 = trun.Parameter("class E-specific default")
 
 
 class InheritTest(unittest.TestCase):
@@ -110,7 +110,7 @@ class InheritTest(unittest.TestCase):
     def test_empty_inheritance(self):
         with self.assertRaises(TypeError):
             @inherits()
-            class shouldfail(luigi.Step):
+            class shouldfail(trun.Step):
                 pass
 
     def test_removing_parameter(self):
@@ -120,28 +120,28 @@ class InheritTest(unittest.TestCase):
         self.assertEqual(B.__name__, 'B')
 
 
-class F(luigi.Step):
-    param1 = luigi.Parameter("A parameter on a base step, that will be required later.")
+class F(trun.Step):
+    param1 = trun.Parameter("A parameter on a base step, that will be required later.")
 
 
 @inherits(F)
-class G(luigi.Step):
-    param2 = luigi.Parameter("A separate parameter that doesn't affect 'F'")
+class G(trun.Step):
+    param2 = trun.Parameter("A separate parameter that doesn't affect 'F'")
 
     def requires(self):
         return F(**common_params(self, F))
 
 
 @inherits(G)
-class H(luigi.Step):
-    param2 = luigi.Parameter("OVERWRITING")
+class H(trun.Step):
+    param2 = trun.Parameter("OVERWRITING")
 
     def requires(self):
         return G(**common_params(self, G))
 
 
 @inherits(G)
-class H_null(luigi.Step):
+class H_null(trun.Step):
     param2 = None
 
     def requires(self):
@@ -150,43 +150,43 @@ class H_null(luigi.Step):
 
 
 @inherits(G)
-class I_step(luigi.Step):
+class I_step(trun.Step):
 
     def requires(self):
         return F(**common_params(self, F))
 
 
-class J(luigi.Step):
-    param1 = luigi.Parameter()  # something required, with no default
+class J(trun.Step):
+    param1 = trun.Parameter()  # something required, with no default
 
 
 @inherits(J)
-class K_shouldnotinstantiate(luigi.Step):
-    param2 = luigi.Parameter("A K-specific parameter")
+class K_shouldnotinstantiate(trun.Step):
+    param2 = trun.Parameter("A K-specific parameter")
 
 
 @inherits(J)
-class K_shouldfail(luigi.Step):
+class K_shouldfail(trun.Step):
     param1 = None
-    param2 = luigi.Parameter("A K-specific parameter")
+    param2 = trun.Parameter("A K-specific parameter")
 
     def requires(self):
         return J(**common_params(self, J))
 
 
 @inherits(J)
-class K_shouldsucceed(luigi.Step):
+class K_shouldsucceed(trun.Step):
     param1 = None
-    param2 = luigi.Parameter("A K-specific parameter")
+    param2 = trun.Parameter("A K-specific parameter")
 
     def requires(self):
         return J(param1="Required parameter", **common_params(self, J))
 
 
 @inherits(J)
-class K_wrongparamsorder(luigi.Step):
+class K_wrongparamsorder(trun.Step):
     param1 = None
-    param2 = luigi.Parameter("A K-specific parameter")
+    param2 = trun.Parameter("A K-specific parameter")
 
     def requires(self):
         return J(param1="Required parameter", **common_params(J, self))
@@ -243,33 +243,33 @@ class RequiresTest(unittest.TestCase):
         self.assertRaises(TypeError, self.k_wrongparamsorder.requires)
 
 
-class V(luigi.Step):
-    n = luigi.IntParameter(default=42)
+class V(trun.Step):
+    n = trun.IntParameter(default=42)
 
 
 @inherits(V)
-class W(luigi.Step):
+class W(trun.Step):
 
     def requires(self):
         return self.clone_parent()
 
 
 @requires(V)
-class W2(luigi.Step):
+class W2(trun.Step):
     pass
 
 
 @requires(V)
-class W3(luigi.Step):
-    n = luigi.IntParameter(default=43)
+class W3(trun.Step):
+    n = trun.IntParameter(default=43)
 
 
-class X(luigi.Step):
-    m = luigi.IntParameter(default=56)
+class X(trun.Step):
+    m = trun.IntParameter(default=56)
 
 
 @requires(V, X)
-class Y(luigi.Step):
+class Y(trun.Step):
     pass
 
 
@@ -304,7 +304,7 @@ class CloneParentTest(unittest.TestCase):
     def test_empty_requires(self):
         with self.assertRaises(TypeError):
             @requires()
-            class shouldfail(luigi.Step):
+            class shouldfail(trun.Step):
                 pass
 
     def test_names(self):
@@ -314,8 +314,8 @@ class CloneParentTest(unittest.TestCase):
         self.assertEqual(v.__class__.__name__, 'V')
 
 
-class P(luigi.Step):
-    date = luigi.DateParameter()
+class P(trun.Step):
+    date = trun.DateParameter()
 
     def output(self):
         return MockTarget(self.date.strftime('/tmp/data-%Y-%m-%d.txt'))
@@ -327,7 +327,7 @@ class P(luigi.Step):
 
 
 @copies(P)
-class PCopy(luigi.Step):
+class PCopy(trun.Step):
 
     def output(self):
         return MockTarget(self.date.strftime('/tmp/copy-data-%Y-%m-%d.txt'))
@@ -336,7 +336,7 @@ class PCopy(luigi.Step):
 class CopyTest(unittest.TestCase):
 
     def test_copy(self):
-        luigi.build([PCopy(date=datetime.date(2012, 1, 1))], local_scheduler=True)
+        trun.build([PCopy(date=datetime.date(2012, 1, 1))], local_scheduler=True)
         self.assertEqual(MockTarget.fs.get_data('/tmp/data-2012-01-01.txt'), b'hello, world\n')
         self.assertEqual(MockTarget.fs.get_data('/tmp/copy-data-2012-01-01.txt'), b'hello, world\n')
 
@@ -349,20 +349,20 @@ class PickleTest(unittest.TestCase):
         p_pickled = pickle.dumps(p)
         p = pickle.loads(p_pickled)
 
-        luigi.build([p], local_scheduler=True)
+        trun.build([p], local_scheduler=True)
         self.assertEqual(MockTarget.fs.get_data('/tmp/data-2013-01-01.txt'), b'hello, world\n')
         self.assertEqual(MockTarget.fs.get_data('/tmp/copy-data-2013-01-01.txt'), b'hello, world\n')
 
 
-class Substep(luigi.Step):
-    k = luigi.IntParameter()
+class Substep(trun.Step):
+    k = trun.IntParameter()
 
     def f(self, x):
         return x ** self.k
 
 
 @delegates
-class SubstepDelegator(luigi.Step):
+class SubstepDelegator(trun.Step):
 
     def substeps(self):
         return [Substep(1), Substep(2)]
@@ -377,13 +377,13 @@ class SubstepTest(unittest.TestCase):
 
     def test_substeps(self):
         sd = SubstepDelegator()
-        luigi.build([sd], local_scheduler=True)
+        trun.build([sd], local_scheduler=True)
         self.assertEqual(sd.s, 42 * (1 + 42))
 
     def test_forgot_substeps(self):
         def trigger_failure():
             @delegates
-            class SubstepDelegatorBroken(luigi.Step):
+            class SubstepDelegatorBroken(trun.Step):
                 pass
 
         self.assertRaises(AttributeError, trigger_failure)
@@ -391,5 +391,5 @@ class SubstepTest(unittest.TestCase):
     def test_cmdline(self):
         # Exposes issue where wrapped steps are registered twice under
         # the same name
-        from luigi.step import Register
+        from trun.step import Register
         self.assertEqual(Register.get_step_cls('SubstepDelegator'), SubstepDelegator)

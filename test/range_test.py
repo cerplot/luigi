@@ -17,40 +17,40 @@
 
 import datetime
 import fnmatch
-from helpers import unittest, LuigiTestCase
+from helpers import unittest, TrunTestCase
 
-import luigi
+import trun
 import mock
-from luigi.mock import MockTarget, MockFileSystem
-from luigi.tools.range import (RangeDaily, RangeDailyBase, RangeEvent,
+from trun.mock import MockTarget, MockFileSystem
+from trun.tools.range import (RangeDaily, RangeDailyBase, RangeEvent,
                                RangeHourly, RangeHourlyBase,
                                RangeByMinutes, RangeByMinutesBase,
                                _constrain_glob, _get_filesystems_and_globs, RangeMonthly)
 
 
-class CommonDateMinuteStep(luigi.Step):
-    dh = luigi.DateMinuteParameter()
+class CommonDateMinuteStep(trun.Step):
+    dh = trun.DateMinuteParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%H%Mdara21/ooo'))
 
 
-class CommonDateHourStep(luigi.Step):
-    dh = luigi.DateHourParameter()
+class CommonDateHourStep(trun.Step):
+    dh = trun.DateHourParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%Hdara21/ooo'))
 
 
-class CommonDateStep(luigi.Step):
-    d = luigi.DateParameter()
+class CommonDateStep(trun.Step):
+    d = trun.DateParameter()
 
     def output(self):
         return MockTarget(self.d.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm01dara21/ooo'))
 
 
-class CommonMonthStep(luigi.Step):
-    m = luigi.MonthParameter()
+class CommonMonthStep(trun.Step):
+    m = trun.MonthParameter()
 
     def output(self):
         return MockTarget(self.m.strftime('/n2000y01a05n/%Y_%maww/21mm01dara21/ooo'))
@@ -104,60 +104,60 @@ expected_wrapper = [
 ]
 
 
-class StepA(luigi.Step):
-    dh = luigi.DateHourParameter()
+class StepA(trun.Step):
+    dh = trun.DateHourParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('StepA/%Y-%m-%d/%H'))
 
 
-class StepB(luigi.Step):
-    dh = luigi.DateHourParameter()
-    complicator = luigi.Parameter()
+class StepB(trun.Step):
+    dh = trun.DateHourParameter()
+    complicator = trun.Parameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('StepB/%%s%Y-%m-%d/%H') % self.complicator)
 
 
-class StepC(luigi.Step):
-    dh = luigi.DateHourParameter()
+class StepC(trun.Step):
+    dh = trun.DateHourParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('not/a/real/path/%Y-%m-%d/%H'))
 
 
-class CommonWrapperStep(luigi.WrapperStep):
-    dh = luigi.DateHourParameter()
+class CommonWrapperStep(trun.WrapperStep):
+    dh = trun.DateHourParameter()
 
     def requires(self):
         yield StepA(dh=self.dh)
         yield StepB(dh=self.dh, complicator='no/worries')  # str(self.dh) would complicate beyond working
 
 
-class StepMinutesA(luigi.Step):
-    dm = luigi.DateMinuteParameter()
+class StepMinutesA(trun.Step):
+    dm = trun.DateMinuteParameter()
 
     def output(self):
         return MockTarget(self.dm.strftime('StepA/%Y-%m-%d/%H%M'))
 
 
-class StepMinutesB(luigi.Step):
-    dm = luigi.DateMinuteParameter()
-    complicator = luigi.Parameter()
+class StepMinutesB(trun.Step):
+    dm = trun.DateMinuteParameter()
+    complicator = trun.Parameter()
 
     def output(self):
         return MockTarget(self.dm.strftime('StepB/%%s%Y-%m-%d/%H%M') % self.complicator)
 
 
-class StepMinutesC(luigi.Step):
-    dm = luigi.DateMinuteParameter()
+class StepMinutesC(trun.Step):
+    dm = trun.DateMinuteParameter()
 
     def output(self):
         return MockTarget(self.dm.strftime('not/a/real/path/%Y-%m-%d/%H%M'))
 
 
-class CommonWrapperStepMinutes(luigi.WrapperStep):
-    dm = luigi.DateMinuteParameter()
+class CommonWrapperStepMinutes(trun.WrapperStep):
+    dm = trun.DateMinuteParameter()
 
     def requires(self):
         yield StepMinutesA(dm=self.dm)
@@ -600,8 +600,8 @@ class RangeByMinutesBaseTest(unittest.TestCase):
         self.assertFalse(step.complete())
 
     def test_negative_interval(self):
-        class SomeByMinutesStep(luigi.Step):
-            d = luigi.DateMinuteParameter()
+        class SomeByMinutesStep(trun.Step):
+            d = trun.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
@@ -610,11 +610,11 @@ class RangeByMinutesBaseTest(unittest.TestCase):
                               of=SomeByMinutesStep,
                               start=datetime.datetime(2014, 3, 20, 17),
                               minutes_interval=-1)
-        self.assertRaises(luigi.parameter.ParameterException, step.requires)
+        self.assertRaises(trun.parameter.ParameterException, step.requires)
 
     def test_non_dividing_interval(self):
-        class SomeByMinutesStep(luigi.Step):
-            d = luigi.DateMinuteParameter()
+        class SomeByMinutesStep(trun.Step):
+            d = trun.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
@@ -623,7 +623,7 @@ class RangeByMinutesBaseTest(unittest.TestCase):
                               of=SomeByMinutesStep,
                               start=datetime.datetime(2014, 3, 20, 17),
                               minutes_interval=8)
-        self.assertRaises(luigi.parameter.ParameterException, step.requires)
+        self.assertRaises(trun.parameter.ParameterException, step.requires)
 
     def test_start_and_minutes_period(self):
         self._nonempty_subcase(
@@ -794,8 +794,8 @@ class FilesystemInferenceTest(unittest.TestCase):
         )
 
     def test_inconsistent_output_datehour_glob_not_inferred(self):
-        class InconsistentlyOutputtingDateHourStep(luigi.Step):
-            dh = luigi.DateHourParameter()
+        class InconsistentlyOutputtingDateHourStep(trun.Step):
+            dh = trun.DateHourParameter()
 
             def output(self):
                 base = self.dh.strftime('/even/%Y%m%d%H')
@@ -815,8 +815,8 @@ class FilesystemInferenceTest(unittest.TestCase):
         self.assertRaises(NotImplementedError, test_raise_not_implemented)
 
     def test_wrapped_inconsistent_datehour_globs_not_inferred(self):
-        class InconsistentlyParameterizedWrapperStep(luigi.WrapperStep):
-            dh = luigi.DateHourParameter()
+        class InconsistentlyParameterizedWrapperStep(trun.WrapperStep):
+            dh = trun.DateHourParameter()
 
             def requires(self):
                 yield StepA(dh=self.dh - datetime.timedelta(days=1))
@@ -1088,14 +1088,14 @@ class RangeMonthlyTest(unittest.TestCase):
                          '[2018-02, 2018-04]')
 
 
-class MonthInstantiationTest(LuigiTestCase):
+class MonthInstantiationTest(TrunTestCase):
 
     def test_old_month_instantiation(self):
         """
         Verify that you can still programmatically set of param as string
         """
-        class MyStep(luigi.Step):
-            month_param = luigi.MonthParameter()
+        class MyStep(trun.Step):
+            month_param = trun.MonthParameter()
 
             def complete(self):
                 return False
@@ -1112,9 +1112,9 @@ class MonthInstantiationTest(LuigiTestCase):
         Verify that you can still use Range through CLI
         """
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             step_namespace = "wohoo"
-            month_param = luigi.MonthParameter()
+            month_param = trun.MonthParameter()
             secret = 'some-value-to-sooth-python-linters'
             comp = False
 
@@ -1130,9 +1130,9 @@ class MonthInstantiationTest(LuigiTestCase):
         self.assertEqual(MyStep(month_param=datetime.date(1934, 12, 1)).secret, 'yay')
 
     def test_param_name(self):
-        class MyStep(luigi.Step):
-            some_non_range_param = luigi.Parameter(default='woo')
-            month_param = luigi.MonthParameter()
+        class MyStep(trun.Step):
+            some_non_range_param = trun.Parameter(default='woo')
+            month_param = trun.MonthParameter()
 
             def complete(self):
                 return False
@@ -1146,9 +1146,9 @@ class MonthInstantiationTest(LuigiTestCase):
         self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_param_name_with_inferred_fs(self):
-        class MyStep(luigi.Step):
-            some_non_range_param = luigi.Parameter(default='woo')
-            month_param = luigi.MonthParameter()
+        class MyStep(trun.Step):
+            some_non_range_param = trun.Parameter(default='woo')
+            month_param = trun.MonthParameter()
 
             def output(self):
                 return MockTarget(self.month_param.strftime('/n2000y01a05n/%Y_%m-aww/21mm%Hdara21/ooo'))
@@ -1162,10 +1162,10 @@ class MonthInstantiationTest(LuigiTestCase):
         self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_of_param_distinction(self):
-        class MyStep(luigi.Step):
-            arbitrary_param = luigi.Parameter(default='foo')
-            arbitrary_integer_param = luigi.IntParameter(default=10)
-            month_param = luigi.MonthParameter()
+        class MyStep(trun.Step):
+            arbitrary_param = trun.Parameter(default='foo')
+            arbitrary_integer_param = trun.IntParameter(default=10)
+            month_param = trun.MonthParameter()
 
             def complete(self):
                 return False
@@ -1182,11 +1182,11 @@ class MonthInstantiationTest(LuigiTestCase):
         self.assertNotEqual(range_step_1.step_id, range_step_2.step_id)
 
     def test_of_param_commandline(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             step_namespace = "wohoo"
-            month_param = luigi.MonthParameter()
-            arbitrary_param = luigi.Parameter(default='foo')
-            arbitrary_integer_param = luigi.IntParameter(default=10)
+            month_param = trun.MonthParameter()
+            arbitrary_param = trun.Parameter(default='foo')
+            arbitrary_integer_param = trun.IntParameter(default=10)
             state = (None, None)
             comp = False
 
@@ -1207,8 +1207,8 @@ class MonthInstantiationTest(LuigiTestCase):
 class RangeDailyTest(unittest.TestCase):
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteDailyStep(luigi.Step):
-            d = luigi.DateParameter()
+        class BulkCompleteDailyStep(trun.Step):
+            d = trun.DateParameter()
 
             @classmethod
             def bulk_complete(self, parameter_tuples):
@@ -1231,10 +1231,10 @@ class RangeDailyTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteDailyStep(luigi.Step):
-            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
-            d = luigi.DateParameter()
-            arbitrary_argument = luigi.BoolParameter()
+        class BulkCompleteDailyStep(trun.Step):
+            non_positional_arbitrary_argument = trun.Parameter(default="whatever", positional=False, significant=False)
+            d = trun.DateParameter()
+            arbitrary_argument = trun.BoolParameter()
 
             @classmethod
             def bulk_complete(cls, parameter_tuples):
@@ -1259,17 +1259,17 @@ class RangeDailyTest(unittest.TestCase):
         actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
-    @mock.patch('luigi.mock.MockFileSystem.listdir',
+    @mock.patch('trun.mock.MockFileSystem.listdir',
                 new=mock_listdir([
                     '/data/2014/p/v/z/2014_/_03-_-21octor/20/ZOOO',
                     '/data/2014/p/v/z/2014_/_03-_-23octor/20/ZOOO',
                     '/data/2014/p/v/z/2014_/_03-_-24octor/20/ZOOO',
                 ]))
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
     def test_missing_steps_correctly_required(self):
-        class SomeDailyStep(luigi.Step):
-            d = luigi.DateParameter()
+        class SomeDailyStep(trun.Step):
+            d = trun.DateParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/ZOOO'))
@@ -1291,8 +1291,8 @@ class RangeDailyTest(unittest.TestCase):
 class RangeHourlyTest(unittest.TestCase):
 
     # fishy to mock the mock, but MockFileSystem doesn't support globs yet
-    @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
     def test_missing_steps_correctly_required(self):
         for step_path in step_a_paths:
@@ -1307,8 +1307,8 @@ class RangeHourlyTest(unittest.TestCase):
         actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected_a)
 
-    @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
     def test_missing_wrapper_steps_correctly_required(self):
         step = RangeHourly(
@@ -1321,8 +1321,8 @@ class RangeHourlyTest(unittest.TestCase):
         self.assertEqual(actual, expected_wrapper)
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteHourlyStep(luigi.Step):
-            dh = luigi.DateHourParameter()
+        class BulkCompleteHourlyStep(trun.Step):
+            dh = trun.DateHourParameter()
 
             @classmethod
             def bulk_complete(cls, parameter_tuples):
@@ -1345,10 +1345,10 @@ class RangeHourlyTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteHourlyStep(luigi.Step):
-            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
-            dh = luigi.DateHourParameter()
-            arbitrary_argument = luigi.BoolParameter()
+        class BulkCompleteHourlyStep(trun.Step):
+            non_positional_arbitrary_argument = trun.Parameter(default="whatever", positional=False, significant=False)
+            dh = trun.DateHourParameter()
+            arbitrary_argument = trun.BoolParameter()
 
             @classmethod
             def bulk_complete(cls, parameter_tuples):
@@ -1373,7 +1373,7 @@ class RangeHourlyTest(unittest.TestCase):
         actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_false)
     def test_missing_directory(self):
         step = RangeHourly(now=datetime_to_epoch(
@@ -1391,8 +1391,8 @@ class RangeHourlyTest(unittest.TestCase):
 class RangeByMinutesTest(unittest.TestCase):
 
     # fishy to mock the mock, but MockFileSystem doesn't support globs yet
-    @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
     def test_missing_steps_correctly_required(self):
         expected_steps = [
@@ -1400,8 +1400,8 @@ class RangeByMinutesTest(unittest.TestCase):
             'SomeByMinutesStep(d=2016-03-31T0005)',
             'SomeByMinutesStep(d=2016-03-31T0010)']
 
-        class SomeByMinutesStep(luigi.Step):
-            d = luigi.DateMinuteParameter()
+        class SomeByMinutesStep(trun.Step):
+            d = trun.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
@@ -1419,8 +1419,8 @@ class RangeByMinutesTest(unittest.TestCase):
         actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected_steps)
 
-    @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
     def test_missing_wrapper_steps_correctly_required(self):
         expected_wrapper = [
@@ -1439,8 +1439,8 @@ class RangeByMinutesTest(unittest.TestCase):
         self.assertEqual(actual, expected_wrapper)
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteByMinutesStep(luigi.Step):
-            dh = luigi.DateMinuteParameter()
+        class BulkCompleteByMinutesStep(trun.Step):
+            dh = trun.DateMinuteParameter()
 
             @classmethod
             def bulk_complete(cls, parameter_tuples):
@@ -1464,10 +1464,10 @@ class RangeByMinutesTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteByMinutesStep(luigi.Step):
-            non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
-            dh = luigi.DateMinuteParameter()
-            arbitrary_argument = luigi.BoolParameter()
+        class BulkCompleteByMinutesStep(trun.Step):
+            non_positional_arbitrary_argument = trun.Parameter(default="whatever", positional=False, significant=False)
+            dh = trun.DateMinuteParameter()
+            arbitrary_argument = trun.BoolParameter()
 
             @classmethod
             def bulk_complete(cls, parameter_tuples):
@@ -1494,7 +1494,7 @@ class RangeByMinutesTest(unittest.TestCase):
         actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
-    @mock.patch('luigi.mock.MockFileSystem.exists',
+    @mock.patch('trun.mock.MockFileSystem.exists',
                 new=mock_exists_always_false)
     def test_missing_directory(self):
         step = RangeByMinutes(now=datetime_to_epoch(
@@ -1510,14 +1510,14 @@ class RangeByMinutesTest(unittest.TestCase):
         self.assertEqual([str(t) for t in step.requires()], expected)
 
 
-class RangeInstantiationTest(LuigiTestCase):
+class RangeInstantiationTest(TrunTestCase):
 
     def test_old_instantiation(self):
         """
         Verify that you can still programmatically set of param as string
         """
-        class MyStep(luigi.Step):
-            date_param = luigi.DateParameter()
+        class MyStep(trun.Step):
+            date_param = trun.DateParameter()
 
             def complete(self):
                 return False
@@ -1534,9 +1534,9 @@ class RangeInstantiationTest(LuigiTestCase):
         Verify that you can still use Range through CLI
         """
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             step_namespace = "wohoo"
-            date_param = luigi.DateParameter()
+            date_param = trun.DateParameter()
             secret = 'some-value-to-sooth-python-linters'
             comp = False
 
@@ -1552,9 +1552,9 @@ class RangeInstantiationTest(LuigiTestCase):
         self.assertEqual(MyStep(date_param=datetime.date(1934, 12, 1)).secret, 'yay')
 
     def test_param_name(self):
-        class MyStep(luigi.Step):
-            some_non_range_param = luigi.Parameter(default='woo')
-            date_param = luigi.DateParameter()
+        class MyStep(trun.Step):
+            some_non_range_param = trun.Parameter(default='woo')
+            date_param = trun.DateParameter()
 
             def complete(self):
                 return False
@@ -1568,9 +1568,9 @@ class RangeInstantiationTest(LuigiTestCase):
         self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_param_name_with_inferred_fs(self):
-        class MyStep(luigi.Step):
-            some_non_range_param = luigi.Parameter(default='woo')
-            date_param = luigi.DateParameter()
+        class MyStep(trun.Step):
+            some_non_range_param = trun.Parameter(default='woo')
+            date_param = trun.DateParameter()
 
             def output(self):
                 return MockTarget(self.date_param.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%Hdara21/ooo'))
@@ -1584,10 +1584,10 @@ class RangeInstantiationTest(LuigiTestCase):
         self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_of_param_distinction(self):
-        class MyStep(luigi.Step):
-            arbitrary_param = luigi.Parameter(default='foo')
-            arbitrary_integer_param = luigi.IntParameter(default=10)
-            date_param = luigi.DateParameter()
+        class MyStep(trun.Step):
+            arbitrary_param = trun.Parameter(default='foo')
+            arbitrary_integer_param = trun.IntParameter(default=10)
+            date_param = trun.DateParameter()
 
             def complete(self):
                 return False
@@ -1604,11 +1604,11 @@ class RangeInstantiationTest(LuigiTestCase):
         self.assertNotEqual(range_step_1.step_id, range_step_2.step_id)
 
     def test_of_param_commandline(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             step_namespace = "wohoo"
-            date_param = luigi.DateParameter()
-            arbitrary_param = luigi.Parameter(default='foo')
-            arbitrary_integer_param = luigi.IntParameter(default=10)
+            date_param = trun.DateParameter()
+            arbitrary_param = trun.Parameter(default='foo')
+            arbitrary_integer_param = trun.IntParameter(default=10)
             state = (None, None)
             comp = False
 

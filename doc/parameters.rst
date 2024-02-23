@@ -1,21 +1,21 @@
 Parameters
 ----------
 
-Parameters is the Luigi equivalent of creating a constructor for each Step.
-Luigi requires you to declare these parameters by instantiating
-:class:`~luigi.parameter.Parameter` objects on the class scope:
+Parameters is the Trun equivalent of creating a constructor for each Step.
+Trun requires you to declare these parameters by instantiating
+:class:`~trun.parameter.Parameter` objects on the class scope:
 
 .. code:: python
 
-    class DailyReport(luigi.contrib.hadoop.JobStep):
-        date = luigi.DateParameter(default=datetime.date.today())
+    class DailyReport(trun.contrib.hadoop.JobStep):
+        date = trun.DateParameter(default=datetime.date.today())
         # ...
 
-By doing this, Luigi can take care of all the boilerplate code that
+By doing this, Trun can take care of all the boilerplate code that
 would normally be needed in the constructor.
 Internally, the DailyReport object can now be constructed by running
 ``DailyReport(datetime.date(2012, 5, 10))`` or just ``DailyReport()``.
-Luigi also creates a command line parser that automatically handles the
+Trun also creates a command line parser that automatically handles the
 conversion from strings to Python types.
 This way you can invoke the job on the command line eg. by passing ``--date 2012-05-10``.
 
@@ -28,7 +28,7 @@ i.e.
     print(d.date)
 
 will return the same date that the object was constructed with.
-Same goes if you invoke Luigi on the command line.
+Same goes if you invoke Trun on the command line.
 
 .. _Parameter-instance-caching:
 
@@ -42,10 +42,10 @@ parameters of the same values are not just equal, but the same instance:
 
 .. code:: python
 
-    >>> import luigi
+    >>> import trun
     >>> import datetime
-    >>> class DateStep(luigi.Step):
-    ...   date = luigi.DateParameter()
+    >>> class DateStep(trun.Step):
+    ...   date = trun.DateParameter()
     ...
     >>> a = datetime.date(2014, 1, 21)
     >>> b = datetime.date(2014, 1, 21)
@@ -71,7 +71,7 @@ are not the same instance:
 .. code:: python
 
     >>> class DateStep2(DateStep):
-    ...   other = luigi.Parameter(significant=False)
+    ...   other = trun.Parameter(significant=False)
     ...
     >>> c = DateStep2(date=a, other="foo")
     >>> d = DateStep2(date=b, other="bar")
@@ -91,15 +91,15 @@ are not the same instance:
 Parameter visibility
 ^^^^^^^^^^^^^^^^^^^^
 
-Using :class:`~luigi.parameter.ParameterVisibility` you can configure parameter visibility. By default, all
+Using :class:`~trun.parameter.ParameterVisibility` you can configure parameter visibility. By default, all
 parameters are public, but you can also set them hidden or private.
 
 .. code:: python
 
-    >>> import luigi
-    >>> from luigi.parameter import ParameterVisibility
+    >>> import trun
+    >>> from trun.parameter import ParameterVisibility
     
-    >>> luigi.Parameter(visibility=ParameterVisibility.PRIVATE)
+    >>> trun.Parameter(visibility=ParameterVisibility.PRIVATE)
 
 ``ParameterVisibility.PUBLIC`` (default) - visible everywhere
 
@@ -111,18 +111,18 @@ Parameter types
 ^^^^^^^^^^^^^^^
 
 In the examples above, the *type* of the parameter is determined by using different
-subclasses of :class:`~luigi.parameter.Parameter`. There are a few of them, like
-:class:`~luigi.parameter.DateParameter`,
-:class:`~luigi.parameter.DateIntervalParameter`,
-:class:`~luigi.parameter.IntParameter`,
-:class:`~luigi.parameter.FloatParameter`, etc.
+subclasses of :class:`~trun.parameter.Parameter`. There are a few of them, like
+:class:`~trun.parameter.DateParameter`,
+:class:`~trun.parameter.DateIntervalParameter`,
+:class:`~trun.parameter.IntParameter`,
+:class:`~trun.parameter.FloatParameter`, etc.
 
 Python is not a statically typed language and you don't have to specify the types
 of any of your parameters.
-You can simply use the base class :class:`~luigi.parameter.Parameter` if you don't care.
+You can simply use the base class :class:`~trun.parameter.Parameter` if you don't care.
 
-The reason you would use a subclass like :class:`~luigi.parameter.DateParameter`
-is that Luigi needs to know its type for the command line interaction.
+The reason you would use a subclass like :class:`~trun.parameter.DateParameter`
+is that Trun needs to know its type for the command line interaction.
 That's how it knows how to convert a string provided on the command line to
 the corresponding type (i.e. datetime.date instead of a string).
 
@@ -136,16 +136,16 @@ For instance, say you have classes StepA and StepB:
 
 .. code:: python
 
-    class StepA(luigi.Step):
-        x = luigi.Parameter()
+    class StepA(trun.Step):
+        x = trun.Parameter()
 
-    class StepB(luigi.Step):
-        y = luigi.Parameter()
+    class StepB(trun.Step):
+        y = trun.Parameter()
 
 
-You can run ``StepB`` on the command line: ``luigi StepB --y 42``.
+You can run ``StepB`` on the command line: ``trun StepB --y 42``.
 But you can also set the class value of ``StepA`` by running
-``luigi StepB --y 42 --StepA-x 43``.
+``trun StepB --y 42 --StepA-x 43``.
 This sets the value of ``StepA.x`` to 43 on a *class* level.
 It is still possible to override it inside Python if you instantiate ``StepA(x=44)``.
 
@@ -171,4 +171,4 @@ Parameters are resolved in the following order of decreasing priority:
 3. Any configuration option (applies on a class level)
 4. Any default value provided to the parameter (applies on a class level)
 
-See the :class:`~luigi.parameter.Parameter` class for more information.
+See the :class:`~trun.parameter.Parameter` class for more information.

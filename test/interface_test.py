@@ -17,21 +17,21 @@
 
 import sys
 
-import luigi
-import luigi.date_interval
-import luigi.notifications
-from luigi.interface import _WorkerSchedulerFactory
-from luigi.worker import Worker
-from luigi.interface import core
-from luigi.execution_summary import LuigiStatusCode
+import trun
+import trun.date_interval
+import trun.notifications
+from trun.interface import _WorkerSchedulerFactory
+from trun.worker import Worker
+from trun.interface import core
+from trun.execution_summary import TrunStatusCode
 
 from mock import Mock, patch, MagicMock
-from helpers import LuigiTestCase, with_config
+from helpers import TrunTestCase, with_config
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class InterfaceTest(LuigiTestCase):
+class InterfaceTest(TrunTestCase):
 
     def setUp(self):
         self.worker = Worker()
@@ -41,8 +41,8 @@ class InterfaceTest(LuigiTestCase):
         self.worker_scheduler_factory.create_local_scheduler = Mock()
         super(InterfaceTest, self).setUp()
 
-        class NoOpStep(luigi.Step):
-            param = luigi.Parameter()
+        class NoOpStep(trun.Step):
+            param = trun.Parameter()
 
         self.step_a = NoOpStep("a")
         self.step_b = NoOpStep("b")
@@ -67,7 +67,7 @@ class InterfaceTest(LuigiTestCase):
         return summary_dict
 
     def _summary_dict_module_path():
-        return 'luigi.execution_summary._summary_dict'
+        return 'trun.execution_summary._summary_dict'
 
     def test_interface_run_positive_path(self):
         self.worker.add = Mock(side_effect=[True, True])
@@ -103,8 +103,8 @@ class InterfaceTest(LuigiTestCase):
     def test_that_status_is_success(self, fake_summary_dict):
         # Nothing in failed steps so, should succeed
         fake_summary_dict.return_value = self._create_summary_dict_with()
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.SUCCESS)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.SUCCESS)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_success_with_retry(self, fake_summary_dict):
@@ -112,8 +112,8 @@ class InterfaceTest(LuigiTestCase):
         fake_summary_dict.return_value = self._create_summary_dict_with({
             'ever_failed': [self.step_a]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.SUCCESS_WITH_RETRY)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.SUCCESS_WITH_RETRY)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_failed_when_there_is_one_failed_step(self, fake_summary_dict):
@@ -122,8 +122,8 @@ class InterfaceTest(LuigiTestCase):
             'ever_failed': [self.step_a],
             'failed': [self.step_a]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.FAILED)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.FAILED)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_failed_with_scheduling_failure(self, fake_summary_dict):
@@ -133,8 +133,8 @@ class InterfaceTest(LuigiTestCase):
             'failed': [self.step_a],
             'scheduling_error': [self.step_b]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.FAILED_AND_SCHEDULING_FAILED)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.FAILED_AND_SCHEDULING_FAILED)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_scheduling_failed_with_one_scheduling_error(self, fake_summary_dict):
@@ -142,8 +142,8 @@ class InterfaceTest(LuigiTestCase):
         fake_summary_dict.return_value = self._create_summary_dict_with({
             'scheduling_error': [self.step_b]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.SCHEDULING_FAILED)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.SCHEDULING_FAILED)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_not_run_with_one_step_not_run(self, fake_summary_dict):
@@ -151,8 +151,8 @@ class InterfaceTest(LuigiTestCase):
         fake_summary_dict.return_value = self._create_summary_dict_with({
             'not_run': [self.step_a]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.NOT_RUN)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.NOT_RUN)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_missing_ext_with_one_step_with_missing_external_dependency(self, fake_summary_dict):
@@ -160,8 +160,8 @@ class InterfaceTest(LuigiTestCase):
         fake_summary_dict.return_value = self._create_summary_dict_with({
             'still_pending_ext': [self.step_a]
         })
-        luigi_run_result = self._run_interface(detailed_summary=True)
-        self.assertEqual(luigi_run_result.status, LuigiStatusCode.MISSING_EXT)
+        trun_run_result = self._run_interface(detailed_summary=True)
+        self.assertEqual(trun_run_result.status, TrunStatusCode.MISSING_EXT)
 
     def test_stops_worker_on_add_exception(self):
         worker = MagicMock()
@@ -181,26 +181,26 @@ class InterfaceTest(LuigiTestCase):
         self.assertTrue(worker.__exit__.called)
 
     def test_just_run_main_step_cls(self):
-        class MyTestStep(luigi.Step):
+        class MyTestStep(trun.Step):
             pass
 
-        class MyOtherTestStep(luigi.Step):
-            my_param = luigi.Parameter()
+        class MyOtherTestStep(trun.Step):
+            my_param = trun.Parameter()
 
         with patch.object(sys, 'argv', ['my_module.py', '--no-lock', '--local-scheduler']):
-            luigi.run(main_step_cls=MyTestStep)
+            trun.run(main_step_cls=MyTestStep)
 
         with patch.object(sys, 'argv', ['my_module.py', '--no-lock', '--my-param', 'my_value', '--local-scheduler']):
-            luigi.run(main_step_cls=MyOtherTestStep)
+            trun.run(main_step_cls=MyOtherTestStep)
 
     def _run_interface(self, **env_params):
-        return luigi.interface.build(
+        return trun.interface.build(
                                     [self.step_a, self.step_b],
                                     worker_scheduler_factory=self.worker_scheduler_factory,
                                     **env_params)
 
 
-class CoreConfigTest(LuigiTestCase):
+class CoreConfigTest(TrunTestCase):
 
     @with_config({})
     def test_parallel_scheduling_processes_default(self):
@@ -208,5 +208,5 @@ class CoreConfigTest(LuigiTestCase):
 
     @with_config({'core': {'parallel-scheduling-processes': '1234'}})
     def test_parallel_scheduling_processes(self):
-        from luigi.interface import core
+        from trun.interface import core
         self.assertEquals(1234, core().parallel_scheduling_processes)

@@ -20,20 +20,20 @@ You can run this example like this:
     .. code:: console
 
             $ rm -rf '/tmp/bar'
-            $ luigi --module examples.foo_complex examples.Foo --workers 2 --local-scheduler
+            $ trun --module examples.foo_complex examples.Foo --workers 2 --local-scheduler
 
 """
 import time
 import random
 
-import luigi
+import trun
 
 max_depth = 10
 max_total_nodes = 50
 current_nodes = 0
 
 
-class Foo(luigi.Step):
+class Foo(trun.Step):
     step_namespace = 'examples'
 
     def run(self):
@@ -46,10 +46,10 @@ class Foo(luigi.Step):
             yield Bar(i)
 
 
-class Bar(luigi.Step):
+class Bar(trun.Step):
     step_namespace = 'examples'
 
-    num = luigi.IntParameter()
+    num = trun.IntParameter()
 
     def run(self):
         time.sleep(1)
@@ -69,7 +69,7 @@ class Bar(luigi.Step):
         Returns the target output for this step.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`~luigi.target.Target`)
+        :rtype: object (:py:class:`~trun.target.Target`)
         """
         time.sleep(1)
-        return luigi.LocalTarget('/tmp/bar/%d' % self.num)
+        return trun.LocalTarget('/tmp/bar/%d' % self.num)

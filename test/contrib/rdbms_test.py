@@ -18,8 +18,8 @@ have opted for PSQL but we're less familiar with that contrib and there are
 less examples on how to test it.
 """
 
-import luigi
-import luigi.contrib.redshift
+import trun
+import trun.contrib.redshift
 import mock
 
 import unittest
@@ -38,15 +38,15 @@ BUCKET = 'bucket'
 KEY = 'key'
 
 
-class DummyS3CopyToTableBase(luigi.contrib.redshift.S3CopyToTable):
+class DummyS3CopyToTableBase(trun.contrib.redshift.S3CopyToTable):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     host = 'dummy_host'
     database = 'dummy_database'
     user = 'dummy_user'
     password = 'dummy_password'
-    table = luigi.Parameter(default='dummy_table')
-    columns = luigi.TupleParameter(
+    table = trun.Parameter(default='dummy_table')
+    columns = trun.TupleParameter(
         default=(
             ('some_text', 'varchar(255)'),
             ('some_int', 'int'),
@@ -69,9 +69,9 @@ class DummyS3CopyToTableKey(DummyS3CopyToTableBase):
 
 @pytest.mark.aws
 class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_check_meta_columns_to_table_if_exists(self,
                                                         mock_redshift_target,
                                                         mock_metadata_columns,
@@ -94,9 +94,9 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertEqual(executed_query, expected_output)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_check_meta_columns_to_schematable_if_exists(self,
                                                               mock_redshift_target,
                                                               mock_metadata_columns,
@@ -120,11 +120,11 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertEqual(executed_query, expected_output)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_column_to_table")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_column_to_table")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_not_add_if_meta_columns_already_exists(self,
                                                          mock_redshift_target,
                                                          mock_add_to_table,
@@ -136,11 +136,11 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertFalse(mock_add_to_table.called)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_column_to_table")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_column_to_table")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_add_if_meta_columns_not_already_exists(self,
                                                          mock_redshift_target,
                                                          mock_add_to_table,
@@ -152,10 +152,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertTrue(mock_add_to_table.called)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP')])
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_add_regular_column(self,
                                      mock_redshift_target,
                                      mock_columns_exists,
@@ -177,10 +177,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertEqual(executed_query, expected_output)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP', 'bytedict')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz', 'TIMESTAMP', 'bytedict')])
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_add_encoded_column(self,
                                      mock_redshift_target,
                                      mock_columns_exists,
@@ -204,10 +204,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
         self.assertEqual(executed_query, expected_output)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock, return_value=[('created_tz')])
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_raise_error_on_no_column_type(self,
                                                 mock_redshift_target,
                                                 mock_columns_exists,
@@ -218,11 +218,11 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
         with self.assertRaises(ValueError):
             step.run()
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock,
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock,
                 return_value=[('created_tz', 'TIMESTAMP', 'bytedict', '42')])
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._column_exists",  return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_raise_error_on_invalid_column(self,
                                                 mock_redshift_target,
                                                 mock_columns_exists,
@@ -233,9 +233,9 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
         with self.assertRaises(ValueError):
             step.run()
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_queries",  new_callable=mock.PropertyMock, return_value=['SELECT 1 FROM X', 'SELECT 2 FROM Y'])
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.metadata_queries",  new_callable=mock.PropertyMock, return_value=['SELECT 1 FROM X', 'SELECT 2 FROM Y'])
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_post_copy_metacolumns(self,
                                    mock_redshift_target,
                                    mock_metadata_queries,

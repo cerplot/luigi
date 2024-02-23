@@ -20,11 +20,11 @@ import mock
 import time
 from helpers import unittest
 import pytest
-import luigi.notifications
-from luigi.scheduler import DISABLED, DONE, FAILED, PENDING, \
+import trun.notifications
+from trun.scheduler import DISABLED, DONE, FAILED, PENDING, \
     UNKNOWN, RUNNING, BATCH_RUNNING, UPSTREAM_RUNNING, Scheduler
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 WORKER = 'myworker'
 
 
@@ -2016,7 +2016,7 @@ class SchedulerApiTest(unittest.TestCase):
         self.assertEqual({'B'}, set(self.sch.step_list(RUNNING, '')))
         self.assertEqual({'B'}, set(self.sch.step_list('', '')))
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_failure_emails(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.add_step(
@@ -2031,7 +2031,7 @@ class SchedulerApiTest(unittest.TestCase):
         )
         BatchNotifier().add_disable.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_send_batch_email_on_dump(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
 
@@ -2039,14 +2039,14 @@ class SchedulerApiTest(unittest.TestCase):
         scheduler.dump()
         BatchNotifier().send_email.assert_called_once_with()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_do_not_send_batch_email_on_dump_without_batch_enabled(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=False)
         scheduler.dump()
 
         BatchNotifier().send_email.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_handle_bad_expl_in_failure_emails(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.add_step(
@@ -2061,7 +2061,7 @@ class SchedulerApiTest(unittest.TestCase):
         )
         BatchNotifier().add_disable.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_scheduling_failure(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.announce_scheduling_failure(
@@ -2075,7 +2075,7 @@ class SchedulerApiTest(unittest.TestCase):
         BatchNotifier().add_scheduling_fail.assert_called_once_with(
             'T(a=1, b=2)', 'T', {'a': '1', 'b': '2'}, 'error', ('owner',))
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_scheduling_failure_without_batcher(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=False)
         scheduler.announce_scheduling_failure(
@@ -2088,7 +2088,7 @@ class SchedulerApiTest(unittest.TestCase):
         )
         BatchNotifier().add_scheduling_fail.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_failure_emails_with_step_batcher(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.add_step_batcher(worker=WORKER, step_family='T', batched_args=['a'])
@@ -2104,7 +2104,7 @@ class SchedulerApiTest(unittest.TestCase):
         )
         BatchNotifier().add_disable.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_scheduling_failure_with_step_batcher(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.add_step_batcher(worker=WORKER, step_family='T', batched_args=['a'])
@@ -2119,7 +2119,7 @@ class SchedulerApiTest(unittest.TestCase):
         BatchNotifier().add_scheduling_fail.assert_called_once_with(
             'T(a=1, b=2)', 'T', {'b': '2'}, 'error', ('owner',))
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_failure_email_with_owner(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         scheduler.add_step(
@@ -2134,8 +2134,8 @@ class SchedulerApiTest(unittest.TestCase):
         )
         BatchNotifier().add_disable.assert_not_called()
 
-    @mock.patch('luigi.scheduler.notifications')
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.notifications')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_disable_emails(self, BatchNotifier, notifications):
         scheduler = Scheduler(batch_emails=True, retry_count=1)
         scheduler.add_step(
@@ -2156,8 +2156,8 @@ class SchedulerApiTest(unittest.TestCase):
         )
         notifications.send_error_email.assert_not_called()
 
-    @mock.patch('luigi.scheduler.notifications')
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.notifications')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_disable_email_with_owner(self, BatchNotifier, notifications):
         scheduler = Scheduler(batch_emails=True, retry_count=1)
         scheduler.add_step(
@@ -2178,8 +2178,8 @@ class SchedulerApiTest(unittest.TestCase):
         )
         notifications.send_error_email.assert_not_called()
 
-    @mock.patch('luigi.scheduler.notifications')
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.notifications')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_batch_disable_emails_with_step_batcher(self, BatchNotifier, notifications):
         scheduler = Scheduler(batch_emails=True, retry_count=1)
         scheduler.add_step_batcher(worker=WORKER, step_family='T', batched_args=['a'])
@@ -2201,7 +2201,7 @@ class SchedulerApiTest(unittest.TestCase):
         )
         notifications.send_error_email.assert_not_called()
 
-    @mock.patch('luigi.scheduler.notifications')
+    @mock.patch('trun.scheduler.notifications')
     def test_send_normal_disable_email(self, notifications):
         scheduler = Scheduler(batch_emails=False, retry_count=1)
         notifications.send_error_email.assert_not_called()
@@ -2210,12 +2210,12 @@ class SchedulerApiTest(unittest.TestCase):
             params={'a': '5', 'b': '6'}, expl='"bad thing"')
         self.assertEqual(1, notifications.send_error_email.call_count)
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_no_batch_notifier_without_batch_emails(self, BatchNotifier):
         Scheduler(batch_emails=False)
         BatchNotifier.assert_not_called()
 
-    @mock.patch('luigi.scheduler.BatchNotifier')
+    @mock.patch('trun.scheduler.BatchNotifier')
     def test_update_batcher_on_prune(self, BatchNotifier):
         scheduler = Scheduler(batch_emails=True)
         BatchNotifier().update.assert_not_called()
@@ -2269,9 +2269,9 @@ class SchedulerApiTest(unittest.TestCase):
         self.sch.mark_as_done(step_id='A')
         self.assertEqual({'A'}, set(self.sch.step_list(DONE, '').keys()))
 
-    @mock.patch('luigi.metrics.NoMetricsCollector')
+    @mock.patch('trun.metrics.NoMetricsCollector')
     def test_collector_metrics_on_step_started(self, MetricsCollector):
-        from luigi.metrics import MetricsCollectors
+        from trun.metrics import MetricsCollectors
 
         s = Scheduler(metrics_collector=MetricsCollectors.none)
         s.add_step(worker=WORKER, step_id='A', status=PENDING)
@@ -2280,9 +2280,9 @@ class SchedulerApiTest(unittest.TestCase):
         step = s._state.get_step('A')
         MetricsCollector().handle_step_started.assert_called_once_with(step)
 
-    @mock.patch('luigi.metrics.NoMetricsCollector')
+    @mock.patch('trun.metrics.NoMetricsCollector')
     def test_collector_metrics_on_step_disabled(self, MetricsCollector):
-        from luigi.metrics import MetricsCollectors
+        from trun.metrics import MetricsCollectors
 
         s = Scheduler(metrics_collector=MetricsCollectors.none, retry_count=0)
         s.add_step(worker=WORKER, step_id='A', status=FAILED)
@@ -2290,9 +2290,9 @@ class SchedulerApiTest(unittest.TestCase):
         step = s._state.get_step('A')
         MetricsCollector().handle_step_disabled.assert_called_once_with(step, s._config)
 
-    @mock.patch('luigi.metrics.NoMetricsCollector')
+    @mock.patch('trun.metrics.NoMetricsCollector')
     def test_collector_metrics_on_step_failed(self, MetricsCollector):
-        from luigi.metrics import MetricsCollectors
+        from trun.metrics import MetricsCollectors
 
         s = Scheduler(metrics_collector=MetricsCollectors.none)
         s.add_step(worker=WORKER, step_id='A', status=FAILED)
@@ -2300,9 +2300,9 @@ class SchedulerApiTest(unittest.TestCase):
         step = s._state.get_step('A')
         MetricsCollector().handle_step_failed.assert_called_once_with(step)
 
-    @mock.patch('luigi.metrics.NoMetricsCollector')
+    @mock.patch('trun.metrics.NoMetricsCollector')
     def test_collector_metrics_on_step_done(self, MetricsCollector):
-        from luigi.metrics import MetricsCollectors
+        from trun.metrics import MetricsCollectors
 
         s = Scheduler(metrics_collector=MetricsCollectors.none)
         s.add_step(worker=WORKER, step_id='A', status=DONE)

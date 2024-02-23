@@ -18,11 +18,11 @@
 from helpers import unittest
 
 import mysql.connector
-from luigi.contrib.mysqldb import MySqlTarget
+from trun.contrib.mysqldb import MySqlTarget
 
 host = 'localhost'
 port = 3306
-database = 'luigi_test'
+database = 'trun_test'
 username = None
 password = None
 table_updates = 'table_updates'

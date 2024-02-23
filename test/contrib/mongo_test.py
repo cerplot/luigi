@@ -18,14 +18,14 @@
 
 from helpers import unittest
 
-from luigi.contrib.mongodb import MongoCellTarget, MongoRangeTarget
+from trun.contrib.mongodb import MongoCellTarget, MongoRangeTarget
 
 import pytest
 
 HOST = 'localhost'
 PORT = 27017
-INDEX = 'luigi_test'
-COLLECTION = 'luigi_collection'
+INDEX = 'trun_test'
+COLLECTION = 'trun_collection'
 
 try:
     import pymongo

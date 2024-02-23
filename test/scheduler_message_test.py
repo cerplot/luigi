@@ -19,27 +19,27 @@ import os
 import time
 import tempfile
 
-from helpers import LuigiTestCase, RunOnceStep
+from helpers import TrunTestCase, RunOnceStep
 
-import luigi
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.scheduler
+import trun.worker
 
 
 def fast_worker(scheduler, **kwargs):
     kwargs.setdefault("ping_interval", 0.5)
     kwargs.setdefault("force_multiprocessing", True)
-    return luigi.worker.Worker(scheduler=scheduler, **kwargs)
+    return trun.worker.Worker(scheduler=scheduler, **kwargs)
 
 
-class WriteMessageToFile(luigi.Step):
+class WriteMessageToFile(trun.Step):
 
-    path = luigi.Parameter()
+    path = trun.Parameter()
 
     accepts_messages = True
 
     def output(self):
-        return luigi.LocalTarget(self.path)
+        return trun.LocalTarget(self.path)
 
     def run(self):
         msg = ""
@@ -52,10 +52,10 @@ class WriteMessageToFile(luigi.Step):
             f.write(msg + "\n")
 
 
-class SchedulerMessageTest(LuigiTestCase):
+class SchedulerMessageTest(TrunTestCase):
 
     def test_scheduler_methods(self):
-        sch = luigi.scheduler.Scheduler(send_messages=True)
+        sch = trun.scheduler.Scheduler(send_messages=True)
         sch.add_step(step_id="foo-step", worker="foo-worker")
 
         res = sch.send_scheduler_message("foo-worker", "foo-step", "message content")
@@ -69,7 +69,7 @@ class SchedulerMessageTest(LuigiTestCase):
         self.assertEqual(response, "message response")
 
     def test_receive_messsage(self):
-        sch = luigi.scheduler.Scheduler(send_messages=True)
+        sch = trun.scheduler.Scheduler(send_messages=True)
         with fast_worker(sch) as w:
             with tempfile.NamedTemporaryFile() as tmp:
                 if os.path.exists(tmp.name):
@@ -86,7 +86,7 @@ class SchedulerMessageTest(LuigiTestCase):
                     self.assertEqual(str(f.read()).strip(), "test")
 
     def test_receive_messages_disabled(self):
-        sch = luigi.scheduler.Scheduler(send_messages=True)
+        sch = trun.scheduler.Scheduler(send_messages=True)
         with fast_worker(sch, force_multiprocessing=False) as w:
             class MyStep(RunOnceStep):
                 def run(self):
@@ -102,7 +102,7 @@ class SchedulerMessageTest(LuigiTestCase):
             self.assertFalse(step.had_queue)
 
     def test_send_messages_disabled(self):
-        sch = luigi.scheduler.Scheduler(send_messages=False)
+        sch = trun.scheduler.Scheduler(send_messages=False)
         with fast_worker(sch) as w:
             with tempfile.NamedTemporaryFile() as tmp:
                 if os.path.exists(tmp.name):

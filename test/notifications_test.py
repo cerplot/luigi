@@ -21,11 +21,11 @@ import sys
 import socket
 
 from helpers import with_config
-from luigi import notifications
-from luigi.notifications import generate_email
-from luigi.scheduler import Scheduler
-from luigi.worker import Worker
-import luigi
+from trun import notifications
+from trun.notifications import generate_email
+from trun.scheduler import Scheduler
+from trun.worker import Worker
+import trun
 
 
 class TestEmail(unittest.TestCase):
@@ -42,9 +42,9 @@ class TestException(Exception):
     pass
 
 
-class TestStep(luigi.Step):
-    foo = luigi.Parameter()
-    bar = luigi.Parameter()
+class TestStep(trun.Step):
+    foo = trun.Parameter()
+    bar = trun.Parameter()
 
 
 class FailSchedulingStep(TestStep):
@@ -89,7 +89,7 @@ class ExceptionFormatTest(unittest.TestCase):
 
     @with_config({'email': {'receiver': 'nowhere@example.com',
                             'prefix': '[TEST] '}})
-    @mock.patch('luigi.notifications.send_error_email')
+    @mock.patch('trun.notifications.send_error_email')
     def _run_step(self, step, mock_send):
         with Worker(scheduler=self.sch) as w:
             w.add(step)
@@ -103,7 +103,7 @@ class ExceptionFormatTest(unittest.TestCase):
     @with_config({'email': {'receiver': 'nowhere@axample.com',
                             'prefix': '[TEST] ',
                             'format': 'html'}})
-    @mock.patch('luigi.notifications.send_error_email')
+    @mock.patch('trun.notifications.send_error_email')
     def _run_step_html(self, step, mock_send):
         with Worker(scheduler=self.sch) as w:
             w.add(step)
@@ -161,7 +161,7 @@ class NotificationFixture:
 
     config, sender, subject, message, recipients, image_png
     """
-    sender = 'luigi@unittest'
+    sender = 'trun@unittest'
     subject = 'Oops!'
     message = """A multiline
                  message."""
@@ -172,7 +172,7 @@ class NotificationFixture:
     mocked_email_msg = '''Content-Type: multipart/related; boundary="===============0998157881=="
 MIME-Version: 1.0
 Subject: Oops!
-From: luigi@unittest
+From: trun@unittest
 To: noone@nowhere.no,phantom@opera.fr
 
 --===============0998157881==
@@ -217,7 +217,7 @@ class TestSMTPEmail(unittest.TestCase, NotificationFixture):
                     "timeout": 1200}
 
         with mock.patch('smtplib.SMTP') as SMTP:
-            with mock.patch('luigi.notifications.generate_email') as generate_email:
+            with mock.patch('trun.notifications.generate_email') as generate_email:
                 generate_email.return_value\
                     .as_string.return_value = self.mocked_email_msg
 
@@ -250,7 +250,7 @@ class TestSMTPEmail(unittest.TestCase, NotificationFixture):
                     "timeout": 1200}
 
         with mock.patch('smtplib.SMTP') as SMTP:
-            with mock.patch('luigi.notifications.generate_email') as generate_email:
+            with mock.patch('trun.notifications.generate_email') as generate_email:
                 generate_email.return_value \
                     .as_string.return_value = self.mocked_email_msg
 
@@ -282,7 +282,7 @@ class TestSMTPEmail(unittest.TestCase, NotificationFixture):
                     "timeout": 1200}
 
         with mock.patch('smtplib.SMTP') as SMTP:
-            with mock.patch('luigi.notifications.generate_email') as generate_email:
+            with mock.patch('trun.notifications.generate_email') as generate_email:
                 SMTP.side_effect = socket.error()
                 generate_email.return_value \
                     .as_string.return_value = self.mocked_email_msg
@@ -343,7 +343,7 @@ class TestSESEmail(unittest.TestCase, NotificationFixture):
         """
 
         with mock.patch('boto3.client') as boto_client:
-            with mock.patch('luigi.notifications.generate_email') as generate_email:
+            with mock.patch('trun.notifications.generate_email') as generate_email:
                 generate_email.return_value\
                     .as_string.return_value = self.mocked_email_msg
 
@@ -390,7 +390,7 @@ class TestSNSNotification(unittest.TestCase, NotificationFixture):
         and check that it is cut to length of 100 chars.
         """
 
-        long_subject = 'Luigi: SanityCheck(regexPattern=aligned-source\\|data-not-older\\|source-chunks-compl,'\
+        long_subject = 'Trun: SanityCheck(regexPattern=aligned-source\\|data-not-older\\|source-chunks-compl,'\
                        'mailFailure=False, mongodb=mongodb://localhost/stats) FAILED'
 
         with mock.patch('boto3.resource') as res:
@@ -417,7 +417,7 @@ class TestNotificationDispatcher(unittest.TestCase, NotificationFixture):
 
         expected_args = self.notification_args
 
-        with mock.patch('luigi.notifications.{}'.format(target)) as sender:
+        with mock.patch('trun.notifications.{}'.format(target)) as sender:
             notifications.send_email(self.subject, self.message, self.sender,
                                      self.recipients, image_png=self.image_png)
 

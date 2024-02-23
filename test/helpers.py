@@ -21,10 +21,10 @@ import tempfile
 import re
 from contextlib import contextmanager
 
-import luigi
-import luigi.step_register
-import luigi.cmdline_parser
-from luigi.cmdline_parser import CmdlineParser
+import trun
+import trun.step_register
+import trun.cmdline_parser
+from trun.cmdline_parser import CmdlineParser
 import os
 
 import unittest
@@ -62,18 +62,18 @@ class with_config:
 
     .. code-block: python
 
-        >>> import luigi.configuration
+        >>> import trun.configuration
         >>> @with_config({'foo': {'bar': 'baz'}})
         ... def my_test():
-        ...     print(luigi.configuration.get_config().get("foo", "bar"))
+        ...     print(trun.configuration.get_config().get("foo", "bar"))
         ...
         >>> my_test()
         baz
         >>> @with_config({'hoo': {'bar': 'buz'}})
         ... @with_config({'foo': {'bar': 'baz'}})
         ... def my_test():
-        ...     print(luigi.configuration.get_config().get("foo", "bar"))
-        ...     print(luigi.configuration.get_config().get("hoo", "bar"))
+        ...     print(trun.configuration.get_config().get("foo", "bar"))
+        ...     print(trun.configuration.get_config().get("hoo", "bar"))
         ...
         >>> my_test()
         baz
@@ -81,15 +81,15 @@ class with_config:
         >>> @with_config({'foo': {'bar': 'buz'}})
         ... @with_config({'foo': {'bar': 'baz'}})
         ... def my_test():
-        ...     print(luigi.configuration.get_config().get("foo", "bar"))
+        ...     print(trun.configuration.get_config().get("foo", "bar"))
         ...
         >>> my_test()
         baz
         >>> @with_config({'foo': {'bur': 'buz'}})
         ... @with_config({'foo': {'bar': 'baz'}})
         ... def my_test():
-        ...     print(luigi.configuration.get_config().get("foo", "bar"))
-        ...     print(luigi.configuration.get_config().get("foo", "bur"))
+        ...     print(trun.configuration.get_config().get("foo", "bar"))
+        ...     print(trun.configuration.get_config().get("foo", "bur"))
         ...
         >>> my_test()
         baz
@@ -97,8 +97,8 @@ class with_config:
         >>> @with_config({'foo': {'bur': 'buz'}})
         ... @with_config({'foo': {'bar': 'baz'}}, replace_sections=True)
         ... def my_test():
-        ...     print(luigi.configuration.get_config().get("foo", "bar"))
-        ...     print(luigi.configuration.get_config().get("foo", "bur", "no_bur"))
+        ...     print(trun.configuration.get_config().get("foo", "bar"))
+        ...     print(trun.configuration.get_config().get("foo", "bur", "no_bur"))
         ...
         >>> my_test()
         baz
@@ -127,10 +127,10 @@ class with_config:
     def __call__(self, fun):
         @functools.wraps(fun)
         def wrapper(*args, **kwargs):
-            import luigi.configuration
-            orig_conf = luigi.configuration.LuigiConfigParser.instance()
-            new_conf = luigi.configuration.LuigiConfigParser()
-            luigi.configuration.LuigiConfigParser._instance = new_conf
+            import trun.configuration
+            orig_conf = trun.configuration.TrunConfigParser.instance()
+            new_conf = trun.configuration.TrunConfigParser()
+            trun.configuration.TrunConfigParser._instance = new_conf
             orig_dict = {k: dict(orig_conf.items(k)) for k in orig_conf.sections()}
             new_dict = self._make_dict(orig_dict)
             for section, settings in new_dict.items():
@@ -140,11 +140,11 @@ class with_config:
             try:
                 return fun(*args, **kwargs)
             finally:
-                luigi.configuration.LuigiConfigParser._instance = orig_conf
+                trun.configuration.TrunConfigParser._instance = orig_conf
         return wrapper
 
 
-class RunOnceStep(luigi.Step):
+class RunOnceStep(trun.Step):
 
     def __init__(self, *args, **kwargs):
         super(RunOnceStep, self).__init__(*args, **kwargs)
@@ -164,21 +164,21 @@ class StringContaining(str):
         return self in other_str
 
 
-class LuigiTestCase(unittest.TestCase):
+class TrunTestCase(unittest.TestCase):
     """
     Steps registred within a test case will get unregistered in a finalizer
 
     Instance caches are cleared before and after all runs
     """
     def setUp(self):
-        super(LuigiTestCase, self).setUp()
-        self._stashed_reg = luigi.step_register.Register._get_reg()
-        luigi.step_register.Register.clear_instance_cache()
+        super(TrunTestCase, self).setUp()
+        self._stashed_reg = trun.step_register.Register._get_reg()
+        trun.step_register.Register.clear_instance_cache()
 
     def tearDown(self):
-        luigi.step_register.Register._set_reg(self._stashed_reg)
-        super(LuigiTestCase, self).tearDown()
-        luigi.step_register.Register.clear_instance_cache()
+        trun.step_register.Register._set_reg(self._stashed_reg)
+        super(TrunTestCase, self).tearDown()
+        trun.step_register.Register.clear_instance_cache()
 
     def run_locally(self, args):
         """ Helper for running tests testing more of the stack, the command
@@ -186,7 +186,7 @@ class LuigiTestCase(unittest.TestCase):
         temp = CmdlineParser._instance
         try:
             CmdlineParser._instance = None
-            run_exit_status = luigi.run(['--local-scheduler', '--no-lock'] + args)
+            run_exit_status = trun.run(['--local-scheduler', '--no-lock'] + args)
         finally:
             CmdlineParser._instance = temp
         return run_exit_status

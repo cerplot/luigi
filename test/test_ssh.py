@@ -18,7 +18,7 @@
 import subprocess
 from helpers import unittest
 
-from luigi.contrib.ssh import RemoteContext
+from trun.contrib.ssh import RemoteContext
 
 
 class TestMockedRemoteContext(unittest.TestCase):
@@ -34,14 +34,14 @@ class TestMockedRemoteContext(unittest.TestCase):
         subprocess.Popen = Popen
         context = RemoteContext(
             "some_host",
-            username="luigi",
+            username="trun",
             key_file="/some/key.pub"
         )
         context.Popen(["ls"])
         self.assertTrue("ssh" in self.last_test)
         self.assertTrue("-i" in self.last_test)
         self.assertTrue("/some/key.pub" in self.last_test)
-        self.assertTrue("luigi@some_host" in self.last_test)
+        self.assertTrue("trun@some_host" in self.last_test)
         self.assertTrue("ls" in self.last_test)
 
         subprocess.Popen = orig_Popen

@@ -14,63 +14,63 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from helpers import LuigiTestCase, RunOnceStep
+from helpers import TrunTestCase, RunOnceStep
 
-import luigi
-import luigi.step
-from luigi.util import inherits, requires
+import trun
+import trun.step
+from trun.util import inherits, requires
 
 
-class BasicsTest(LuigiTestCase):
+class BasicsTest(TrunTestCase):
     # following tests using inherits decorator
     def test_step_ids_using_inherits(self):
-        class ParentStep(luigi.Step):
-            my_param = luigi.Parameter()
-        luigi.namespace('blah')
+        class ParentStep(trun.Step):
+            my_param = trun.Parameter()
+        trun.namespace('blah')
 
         @inherits(ParentStep)
-        class ChildStep(luigi.Step):
+        class ChildStep(trun.Step):
             def requires(self):
                 return self.clone(ParentStep)
-        luigi.namespace('')
+        trun.namespace('')
         child_step = ChildStep(my_param='hello')
         self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
-        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
+        self.assertIn(ParentStep(my_param='hello'), trun.step.flatten(child_step.requires()))
 
     def test_step_ids_using_inherits_2(self):
         # Here we use this decorator in a unnormal way.
         # But it should still work.
-        class ParentStep(luigi.Step):
-            my_param = luigi.Parameter()
+        class ParentStep(trun.Step):
+            my_param = trun.Parameter()
         decorator = inherits(ParentStep)
-        luigi.namespace('blah')
+        trun.namespace('blah')
 
-        class ChildStep(luigi.Step):
+        class ChildStep(trun.Step):
             def requires(self):
                 return self.clone_parent()
-        luigi.namespace('')
+        trun.namespace('')
         ChildStep = decorator(ChildStep)
         child_step = ChildStep(my_param='hello')
         self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
-        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
+        self.assertIn(ParentStep(my_param='hello'), trun.step.flatten(child_step.requires()))
 
     def test_step_ids_using_inherits_kwargs(self):
-        class ParentStep(luigi.Step):
-            my_param = luigi.Parameter()
-        luigi.namespace('blah')
+        class ParentStep(trun.Step):
+            my_param = trun.Parameter()
+        trun.namespace('blah')
 
         @inherits(parent=ParentStep)
-        class ChildStep(luigi.Step):
+        class ChildStep(trun.Step):
             def requires(self):
                 return self.clone(ParentStep)
-        luigi.namespace('')
+        trun.namespace('')
         child_step = ChildStep(my_param='hello')
         self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
-        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
+        self.assertIn(ParentStep(my_param='hello'), trun.step.flatten(child_step.requires()))
 
     def _setup_parent_and_child_inherits(self):
-        class ParentStep(luigi.Step):
-            my_parameter = luigi.Parameter()
+        class ParentStep(trun.Step):
+            my_parameter = trun.Parameter()
             class_variable = 'notset'
 
             def run(self):
@@ -97,10 +97,10 @@ class BasicsTest(LuigiTestCase):
         self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def _setup_inherits_inheritence(self):
-        class InheritedStep(luigi.Step):
+        class InheritedStep(trun.Step):
             pass
 
-        class ParentStep(luigi.Step):
+        class ParentStep(trun.Step):
             pass
 
         @inherits(InheritedStep)
@@ -116,37 +116,37 @@ class BasicsTest(LuigiTestCase):
 
     # following tests using requires decorator
     def test_step_ids_using_requries(self):
-        class ParentStep(luigi.Step):
-            my_param = luigi.Parameter()
-        luigi.namespace('blah')
+        class ParentStep(trun.Step):
+            my_param = trun.Parameter()
+        trun.namespace('blah')
 
         @requires(ParentStep)
-        class ChildStep(luigi.Step):
+        class ChildStep(trun.Step):
             pass
-        luigi.namespace('')
+        trun.namespace('')
         child_step = ChildStep(my_param='hello')
         self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
-        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
+        self.assertIn(ParentStep(my_param='hello'), trun.step.flatten(child_step.requires()))
 
     def test_step_ids_using_requries_2(self):
         # Here we use this decorator in a unnormal way.
         # But it should still work.
-        class ParentStep(luigi.Step):
-            my_param = luigi.Parameter()
+        class ParentStep(trun.Step):
+            my_param = trun.Parameter()
         decorator = requires(ParentStep)
-        luigi.namespace('blah')
+        trun.namespace('blah')
 
-        class ChildStep(luigi.Step):
+        class ChildStep(trun.Step):
             pass
-        luigi.namespace('')
+        trun.namespace('')
         ChildStep = decorator(ChildStep)
         child_step = ChildStep(my_param='hello')
         self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
-        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
+        self.assertIn(ParentStep(my_param='hello'), trun.step.flatten(child_step.requires()))
 
     def _setup_parent_and_child(self):
-        class ParentStep(luigi.Step):
-            my_parameter = luigi.Parameter()
+        class ParentStep(trun.Step):
+            my_parameter = trun.Parameter()
             class_variable = 'notset'
 
             def run(self):
@@ -172,10 +172,10 @@ class BasicsTest(LuigiTestCase):
         self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def _setup_requires_inheritence(self):
-        class RequiredStep(luigi.Step):
+        class RequiredStep(trun.Step):
             pass
 
-        class ParentStep(luigi.Step):
+        class ParentStep(trun.Step):
             pass
 
         @requires(RequiredStep)

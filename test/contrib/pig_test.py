@@ -18,9 +18,9 @@
 import subprocess
 import tempfile
 
-import luigi
+import trun
 from helpers import unittest
-from luigi.contrib.pig import PigJobError, PigJobStep
+from trun.contrib.pig import PigJobError, PigJobStep
 from mock import patch
 
 import pytest
@@ -28,7 +28,7 @@ import pytest
 
 class SimpleTestJob(PigJobStep):
     def output(self):
-        return luigi.LocalTarget('simple-output')
+        return trun.LocalTarget('simple-output')
 
     def pig_script_path(self):
         return "my_simple_pig_script.pig"
@@ -36,7 +36,7 @@ class SimpleTestJob(PigJobStep):
 
 class ComplexTestJob(PigJobStep):
     def output(self):
-        return luigi.LocalTarget('complex-output')
+        return trun.LocalTarget('complex-output')
 
     def pig_script_path(self):
         return "my_complex_pig_script.pig"
@@ -108,7 +108,7 @@ class ComplexPigTest(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(delete=False) as param_file_mock, \
                 tempfile.NamedTemporaryFile(delete=False) as prop_file_mock, \
-                patch('luigi.contrib.pig.tempfile.NamedTemporaryFile',
+                patch('trun.contrib.pig.tempfile.NamedTemporaryFile',
                       side_effect=[param_file_mock, prop_file_mock]):
             try:
                 job = ComplexTestJob()
@@ -141,7 +141,7 @@ class ComplexPigTest(unittest.TestCase):
 
         with tempfile.NamedTemporaryFile(delete=False) as param_file_mock, \
                 tempfile.NamedTemporaryFile(delete=False) as prop_file_mock, \
-                patch('luigi.contrib.pig.tempfile.NamedTemporaryFile',
+                patch('trun.contrib.pig.tempfile.NamedTemporaryFile',
                       side_effect=[param_file_mock, prop_file_mock]):
             try:
                 job = ComplexTestJob()

@@ -20,15 +20,15 @@ import os
 import subprocess
 from helpers import unittest
 
-import luigi
-import luigi.cmdline
-from luigi.setup_logging import DaemonLogging, InterfaceLogging
-from luigi.configuration import LuigiTomlParser, get_config
-from luigi.mock import MockTarget
+import trun
+import trun.cmdline
+from trun.setup_logging import DaemonLogging, InterfaceLogging
+from trun.configuration import TrunTomlParser, get_config
+from trun.mock import MockTarget
 
 
-class SomeStep(luigi.Step):
-    n = luigi.IntParameter()
+class SomeStep(trun.Step):
+    n = trun.IntParameter()
 
     def output(self):
         return MockTarget('/tmp/test_%d' % self.n)
@@ -39,32 +39,32 @@ class SomeStep(luigi.Step):
         f.close()
 
 
-class AmbiguousClass(luigi.Step):
+class AmbiguousClass(trun.Step):
     pass
 
 
-class AmbiguousClass(luigi.Step):  # NOQA
+class AmbiguousClass(trun.Step):  # NOQA
     pass
 
 
-class StepWithSameName(luigi.Step):
+class StepWithSameName(trun.Step):
 
     def run(self):
         self.x = 42
 
 
-class StepWithSameName(luigi.Step):  # NOQA
+class StepWithSameName(trun.Step):  # NOQA
     # there should be no ambiguity
 
     def run(self):
         self.x = 43
 
 
-class WriteToFile(luigi.Step):
-    filename = luigi.Parameter()
+class WriteToFile(trun.Step):
+    filename = trun.Parameter()
 
     def output(self):
-        return luigi.LocalTarget(self.filename)
+        return trun.LocalTarget(self.filename)
 
     def run(self):
         f = self.output().open('w')
@@ -72,30 +72,30 @@ class WriteToFile(luigi.Step):
         f.close()
 
 
-class FooBaseClass(luigi.Step):
-    x = luigi.Parameter(default='foo_base_default')
+class FooBaseClass(trun.Step):
+    x = trun.Parameter(default='foo_base_default')
 
 
 class FooSubClass(FooBaseClass):
     pass
 
 
-class AStepThatFails(luigi.Step):
+class AStepThatFails(trun.Step):
     def run(self):
         raise ValueError()
 
 
-class RequiredConfig(luigi.Config):
-    required_test_param = luigi.Parameter()
+class RequiredConfig(trun.Config):
+    required_test_param = trun.Parameter()
 
 
-class StepThatRequiresConfig(luigi.WrapperStep):
+class StepThatRequiresConfig(trun.WrapperStep):
     def requires(self):
         if RequiredConfig().required_test_param == 'A':
             return SubStepThatFails()
 
 
-class SubStepThatFails(luigi.Step):
+class SubStepThatFails(trun.Step):
     def complete(self):
         return False
 
@@ -115,30 +115,30 @@ class CmdlineTest(unittest.TestCase):
         InterfaceLogging.config = get_config()
 
     def _clean_config(self):
-        DaemonLogging.config = LuigiTomlParser()
+        DaemonLogging.config = TrunTomlParser()
         DaemonLogging.config.data = {}
 
     def _restore_config(self):
-        DaemonLogging.config = LuigiTomlParser.instance()
+        DaemonLogging.config = TrunTomlParser.instance()
 
     @mock.patch("logging.getLogger")
     def test_cmdline_main_step_cls(self, logger):
-        luigi.run(['--local-scheduler', '--no-lock', '--n', '100'], main_step_cls=SomeStep)
+        trun.run(['--local-scheduler', '--no-lock', '--n', '100'], main_step_cls=SomeStep)
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_100': b'done'})
 
     @mock.patch("logging.getLogger")
     def test_cmdline_local_scheduler(self, logger):
-        luigi.run(['SomeStep', '--no-lock', '--n', '101'], local_scheduler=True)
+        trun.run(['SomeStep', '--no-lock', '--n', '101'], local_scheduler=True)
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_101': b'done'})
 
     @mock.patch("logging.getLogger")
     def test_cmdline_other_step(self, logger):
-        luigi.run(['--local-scheduler', '--no-lock', 'SomeStep', '--n', '1000'])
+        trun.run(['--local-scheduler', '--no-lock', 'SomeStep', '--n', '1000'])
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_1000': b'done'})
 
     @mock.patch("logging.getLogger")
     def test_cmdline_ambiguous_class(self, logger):
-        self.assertRaises(Exception, luigi.run, ['--local-scheduler', '--no-lock', 'AmbiguousClass'])
+        self.assertRaises(Exception, trun.run, ['--local-scheduler', '--no-lock', 'AmbiguousClass'])
 
     @mock.patch("logging.getLogger")
     @mock.patch("logging.StreamHandler")
@@ -152,7 +152,7 @@ class CmdlineTest(unittest.TestCase):
         handler.return_value = mock.Mock(name="stream_handler")
 
         InterfaceLogging._configured = False
-        InterfaceLogging.config = LuigiTomlParser()
+        InterfaceLogging.config = TrunTomlParser()
         InterfaceLogging.config.data = {}
         InterfaceLogging.setup(opts)
 
@@ -166,42 +166,42 @@ class CmdlineTest(unittest.TestCase):
 
     @mock.patch('argparse.ArgumentParser.print_usage')
     def test_non_existent_class(self, print_usage):
-        self.assertRaises(luigi.step_register.StepClassNotFoundException,
-                          luigi.run, ['--local-scheduler', '--no-lock', 'XYZ'])
+        self.assertRaises(trun.step_register.StepClassNotFoundException,
+                          trun.run, ['--local-scheduler', '--no-lock', 'XYZ'])
 
     @mock.patch('argparse.ArgumentParser.print_usage')
     def test_no_step(self, print_usage):
-        self.assertRaises(SystemExit, luigi.run, ['--local-scheduler', '--no-lock'])
+        self.assertRaises(SystemExit, trun.run, ['--local-scheduler', '--no-lock'])
 
-    def test_luigid_logging_conf(self):
-        with mock.patch('luigi.server.run') as server_run, \
+    def test_trund_logging_conf(self):
+        with mock.patch('trun.server.run') as server_run, \
                 mock.patch('logging.config.fileConfig') as fileConfig:
-            luigi.cmdline.luigid([])
+            trun.cmdline.trund([])
             self.assertTrue(server_run.called)
             # the default test configuration specifies a logging conf file
             fileConfig.assert_called_with("test/testconfig/logging.cfg")
 
-    def test_luigid_no_logging_conf(self):
-        with mock.patch('luigi.server.run') as server_run, \
+    def test_trund_no_logging_conf(self):
+        with mock.patch('trun.server.run') as server_run, \
                 mock.patch('logging.basicConfig') as basicConfig:
             self._clean_config()
             DaemonLogging.config.data = {'core': {
                 'no_configure_logging': False,
                 'logging_conf_file': None,
             }}
-            luigi.cmdline.luigid([])
+            trun.cmdline.trund([])
             self.assertTrue(server_run.called)
             self.assertTrue(basicConfig.called)
 
-    def test_luigid_missing_logging_conf(self):
-        with mock.patch('luigi.server.run') as server_run, \
+    def test_trund_missing_logging_conf(self):
+        with mock.patch('trun.server.run') as server_run, \
                 mock.patch('logging.basicConfig') as basicConfig:
             self._restore_config()
             DaemonLogging.config.data = {'core': {
                 'no_configure_logging': False,
                 'logging_conf_file': "nonexistent.cfg",
             }}
-            self.assertRaises(Exception, luigi.cmdline.luigid, [])
+            self.assertRaises(Exception, trun.cmdline.trund, [])
             self.assertFalse(server_run.called)
             self.assertFalse(basicConfig.called)
 
@@ -216,21 +216,21 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         stdout, stderr = p.communicate()  # Unfortunately subprocess.check_output is 2.7+
         return p.returncode, stdout, stderr
 
-    def test_bin_luigi(self):
-        t = luigi.LocalTarget(is_tmp=True)
-        args = ['./bin/luigi', '--module', 'cmdline_test', 'WriteToFile', '--filename', t.path, '--local-scheduler', '--no-lock']
+    def test_bin_trun(self):
+        t = trun.LocalTarget(is_tmp=True)
+        args = ['./bin/trun', '--module', 'cmdline_test', 'WriteToFile', '--filename', t.path, '--local-scheduler', '--no-lock']
         self._run_cmdline(args)
         self.assertTrue(t.exists())
 
     def test_direct_python(self):
-        t = luigi.LocalTarget(is_tmp=True)
+        t = trun.LocalTarget(is_tmp=True)
         args = ['python', 'test/cmdline_test.py', 'WriteToFile', '--filename', t.path, '--local-scheduler', '--no-lock']
         self._run_cmdline(args)
         self.assertTrue(t.exists())
 
     def test_python_module(self):
-        t = luigi.LocalTarget(is_tmp=True)
-        args = ['python', '-m', 'luigi', '--module', 'cmdline_test', 'WriteToFile', '--filename', t.path, '--local-scheduler', '--no-lock']
+        t = trun.LocalTarget(is_tmp=True)
+        args = ['python', '-m', 'trun', '--module', 'cmdline_test', 'WriteToFile', '--filename', t.path, '--local-scheduler', '--no-lock']
         self._run_cmdline(args)
         self.assertTrue(t.exists())
 
@@ -244,73 +244,73 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertTrue(stdout.find(b'--x') != -1)
 
-    def test_bin_luigi_help(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', '--help-all'])
+    def test_bin_trun_help(self):
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--module', 'cmdline_test', '--help-all'])
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertFalse(stdout.find(b'--x') != -1)
 
-    def test_python_module_luigi_help(self):
-        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'luigi', '--module', 'cmdline_test', '--help-all'])
+    def test_python_module_trun_help(self):
+        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'trun', '--module', 'cmdline_test', '--help-all'])
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertFalse(stdout.find(b'--x') != -1)
 
-    def test_bin_luigi_help_no_module(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--help'])
+    def test_bin_trun_help_no_module(self):
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--help'])
         self.assertTrue(stdout.find(b'usage:') != -1)
 
-    def test_bin_luigi_help_not_spammy(self):
+    def test_bin_trun_help_not_spammy(self):
         """
-        Test that `luigi --help` fits on one screen
+        Test that `trun --help` fits on one screen
         """
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--help'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--help'])
         self.assertLessEqual(len(stdout.splitlines()), 15)
 
-    def test_bin_luigi_all_help_spammy(self):
+    def test_bin_trun_all_help_spammy(self):
         """
-        Test that `luigi --help-all` doesn't fit on a screen
+        Test that `trun --help-all` doesn't fit on a screen
 
         Naturally, I don't mind this test breaking, but it convinces me that
         the "not spammy" test is actually testing what it claims too.
         """
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--help-all'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--help-all'])
         self.assertGreater(len(stdout.splitlines()), 15)
 
     def test_error_mesage_on_misspelled_step(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', 'RangeDaili'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', 'RangeDaili'])
         self.assertTrue(stderr.find(b'RangeDaily') != -1)
 
-    def test_bin_luigi_no_parameters(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi'])
+    def test_bin_trun_no_parameters(self):
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun'])
         self.assertTrue(stderr.find(b'No step specified') != -1)
 
-    def test_python_module_luigi_no_parameters(self):
-        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'luigi'])
+    def test_python_module_trun_no_parameters(self):
+        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'trun'])
         self.assertTrue(stderr.find(b'No step specified') != -1)
 
-    def test_bin_luigi_help_class(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'FooBaseClass', '--help'])
+    def test_bin_trun_help_class(self):
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--module', 'cmdline_test', 'FooBaseClass', '--help'])
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertTrue(stdout.find(b'--x') != -1)
 
     def test_python_module_help_class(self):
-        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'luigi', '--module', 'cmdline_test', 'FooBaseClass', '--help'])
+        returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'trun', '--module', 'cmdline_test', 'FooBaseClass', '--help'])
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertTrue(stdout.find(b'--x') != -1)
 
-    def test_bin_luigi_options_before_step(self):
-        args = ['./bin/luigi', '--module', 'cmdline_test', '--no-lock', '--local-scheduler', '--FooBaseClass-x', 'hello', 'FooBaseClass']
+    def test_bin_trun_options_before_step(self):
+        args = ['./bin/trun', '--module', 'cmdline_test', '--no-lock', '--local-scheduler', '--FooBaseClass-x', 'hello', 'FooBaseClass']
         returncode, stdout, stderr = self._run_cmdline(args)
         self.assertEqual(0, returncode)
 
     def test_bin_fail_on_unrecognized_args(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--no-lock', '--local-scheduler', 'Step', '--unknown-param', 'hiiii'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--no-lock', '--local-scheduler', 'Step', '--unknown-param', 'hiiii'])
         self.assertNotEqual(0, returncode)
 
     def test_deps_py_script(self):
         """
         Test the deps.py script.
         """
-        args = 'python luigi/tools/deps.py --module examples.top_artists ArtistToplistToDatabase --date-interval 2015-W10'.split()
+        args = 'python trun/tools/deps.py --module examples.top_artists ArtistToplistToDatabase --date-interval 2015-W10'.split()
         returncode, stdout, stderr = self._run_cmdline(args)
         self.assertEqual(0, returncode)
         self.assertTrue(stdout.find(b'[FileSystem] data/streams_2015_03_04_faked.tsv') != -1)
@@ -320,7 +320,7 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         """
         Test the deps_tree.py script.
         """
-        args = 'python luigi/tools/deps_tree.py --module examples.top_artists AggregateArtists --date-interval 2012-06'.split()
+        args = 'python trun/tools/deps_tree.py --module examples.top_artists AggregateArtists --date-interval 2012-06'.split()
         returncode, stdout, stderr = self._run_cmdline(args)
         self.assertEqual(0, returncode)
         for i in range(1, 30):
@@ -333,7 +333,7 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         In particular it should say that the step is misspelled and not that
         the local parameters do not exist.
         """
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'HooBaseClass', '--x 5'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--module', 'cmdline_test', 'HooBaseClass', '--x 5'])
         self.assertTrue(stderr.find(b'FooBaseClass') != -1)
         self.assertTrue(stderr.find(b'--x') != 0)
 
@@ -342,10 +342,10 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         Test that the stack trace for failing steps are short
 
         The stack trace shouldn't contain unreasonably much implementation
-        details of luigi In particular it should say that the step is
+        details of trun In particular it should say that the step is
         misspelled and not that the local parameters do not exist.
         """
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'AStepThatFails', '--local-scheduler', '--no-lock'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/trun', '--module', 'cmdline_test', 'AStepThatFails', '--local-scheduler', '--no-lock'])
         print(stdout)
 
         self.assertFalse(stdout.find(b"run() got an unexpected keyword argument 'tracking_url_callback'") != -1)
@@ -356,7 +356,7 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         Test that config parameters specified on the command line are available while generating the execution summary.
         """
         returncode, stdout, stderr = self._run_cmdline([
-            './bin/luigi', '--module', 'cmdline_test', 'StepThatRequiresConfig', '--local-scheduler', '--no-lock'
+            './bin/trun', '--module', 'cmdline_test', 'StepThatRequiresConfig', '--local-scheduler', '--no-lock'
             '--RequiredConfig-required-test-param', 'A',
         ])
         print(stdout)
@@ -368,4 +368,4 @@ class InvokeOverCmdlineTest(unittest.TestCase):
 
 if __name__ == '__main__':
     # Needed for one of the tests
-    luigi.run()
+    trun.run()

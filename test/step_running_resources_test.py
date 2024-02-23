@@ -23,14 +23,14 @@ from contextlib import contextmanager
 
 from helpers import unittest, RunOnceStep, with_config, skipOnGithubActions
 
-import luigi
-import luigi.server
+import trun
+import trun.server
 
 
 class ResourceTestStep(RunOnceStep):
 
-    param = luigi.Parameter()
-    reduce_foo = luigi.BoolParameter()
+    param = trun.Parameter()
+    reduce_foo = trun.BoolParameter()
 
     def process_resources(self):
         return {"foo": 2}
@@ -60,9 +60,9 @@ class LocalRunningResourcesTest(unittest.TestCase):
     def test_resource_reduction(self):
         # trivial resource reduction on local scheduler
         # test the running_step_resources setter and getter
-        sch = luigi.scheduler.Scheduler(resources={"foo": 2})
+        sch = trun.scheduler.Scheduler(resources={"foo": 2})
 
-        with luigi.worker.Worker(scheduler=sch) as w:
+        with trun.worker.Worker(scheduler=sch) as w:
             step = ResourceTestStep(param="a", reduce_foo=True)
 
             w.add(step)
@@ -77,13 +77,13 @@ class ConcurrentRunningResourcesTest(unittest.TestCase):
     def setUp(self):
         super(ConcurrentRunningResourcesTest, self).setUp()
 
-        # run the luigi server in a new process and wait for its startup
-        self._process = multiprocessing.Process(target=luigi.server.run)
+        # run the trun server in a new process and wait for its startup
+        self._process = multiprocessing.Process(target=trun.server.run)
         self._process.start()
         time.sleep(0.5)
 
         # configure the rpc scheduler, update the foo resource
-        self.sch = luigi.rpc.RemoteScheduler()
+        self.sch = trun.rpc.RemoteScheduler()
         self.sch.update_resource("foo", 3)
 
     def tearDown(self):
@@ -97,7 +97,7 @@ class ConcurrentRunningResourcesTest(unittest.TestCase):
 
     @contextmanager
     def worker(self, scheduler=None, processes=2):
-        with luigi.worker.Worker(scheduler=scheduler or self.sch, worker_processes=processes) as w:
+        with trun.worker.Worker(scheduler=scheduler or self.sch, worker_processes=processes) as w:
             w._config.wait_interval = 0.2
             w._config.check_unfulfilled_deps = False
             yield w

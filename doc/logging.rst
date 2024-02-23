@@ -23,17 +23,17 @@ Config section
 
 If you're use TOML for configuration file, you can configure logging
 via ``logging`` section in this file. See `example
-<https://github.com/spotify/luigi/blob/master/examples/config.toml>`_
+<https://github.com/spotify/trun/blob/master/examples/config.toml>`_
 for more details.
 
-Luigid CLI options:
+Trund CLI options:
 ~~~~~~~~~~~~~~~~~~~
 
 ``--background``
     Run daemon in background mode. Disable logging setup
     and set up log level to INFO for root logger.
 ``--logdir``
-    set logging with INFO level and output in ``$logdir/luigi-server.log`` file
+    set logging with INFO level and output in ``$logdir/trun-server.log`` file
 
 
 Worker CLI options:

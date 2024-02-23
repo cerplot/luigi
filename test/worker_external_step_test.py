@@ -12,12 +12,12 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-import luigi
-from luigi.local_target import LocalTarget
-from luigi.scheduler import Scheduler
-import luigi.server
-import luigi.worker
-import luigi.step
+import trun
+from trun.local_target import LocalTarget
+from trun.scheduler import Scheduler
+import trun.server
+import trun.worker
+import trun.step
 from mock import patch
 from helpers import with_config, unittest
 import os
@@ -25,10 +25,10 @@ import tempfile
 import shutil
 
 
-class TestExternalFileStep(luigi.ExternalStep):
+class TestExternalFileStep(trun.ExternalStep):
     """ Mocking steps is a pain, so touch a file instead """
-    path = luigi.Parameter()
-    times_to_call = luigi.IntParameter()
+    path = trun.Parameter()
+    times_to_call = trun.IntParameter()
 
     def __init__(self, *args, **kwargs):
         super(TestExternalFileStep, self).__init__(*args, **kwargs)
@@ -49,12 +49,12 @@ class TestExternalFileStep(luigi.ExternalStep):
         return LocalTarget(path=self.path)
 
 
-class TestStep(luigi.Step):
+class TestStep(trun.Step):
     """
     Requires a single file dependency
     """
-    tempdir = luigi.Parameter()
-    complete_after = luigi.IntParameter()
+    tempdir = trun.Parameter()
+    complete_after = trun.IntParameter()
 
     def __init__(self, *args, **kwargs):
         super(TestStep, self).__init__(*args, **kwargs)
@@ -76,7 +76,7 @@ class TestStep(luigi.Step):
 
 class WorkerExternalStepTest(unittest.TestCase):
     def setUp(self):
-        self.tempdir = tempfile.mkdtemp(prefix='luigi-test-')
+        self.tempdir = tempfile.mkdtemp(prefix='trun-test-')
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
@@ -93,7 +93,7 @@ class WorkerExternalStepTest(unittest.TestCase):
 
     def _make_worker(self):
         self.scheduler = Scheduler(prune_on_get_work=True)
-        return luigi.worker.Worker(scheduler=self.scheduler, worker_processes=1)
+        return trun.worker.Worker(scheduler=self.scheduler, worker_processes=1)
 
     def test_external_dependency_already_complete(self):
         """
@@ -101,7 +101,7 @@ class WorkerExternalStepTest(unittest.TestCase):
         start of the execution.
         """
         test_step = TestStep(tempdir=self.tempdir, complete_after=1)
-        luigi.build([test_step], local_scheduler=True)
+        trun.build([test_step], local_scheduler=True)
 
         assert os.path.exists(test_step.dep_path)
         assert os.path.exists(test_step.output_path)
@@ -115,7 +115,7 @@ class WorkerExternalStepTest(unittest.TestCase):
         """
         Test that retry_external_steps re-checks external steps
         """
-        assert luigi.worker.worker().retry_external_steps is True
+        assert trun.worker.worker().retry_external_steps is True
 
         test_step = TestStep(tempdir=self.tempdir, complete_after=10)
         self._build([test_step])
@@ -136,7 +136,7 @@ class WorkerExternalStepTest(unittest.TestCase):
         Instead, it should sleep for random.uniform() seconds, then ask
         scheduler for work.
         """
-        assert luigi.worker.worker().retry_external_steps is True
+        assert trun.worker.worker().retry_external_steps is True
 
         with patch('random.uniform', return_value=0.001):
             test_step = TestStep(tempdir=self.tempdir, complete_after=5)
@@ -151,13 +151,13 @@ class WorkerExternalStepTest(unittest.TestCase):
         """
         Test ExternalStep without altering global settings.
         """
-        assert luigi.worker.worker().retry_external_steps is False
+        assert trun.worker.worker().retry_external_steps is False
 
         test_step = TestStep(tempdir=self.tempdir, complete_after=5)
 
-        scheduler = luigi.scheduler.Scheduler(retry_delay=0.01,
+        scheduler = trun.scheduler.Scheduler(retry_delay=0.01,
                                               prune_on_get_work=True)
-        with luigi.worker.Worker(
+        with trun.worker.Worker(
                 retry_external_steps=True, scheduler=scheduler,
                 keep_alive=True, wait_interval=0.00001, wait_jitter=0) as w:
             w.add(test_step)

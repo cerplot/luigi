@@ -4,7 +4,7 @@ var system = require('system');
 var tests = [];
 
 /*
- * Parse command line to get Luigi scheduler URL
+ * Parse command line to get Trun scheduler URL
  */
 if (system.args.length === 1) {
     console.log('Usage: phantom_test.js <scheduler-url>');

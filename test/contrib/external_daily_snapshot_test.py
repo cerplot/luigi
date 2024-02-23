@@ -13,16 +13,16 @@
 # the License.
 
 import unittest
-import luigi
-from luigi.contrib.external_daily_snapshot import ExternalDailySnapshot
-from luigi.mock import MockTarget
+import trun
+from trun.contrib.external_daily_snapshot import ExternalDailySnapshot
+from trun.mock import MockTarget
 import datetime
 
 
 class DataDump(ExternalDailySnapshot):
-    param = luigi.Parameter()
-    a = luigi.Parameter(default='zebra')
-    aa = luigi.Parameter(default='Congo')
+    param = trun.Parameter()
+    a = trun.Parameter(default='zebra')
+    aa = trun.Parameter(default='Congo')
 
     def output(self):
         return MockTarget('data-%s-%s-%s-%s' % (self.param, self.a, self.aa, self.date))

@@ -3,11 +3,11 @@ import os
 
 import unittest
 
-from luigi import Parameter
-from luigi.contrib import mrrunner
+from trun import Parameter
+from trun.contrib import mrrunner
 
-from luigi.contrib.hadoop import HadoopJobRunner, JobStep
-from luigi.contrib.hdfs import HdfsTarget
+from trun.contrib.hadoop import HadoopJobRunner, JobStep
+from trun.contrib.hdfs import HdfsTarget
 
 import pytest
 
@@ -39,8 +39,8 @@ class MockStreamingJobWithExtraArguments(JobStep):
 @pytest.mark.apache
 class StreamingRunTest(unittest.TestCase):
 
-    @mock.patch('luigi.contrib.hadoop.shutil')
-    @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @mock.patch('trun.contrib.hadoop.shutil')
+    @mock.patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_package_binary_run(self, rath_job, shutil):
         job_runner = HadoopJobRunner('jar_path', end_job_with_atomic_move_dir=False)
         job_runner.run_job(MockStreamingJob(package_binary='test_bin.pex'))
@@ -57,8 +57,8 @@ class StreamingRunTest(unittest.TestCase):
         self.assertIn(('-mapper', 'python mrrunner.pex map'), mr_args_pairs)
         self.assertIn(('-file', pex_dest), mr_args_pairs)
 
-    @mock.patch('luigi.contrib.hadoop.create_packages_archive')
-    @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @mock.patch('trun.contrib.hadoop.create_packages_archive')
+    @mock.patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_standard_run(self, rath_job, cpa):
         job_runner = HadoopJobRunner('jar_path', end_job_with_atomic_move_dir=False)
         job_runner.run_job(MockStreamingJob())
@@ -71,8 +71,8 @@ class StreamingRunTest(unittest.TestCase):
         self.assertIn(('-mapper', 'python mrrunner.py map'), mr_args_pairs)
         self.assertIn(('-file', mrrunner.__file__.rstrip('c')), mr_args_pairs)
 
-    @mock.patch('luigi.contrib.hadoop.create_packages_archive')
-    @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @mock.patch('trun.contrib.hadoop.create_packages_archive')
+    @mock.patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_run_with_extra_arguments(self, rath_job, cpa):
         job_runner = HadoopJobRunner('jar_path', end_job_with_atomic_move_dir=False)
         job_runner.run_job(MockStreamingJobWithExtraArguments())

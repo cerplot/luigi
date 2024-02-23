@@ -23,10 +23,10 @@ from functools import partial
 from multiprocessing import Value
 
 from helpers import unittest
-import luigi
-import luigi.contrib.hdfs
-from luigi.contrib.external_program import ExternalProgramStep, ExternalPythonProgramStep
-from luigi.contrib.external_program import ExternalProgramRunError
+import trun
+import trun.contrib.hdfs
+from trun.contrib.external_program import ExternalProgramStep, ExternalPythonProgramStep
+from trun.contrib.external_program import ExternalProgramRunError
 from mock import patch, call
 from subprocess import Popen
 import mock
@@ -51,7 +51,7 @@ class TestExternalProgramStep(ExternalProgramStep):
         return ['app_path', 'arg1', 'arg2']
 
     def output(self):
-        return luigi.LocalTarget('output')
+        return trun.LocalTarget('output')
 
 
 class TestLogStderrOnFailureOnlyStep(TestExternalProgramStep):
@@ -59,13 +59,13 @@ class TestLogStderrOnFailureOnlyStep(TestExternalProgramStep):
 
 
 class TestTouchStep(ExternalProgramStep):
-    file_path = luigi.Parameter()
+    file_path = trun.Parameter()
 
     def program_args(self):
         return ['touch', self.output().path]
 
     def output(self):
-        return luigi.LocalTarget(self.file_path)
+        return trun.LocalTarget(self.file_path)
 
 
 class TestEchoStep(ExternalProgramStep):
@@ -77,7 +77,7 @@ class TestEchoStep(ExternalProgramStep):
 
 @pytest.mark.contrib
 class ExternalProgramStepTest(unittest.TestCase):
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_run(self, proc):
         setup_run_process(proc)
         job = TestExternalProgramStep()
@@ -86,9 +86,9 @@ class ExternalProgramStepTest(unittest.TestCase):
         self.assertEqual(proc.call_args[0][0],
                          ['app_path', 'arg1', 'arg2'])
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_handle_failed_job(self, proc, file, logger):
         proc.return_value.returncode = 1
         file.return_value = BytesIO(b'stderr')
@@ -102,9 +102,9 @@ class ExternalProgramStepTest(unittest.TestCase):
         else:
             self.fail('Should have thrown ExternalProgramRunError')
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_always_log_stderr_on_failure(self, proc, file, logger):
         proc.return_value.returncode = 1
         file.return_value = BytesIO(b'stderr')
@@ -114,9 +114,9 @@ class ExternalProgramStepTest(unittest.TestCase):
 
         self.assertIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_log_stderr_on_success_by_default(self, proc, file, logger):
         proc.return_value.returncode = 0
         file.return_value = BytesIO(b'stderr')
@@ -133,15 +133,15 @@ class ExternalProgramStepTest(unittest.TestCase):
             kwargs.pop('stdout', None)
             return Popen(args, stdout=out, **kwargs)
 
-        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+        with mock.patch('trun.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
             step = TestEchoStep(capture_output=False)
             step.run()
             stdout = step._clean_output_file(out).strip()
             self.assertEqual(stdout, step.MESSAGE)
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_dont_log_stderr_on_success_if_disabled(self, proc, file, logger):
         proc.return_value.returncode = 0
         file.return_value = BytesIO(b'stderr')
@@ -150,13 +150,13 @@ class ExternalProgramStepTest(unittest.TestCase):
 
         self.assertNotIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
 
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_program_args_must_be_implemented(self, proc):
         with self.assertRaises(NotImplementedError):
             job = ExternalProgramStep()
             job.run()
 
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_app_interruption(self, proc):
 
         def interrupt():
@@ -180,7 +180,7 @@ class ExternalProgramStepTest(unittest.TestCase):
             job = TestTouchStep(file_path=tempfile_path)
             job.run()
 
-            self.assertTrue(luigi.LocalTarget(tempfile_path).exists())
+            self.assertTrue(trun.LocalTarget(tempfile_path).exists())
         finally:
             # clean up temp files even if assertion fails
             shutil.rmtree(tempdir)
@@ -228,7 +228,7 @@ class ExternalProgramStepTest(unittest.TestCase):
         step = TestEchoStep(capture_output=True, stream_for_searching_tracking_url='stderr',
                             tracking_url_pattern=r"ANY(.*)")
 
-        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+        with mock.patch('trun.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
             with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
                 step.run()
                 self.assertEqual(test_val.value, 1)
@@ -241,7 +241,7 @@ class ExternalProgramStepTest(unittest.TestCase):
 
         step = TestEchoStep(capture_output=True, stream_for_searching_tracking_url='stdout')
 
-        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+        with mock.patch('trun.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
             step.run()
 
     def test_tracking_url_context_works_without_capture_output(self):
@@ -293,13 +293,13 @@ class TestExternalPythonProgramStep(ExternalPythonProgramStep):
         return ["app_path", "arg1", "arg2"]
 
     def output(self):
-        return luigi.LocalTarget('output')
+        return trun.LocalTarget('output')
 
 
 @pytest.mark.contrib
 class ExternalPythonProgramStepTest(unittest.TestCase):
     @patch.dict('os.environ', {'OTHERVAR': 'otherval'}, clear=True)
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_original_environment_is_kept_intact(self, proc):
         setup_run_process(proc)
 
@@ -311,7 +311,7 @@ class ExternalPythonProgramStepTest(unittest.TestCase):
         self.assertIn('OTHERVAR', proc_env)
 
     @patch.dict('os.environ', {'PATH': '/base/path'}, clear=True)
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_venv_is_set_and_prepended_to_path(self, proc):
         setup_run_process(proc)
 
@@ -326,7 +326,7 @@ class ExternalPythonProgramStepTest(unittest.TestCase):
         self.assertEqual(proc_env['VIRTUAL_ENV'], '/path/to/venv')
 
     @patch.dict('os.environ', {}, clear=True)
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_pythonpath_is_set_if_empty(self, proc):
         setup_run_process(proc)
 
@@ -338,7 +338,7 @@ class ExternalPythonProgramStepTest(unittest.TestCase):
         self.assertTrue(proc_env['PYTHONPATH'].startswith('/extra/pythonpath'))
 
     @patch.dict('os.environ', {'PYTHONPATH': '/base/pythonpath'}, clear=True)
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_pythonpath_is_prepended_if_not_empty(self, proc):
         setup_run_process(proc)
 

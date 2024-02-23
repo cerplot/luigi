@@ -22,11 +22,11 @@ import signal
 import time
 import tempfile
 from helpers import unittest, skipOnTravisAndGithubActions
-import luigi.rpc
-import luigi.server
-import luigi.cmdline
-from luigi.configuration import get_config
-from luigi.scheduler import Scheduler
+import trun.rpc
+import trun.server
+import trun.cmdline
+from trun.configuration import get_config
+from trun.scheduler import Scheduler
 from urllib.parse import (
     urlencode, ParseResult, quote as urlquote
 )
@@ -59,28 +59,28 @@ def _is_running_from_main_thread():
 class ServerTestBase(AsyncHTTPTestCase):
 
     def get_app(self):
-        return luigi.server.app(Scheduler())
+        return trun.server.app(Scheduler())
 
     def setUp(self):
         super(ServerTestBase, self).setUp()
 
-        self._old_fetch = luigi.rpc.RemoteScheduler._fetch
+        self._old_fetch = trun.rpc.RemoteScheduler._fetch
 
         def _fetch(obj, url, body, *args, **kwargs):
             if _is_running_from_main_thread():
                 body = urlencode(body).encode('utf-8')
                 response = self.fetch(url, body=body, method='POST')
                 if response.code >= 400:
-                    raise luigi.rpc.RPCError(
+                    raise trun.rpc.RPCError(
                         'Errror when connecting to remote scheduler'
                     )
                 return response.body.decode('utf-8')
 
-        luigi.rpc.RemoteScheduler._fetch = _fetch
+        trun.rpc.RemoteScheduler._fetch = _fetch
 
     def tearDown(self):
         super(ServerTestBase, self).tearDown()
-        luigi.rpc.RemoteScheduler._fetch = self._old_fetch
+        trun.rpc.RemoteScheduler._fetch = self._old_fetch
 
 
 class ServerTest(ServerTestBase):
@@ -88,7 +88,7 @@ class ServerTest(ServerTestBase):
     def setUp(self):
         super(ServerTest, self).setUp()
         get_config().remove_section('cors')
-        self._default_cors = luigi.server.cors()
+        self._default_cors = trun.server.cors()
 
         get_config().set('cors', 'enabled', 'true')
         get_config().set('cors', 'allow_any_origin', 'true')
@@ -318,30 +318,30 @@ class _ServerTest(unittest.TestCase):
         self.server_client = self.server_client_class()
         state_path = tempfile.mktemp(suffix=self.id())
         self.addCleanup(functools.partial(os.unlink, state_path))
-        luigi.configuration.get_config().set('scheduler', 'state_path', state_path)
+        trun.configuration.get_config().set('scheduler', 'state_path', state_path)
         self.start_server()
 
     def tearDown(self):
         self.stop_server()
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/78315794')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/78315794')
     def test_ping(self):
         self.sch.ping(worker='xyz')
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/78023665')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/78023665')
     def test_raw_ping(self):
         self.sch._request('/api/ping', {'worker': 'xyz'})
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/78023665')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/78023665')
     def test_raw_ping_extended(self):
         self.sch._request('/api/ping', {'worker': 'xyz', 'foo': 'bar'})
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/166833694')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/166833694')
     def test_404(self):
-        with self.assertRaises(luigi.rpc.RPCError):
+        with self.assertRaises(trun.rpc.RPCError):
             self.sch._request('/api/fdsfds', {'dummy': 1})
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/72953884')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/72953884')
     def test_save_state(self):
         self.sch.add_step(worker='X', step_id='B', deps=('A',))
         self.sch.add_step(worker='X', step_id='A')
@@ -357,10 +357,10 @@ class UNIXServerTest(_ServerTest):
     class ServerClient:
         def __init__(self):
             self.tempdir = tempfile.mkdtemp()
-            self.unix_socket = os.path.join(self.tempdir, 'luigid.sock')
+            self.unix_socket = os.path.join(self.tempdir, 'trund.sock')
 
         def run_server(self):
-            luigi.server.run(unix_socket=self.unix_socket)
+            trun.server.run(unix_socket=self.unix_socket)
 
         def scheduler(self):
             url = ParseResult(
@@ -371,7 +371,7 @@ class UNIXServerTest(_ServerTest):
                 query='',
                 fragment='',
             ).geturl()
-            return luigi.rpc.RemoteScheduler(url)
+            return trun.rpc.RemoteScheduler(url)
 
     server_client_class = ServerClient
 
@@ -386,21 +386,21 @@ class INETServerClient:
         self.port = 8083
 
     def scheduler(self):
-        return luigi.rpc.RemoteScheduler('http://localhost:' + str(self.port))
+        return trun.rpc.RemoteScheduler('http://localhost:' + str(self.port))
 
 
 class _INETServerTest(_ServerTest):
     # HACK: nose ignores class whose name starts with underscore
     # see: https://github.com/nose-devs/nose/blob/6f9dada1a5593b2365859bab92c7d1e468b64b7b/nose/selector.py#L72
-    # This hack affects derived classes of this class e.g. INETProcessServerTest, INETLuigidServerTest, INETLuigidDaemonServerTest.
+    # This hack affects derived classes of this class e.g. INETProcessServerTest, INETTrundServerTest, INETTrundDaemonServerTest.
     __test__ = False
 
     def test_with_cmdline(self):
         """
-        Test to run against the server as a normal luigi invocation does
+        Test to run against the server as a normal trun invocation does
         """
         params = ['Step', '--scheduler-port', str(self.server_client.port), '--no-lock']
-        self.assertTrue(luigi.interface.run(params))
+        self.assertTrue(trun.interface.run(params))
 
 
 class INETProcessServerTest(_INETServerTest):
@@ -408,61 +408,61 @@ class INETProcessServerTest(_INETServerTest):
 
     class ServerClient(INETServerClient):
         def run_server(self):
-            luigi.server.run(api_port=self.port, address='127.0.0.1')
+            trun.server.run(api_port=self.port, address='127.0.0.1')
 
     server_client_class = ServerClient
 
 
 class INETURLLibServerTest(INETProcessServerTest):
 
-    @mock.patch.object(luigi.rpc, 'HAS_REQUESTS', False)
+    @mock.patch.object(trun.rpc, 'HAS_REQUESTS', False)
     def start_server(self, *args, **kwargs):
         super(INETURLLibServerTest, self).start_server(*args, **kwargs)
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/81022689')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/81022689')
     def patching_test(self):
         """
         Check that HAS_REQUESTS patching is meaningful
         """
-        fetcher1 = luigi.rpc.RemoteScheduler()._fetcher
-        with mock.patch.object(luigi.rpc, 'HAS_REQUESTS', False):
-            fetcher2 = luigi.rpc.RemoteScheduler()._fetcher
+        fetcher1 = trun.rpc.RemoteScheduler()._fetcher
+        with mock.patch.object(trun.rpc, 'HAS_REQUESTS', False):
+            fetcher2 = trun.rpc.RemoteScheduler()._fetcher
 
         self.assertNotEqual(fetcher1.__class__, fetcher2.__class__)
 
 
-class INETLuigidServerTest(_INETServerTest):
+class INETTrundServerTest(_INETServerTest):
     __test__ = True
 
     class ServerClient(INETServerClient):
         def run_server(self):
-            # I first tried to things like "subprocess.call(['luigid', ...]),
+            # I first tried to things like "subprocess.call(['trund', ...]),
             # But it ended up to be a total mess getting the cleanup to work
             # unfortunately.
-            luigi.cmdline.luigid(['--port', str(self.port)])
+            trun.cmdline.trund(['--port', str(self.port)])
 
     server_client_class = ServerClient
 
 
-class INETLuigidDaemonServerTest(_INETServerTest):
+class INETTrundDaemonServerTest(_INETServerTest):
     __test__ = True
 
     class ServerClient(INETServerClient):
         def __init__(self):
-            super(INETLuigidDaemonServerTest.ServerClient, self).__init__()
+            super(INETTrundDaemonServerTest.ServerClient, self).__init__()
             self.tempdir = tempfile.mkdtemp()
 
         @mock.patch('daemon.DaemonContext')
         def run_server(self, daemon_context):
-            luigi.cmdline.luigid([
+            trun.cmdline.trund([
                 '--port', str(self.port),
                 '--background',  # This makes it a daemon
                 '--logdir', self.tempdir,
-                '--pidfile', os.path.join(self.tempdir, 'luigid.pid')
+                '--pidfile', os.path.join(self.tempdir, 'trund.pid')
             ])
 
     def tearDown(self):
-        super(INETLuigidDaemonServerTest, self).tearDown()
+        super(INETTrundDaemonServerTest, self).tearDown()
         shutil.rmtree(self.server_client.tempdir)
 
     server_client_class = ServerClient
@@ -471,7 +471,7 @@ class INETLuigidDaemonServerTest(_INETServerTest):
 class MetricsHandlerTest(unittest.TestCase):
     def setUp(self):
         self.mock_scheduler = mock.MagicMock()
-        self.handler = luigi.server.MetricsHandler(tornado.web.Application(), mock.MagicMock(),
+        self.handler = trun.server.MetricsHandler(tornado.web.Application(), mock.MagicMock(),
                                                    scheduler=self.mock_scheduler)
 
     def test_initialize(self):

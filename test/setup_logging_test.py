@@ -1,5 +1,5 @@
-from luigi.setup_logging import DaemonLogging, InterfaceLogging
-from luigi.configuration import LuigiTomlParser, LuigiConfigParser, get_config
+from trun.setup_logging import DaemonLogging, InterfaceLogging
+from trun.configuration import TrunTomlParser, TrunConfigParser, get_config
 from helpers import unittest
 
 
@@ -62,8 +62,8 @@ class TestDaemonLogging(unittest.TestCase):
         result = self.cls._section(None)
         self.assertTrue(result)
 
-        self.cls.config = LuigiTomlParser()
-        self.cls.config.read(['./test/testconfig/luigi_logging.toml'])
+        self.cls.config = TrunTomlParser()
+        self.cls.config.read(['./test/testconfig/trun_logging.toml'])
         result = self.cls._section(None)
         self.assertTrue(result)
 
@@ -72,12 +72,12 @@ class TestDaemonLogging(unittest.TestCase):
         self.assertFalse(result)
 
     def test_section_cfg(self):
-        self.cls.config = LuigiConfigParser.instance()
+        self.cls.config = TrunConfigParser.instance()
         result = self.cls._section(None)
         self.assertFalse(result)
 
     def test_cfg(self):
-        self.cls.config = LuigiTomlParser()
+        self.cls.config = TrunTomlParser()
         self.cls.config.data = {}
         result = self.cls._conf(None)
         self.assertFalse(result)
@@ -108,7 +108,7 @@ class TestInterfaceLogging(TestDaemonLogging):
     # test_section inherited from TestDaemonLogging
 
     def test_cfg(self):
-        self.cls.config = LuigiTomlParser()
+        self.cls.config = TrunTomlParser()
         self.cls.config.data = {}
 
         opts = type('opts', (), {})
@@ -159,7 +159,7 @@ class TestSetup(unittest.TestCase):
         self.opts = type('opts', (), {})
         self.cls = PatchedLogging
         self.cls.calls = []
-        self.cls.config = LuigiTomlParser()
+        self.cls.config = TrunTomlParser()
         self.cls._configured = False
         self.cls.patched = '_cli', '_conf', '_section', '_default'
 

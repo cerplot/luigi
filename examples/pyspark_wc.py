@@ -14,20 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import luigi
-from luigi.contrib.s3 import S3Target
-from luigi.contrib.spark import SparkSubmitStep, PySparkStep
+import trun
+from trun.contrib.s3 import S3Target
+from trun.contrib.spark import SparkSubmitStep, PySparkStep
 
 
 class InlinePySparkWordCount(PySparkStep):
     """
-    This step runs a :py:class:`luigi.contrib.spark.PySparkStep` step
+    This step runs a :py:class:`trun.contrib.spark.PySparkStep` step
     over the target data in :py:meth:`wordcount.input` (a file in S3) and
     writes the result into its :py:meth:`wordcount.output` target (a file in S3).
 
-    This class uses :py:meth:`luigi.contrib.spark.PySparkStep.main`.
+    This class uses :py:meth:`trun.contrib.spark.PySparkStep.main`.
 
-    Example luigi configuration::
+    Example trun configuration::
 
         [spark]
         spark-submit: /usr/local/spark/bin/spark-submit
@@ -57,13 +57,13 @@ class PySparkWordCount(SparkSubmitStep):
     This step is the same as :py:class:`InlinePySparkWordCount` above but uses
     an external python driver file specified in :py:meth:`app`
 
-    It runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
+    It runs a :py:class:`trun.contrib.spark.SparkSubmitStep` step
     over the target data in :py:meth:`wordcount.input` (a file in S3) and
     writes the result into its :py:meth:`wordcount.output` target (a file in S3).
 
-    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitStep.run`.
+    This class uses :py:meth:`trun.contrib.spark.SparkSubmitStep.run`.
 
-    Example luigi configuration::
+    Example trun configuration::
 
         [spark]
         spark-submit: /usr/local/spark/bin/spark-submit
@@ -73,7 +73,7 @@ class PySparkWordCount(SparkSubmitStep):
     """
     driver_memory = '2g'
     executor_memory = '3g'
-    total_executor_cores = luigi.IntParameter(default=100, significant=False)
+    total_executor_cores = trun.IntParameter(default=100, significant=False)
 
     name = "PySpark Word Count"
     app = 'wordcount.py'

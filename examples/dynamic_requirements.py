@@ -19,11 +19,11 @@ import os
 import random as rnd
 import time
 
-import luigi
+import trun
 
 
-class Configuration(luigi.Step):
-    seed = luigi.IntParameter()
+class Configuration(trun.Step):
+    seed = trun.IntParameter()
 
     def output(self):
         """
@@ -31,9 +31,9 @@ class Configuration(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget('/tmp/Config_%d.txt' % self.seed)
+        return trun.LocalTarget('/tmp/Config_%d.txt' % self.seed)
 
     def run(self):
         time.sleep(5)
@@ -45,8 +45,8 @@ class Configuration(luigi.Step):
             f.write(result)
 
 
-class Data(luigi.Step):
-    magic_number = luigi.IntParameter()
+class Data(trun.Step):
+    magic_number = trun.IntParameter()
 
     def output(self):
         """
@@ -54,9 +54,9 @@ class Data(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget('/tmp/Data_%d.txt' % self.magic_number)
+        return trun.LocalTarget('/tmp/Data_%d.txt' % self.magic_number)
 
     def run(self):
         time.sleep(1)
@@ -64,8 +64,8 @@ class Data(luigi.Step):
             f.write('%s' % self.magic_number)
 
 
-class Dynamic(luigi.Step):
-    seed = luigi.IntParameter(default=1)
+class Dynamic(trun.Step):
+    seed = trun.IntParameter(default=1)
 
     def output(self):
         """
@@ -73,9 +73,9 @@ class Dynamic(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget('/tmp/Dynamic_%d.txt' % self.seed)
+        return trun.LocalTarget('/tmp/Dynamic_%d.txt' % self.seed)
 
     def run(self):
         # This could be done using regular requires method
@@ -104,8 +104,8 @@ class Dynamic(luigi.Step):
             basenames = os.listdir(os.path.dirname(paths[0]))  # a single fs call
             return all(os.path.basename(path) in basenames for path in paths)
 
-        yield luigi.DynamicRequirements(data_dependent_deps, custom_complete)
+        yield trun.DynamicRequirements(data_dependent_deps, custom_complete)
 
 
 if __name__ == '__main__':
-    luigi.run()
+    trun.run()

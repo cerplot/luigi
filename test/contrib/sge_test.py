@@ -23,14 +23,14 @@ import unittest
 import logging
 from mock import patch
 
-import luigi
-from luigi.contrib.sge import SGEJobStep, _parse_qstat_state
+import trun
+from trun.contrib.sge import SGEJobStep, _parse_qstat_state
 
 import pytest
 
 DEFAULT_HOME = '/home'
 
-logger = logging.getLogger('luigi-interface')
+logger = logging.getLogger('trun-interface')
 
 
 QSTAT_OUTPUT = """job-ID  prior   name       user         state submit/start at     queue                          slots ja-step-ID
@@ -65,7 +65,7 @@ class TestJobStep(SGEJobStep):
 
     """Simple SGE job: write a test file to NSF shared drive and waits a minute"""
 
-    i = luigi.Parameter()
+    i = trun.Parameter()
 
     def work(self):
         logger.info('Running test job...')
@@ -73,7 +73,7 @@ class TestJobStep(SGEJobStep):
             f.write('this is a test\n')
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(DEFAULT_HOME, 'testfile_' + str(self.i)))
+        return trun.LocalTarget(os.path.join(DEFAULT_HOME, 'testfile_' + str(self.i)))
 
 
 @pytest.mark.contrib
@@ -85,7 +85,7 @@ class TestSGEJob(unittest.TestCase):
         if on_sge_master():
             outfile = os.path.join(DEFAULT_HOME, 'testfile_1')
             steps = [TestJobStep(i=str(i), n_cpu=1) for i in range(3)]
-            luigi.build(steps, local_scheduler=True, workers=3)
+            trun.build(steps, local_scheduler=True, workers=3)
             self.assertTrue(os.path.exists(outfile))
 
     @patch('subprocess.check_output')
@@ -95,7 +95,7 @@ class TestSGEJob(unittest.TestCase):
             ''
         ]
         step = TestJobStep(i="1", n_cpu=1, shared_tmp_dir='/tmp')
-        luigi.build([step], local_scheduler=True)
+        trun.build([step], local_scheduler=True)
         self.assertEqual(mock_check_output.call_count, 2)
 
     def tearDown(self):

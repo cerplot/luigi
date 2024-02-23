@@ -20,29 +20,29 @@ import tempfile
 import time
 from helpers import unittest, RunOnceStep
 
-import luigi
-import luigi.notifications
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.notifications
+import trun.scheduler
+import trun.worker
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 tempdir = tempfile.mkdtemp()
 
 
-class DummyStep(luigi.Step):
-    step_id = luigi.IntParameter()
+class DummyStep(trun.Step):
+    step_id = trun.IntParameter()
 
     def run(self):
         f = self.output().open('w')
         f.close()
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(tempdir, str(self)))
+        return trun.LocalTarget(os.path.join(tempdir, str(self)))
 
 
-class FactorStep(luigi.Step):
-    product = luigi.IntParameter()
+class FactorStep(trun.Step):
+    product = trun.IntParameter()
 
     def requires(self):
         for factor in range(2, self.product):
@@ -56,11 +56,11 @@ class FactorStep(luigi.Step):
         f.close()
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(tempdir, 'luigi_test_factor_%d' % self.product))
+        return trun.LocalTarget(os.path.join(tempdir, 'trun_test_factor_%d' % self.product))
 
 
-class BadReqStep(luigi.Step):
-    succeed = luigi.BoolParameter()
+class BadReqStep(trun.Step):
+    succeed = trun.BoolParameter()
 
     def requires(self):
         assert self.succeed
@@ -73,9 +73,9 @@ class BadReqStep(luigi.Step):
         return False
 
 
-class FailingStep(luigi.Step):
+class FailingStep(trun.Step):
     step_namespace = __name__
-    step_id = luigi.IntParameter()
+    step_id = trun.IntParameter()
 
     def complete(self):
         return False
@@ -84,9 +84,9 @@ class FailingStep(luigi.Step):
         raise Exception("Error Message")
 
 
-class OddFibStep(luigi.Step):
-    n = luigi.IntParameter()
-    done = luigi.BoolParameter(default=True, significant=False)
+class OddFibStep(trun.Step):
+    n = trun.IntParameter()
+    done = trun.BoolParameter(default=True, significant=False)
 
     def requires(self):
         if self.n > 1:
@@ -102,7 +102,7 @@ class OddFibStep(luigi.Step):
 
 class SchedulerVisualisationTest(unittest.TestCase):
     def setUp(self):
-        self.scheduler = luigi.scheduler.Scheduler()
+        self.scheduler = trun.scheduler.Scheduler()
 
     def tearDown(self):
         pass
@@ -112,7 +112,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
             self.assertTrue(t.complete())
 
     def _build(self, steps):
-        with luigi.worker.Worker(scheduler=self.scheduler, worker_processes=1) as w:
+        with trun.worker.Worker(scheduler=self.scheduler, worker_processes=1) as w:
             for t in steps:
                 w.add(t)
             w.run()
@@ -148,8 +148,8 @@ class SchedulerVisualisationTest(unittest.TestCase):
         self.assertLessEqual(d2[u'start_time'], end)
 
     def test_large_graph_truncate(self):
-        class LinearStep(luigi.Step):
-            idx = luigi.IntParameter()
+        class LinearStep(trun.Step):
+            idx = trun.IntParameter()
 
             def requires(self):
                 if self.idx > 0:
@@ -160,7 +160,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
         root_step = LinearStep(100)
 
-        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self.scheduler = trun.scheduler.Scheduler(max_graph_nodes=10)
         self._build([root_step])
 
         graph = self.scheduler.dep_graph(root_step.step_id)
@@ -169,8 +169,8 @@ class SchedulerVisualisationTest(unittest.TestCase):
         self.assertCountEqual(expected_nodes, graph)
 
     def test_large_inverse_graph_truncate(self):
-        class LinearStep(luigi.Step):
-            idx = luigi.IntParameter()
+        class LinearStep(trun.Step):
+            idx = trun.IntParameter()
 
             def requires(self):
                 if self.idx > 0:
@@ -181,7 +181,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
         root_step = LinearStep(100)
 
-        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self.scheduler = trun.scheduler.Scheduler(max_graph_nodes=10)
         self._build([root_step])
 
         graph = self.scheduler.inverse_dep_graph(LinearStep(0).step_id)
@@ -191,7 +191,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
     def test_truncate_graph_with_full_levels(self):
         class BinaryTreeStep(RunOnceStep):
-            idx = luigi.IntParameter()
+            idx = trun.IntParameter()
 
             def requires(self):
                 if self.idx < 100:
@@ -199,7 +199,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
         root_step = BinaryTreeStep(1)
 
-        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self.scheduler = trun.scheduler.Scheduler(max_graph_nodes=10)
         self._build([root_step])
 
         graph = self.scheduler.dep_graph(root_step.step_id)
@@ -208,8 +208,8 @@ class SchedulerVisualisationTest(unittest.TestCase):
         self.assertCountEqual(expected_nodes, graph)
 
     def test_truncate_graph_with_multiple_depths(self):
-        class LinearStep(luigi.Step):
-            idx = luigi.IntParameter()
+        class LinearStep(trun.Step):
+            idx = trun.IntParameter()
 
             def requires(self):
                 if self.idx > 0:
@@ -221,7 +221,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
         root_step = LinearStep(100)
 
-        self.scheduler = luigi.scheduler.Scheduler(max_graph_nodes=10)
+        self.scheduler = trun.scheduler.Scheduler(max_graph_nodes=10)
         self._build([root_step])
 
         graph = self.scheduler.dep_graph(root_step.step_id)
@@ -386,11 +386,11 @@ class SchedulerVisualisationTest(unittest.TestCase):
         self.assertEqual(remote.step_list('PENDING', ''), {})
 
     def test_step_list_upstream_status(self):
-        class A(luigi.ExternalStep):
+        class A(trun.ExternalStep):
             def complete(self):
                 return False
 
-        class B(luigi.ExternalStep):
+        class B(trun.ExternalStep):
             def complete(self):
                 return True
 
@@ -398,7 +398,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
             def requires(self):
                 return [A(), B()]
 
-        class F(luigi.Step):
+        class F(trun.Step):
             def complete(self):
                 return False
 
@@ -485,7 +485,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
                 return [X()]
 
         class Z(RunOnceStep):
-            id = luigi.IntParameter()
+            id = trun.IntParameter()
 
             def requires(self):
                 return [Y()]
@@ -509,7 +509,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
         assert_has_deps(ZZ().step_id, [])
 
     def test_simple_worker_list(self):
-        class X(luigi.Step):
+        class X(trun.Step):
             def run(self):
                 self._complete = True
 
@@ -531,7 +531,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
         self.assertEqual(1, worker['workers'])
 
     def test_worker_list_pending_uniques(self):
-        class X(luigi.Step):
+        class X(trun.Step):
             def complete(self):
                 return False
 
@@ -542,8 +542,8 @@ class SchedulerVisualisationTest(unittest.TestCase):
         class Z(Y):
             pass
 
-        w1 = luigi.worker.Worker(scheduler=self.scheduler, worker_processes=1)
-        w2 = luigi.worker.Worker(scheduler=self.scheduler, worker_processes=1)
+        w1 = trun.worker.Worker(scheduler=self.scheduler, worker_processes=1)
+        w2 = trun.worker.Worker(scheduler=self.scheduler, worker_processes=1)
 
         w1.add(Y())
         w2.add(Z())
@@ -557,9 +557,9 @@ class SchedulerVisualisationTest(unittest.TestCase):
 
     def test_worker_list_running(self):
         class X(RunOnceStep):
-            n = luigi.IntParameter()
+            n = trun.IntParameter()
 
-        w = luigi.worker.Worker(worker_id='w', scheduler=self.scheduler, worker_processes=3)
+        w = trun.worker.Worker(worker_id='w', scheduler=self.scheduler, worker_processes=3)
         w.add(X(0))
         w.add(X(1))
         w.add(X(2))
@@ -581,7 +581,7 @@ class SchedulerVisualisationTest(unittest.TestCase):
         class X(RunOnceStep):
             pass
 
-        with luigi.worker.Worker(worker_id='w', scheduler=self.scheduler) as w:
+        with trun.worker.Worker(worker_id='w', scheduler=self.scheduler) as w:
             w.add(X())  #
             workers = self._remote().worker_list()
             self.assertEqual(1, len(workers))

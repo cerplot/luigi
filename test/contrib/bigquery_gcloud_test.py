@@ -16,7 +16,7 @@
 #
 
 """
-This is an integration test for the BigQuery-luigi binding.
+This is an integration test for the BigQuery-trun binding.
 
 This test requires credentials that can access GCS & access to a bucket below.
 Follow the directions in the gcloud tools to set up local credentials.
@@ -25,7 +25,7 @@ Follow the directions in the gcloud tools to set up local credentials.
 import json
 import os
 
-import luigi
+import trun
 import unittest
 
 try:
@@ -33,12 +33,12 @@ try:
     import google.auth
 except ImportError:
     raise unittest.SkipTest('Unable to load googleapiclient module')
-from luigi.contrib import bigquery, bigquery_avro, gcs
+from trun.contrib import bigquery, bigquery_avro, gcs
 import avro.schema
 from avro.datafile import DataFileWriter
 from avro.io import DatumWriter
-from luigi.contrib.gcs import GCSTarget
-from luigi.contrib.bigquery import BigQueryExecutionError
+from trun.contrib.gcs import GCSTarget
+from trun.contrib.bigquery import BigQueryExecutionError
 
 import pytest
 from helpers import unittest
@@ -48,8 +48,8 @@ from helpers import unittest
 PROJECT_ID = os.environ.get('GCS_TEST_PROJECT_ID', 'your_project_id_here')
 BUCKET_NAME = os.environ.get('GCS_TEST_BUCKET', 'your_test_bucket_here')
 TEST_FOLDER = os.environ.get('TRAVIS_BUILD_ID', 'bigquery_test_folder')
-DATASET_ID = os.environ.get('BQ_TEST_DATASET_ID', 'luigi_tests')
-EU_DATASET_ID = os.environ.get('BQ_TEST_EU_DATASET_ID', 'luigi_tests_eu')
+DATASET_ID = os.environ.get('BQ_TEST_DATASET_ID', 'trun_tests')
+EU_DATASET_ID = os.environ.get('BQ_TEST_EU_DATASET_ID', 'trun_tests_eu')
 EU_LOCATION = 'EU'
 US_LOCATION = 'US'
 
@@ -65,10 +65,10 @@ def bucket_url(suffix):
 
 @pytest.mark.gcloud
 class TestLoadStep(bigquery.BigQueryLoadStep):
-    source = luigi.Parameter()
-    table = luigi.Parameter()
-    dataset = luigi.Parameter()
-    location = luigi.Parameter(default=None)
+    source = trun.Parameter()
+    table = trun.Parameter()
+    dataset = trun.Parameter()
+    location = trun.Parameter(default=None)
 
     @property
     def schema(self):
@@ -87,8 +87,8 @@ class TestLoadStep(bigquery.BigQueryLoadStep):
 @pytest.mark.gcloud
 class TestRunQueryStep(bigquery.BigQueryRunQueryStep):
     query = ''' SELECT 'hello' as field1, 2 as field2 '''
-    table = luigi.Parameter()
-    dataset = luigi.Parameter()
+    table = trun.Parameter()
+    dataset = trun.Parameter()
 
     def output(self):
         return bigquery.BigQueryTarget(PROJECT_ID, self.dataset, self.table)
@@ -96,17 +96,17 @@ class TestRunQueryStep(bigquery.BigQueryRunQueryStep):
 
 @pytest.mark.gcloud
 class TestExtractStep(bigquery.BigQueryExtractStep):
-    source = luigi.Parameter()
-    table = luigi.Parameter()
-    dataset = luigi.Parameter()
-    location = luigi.Parameter(default=None)
-    extract_gcs_file = luigi.Parameter()
+    source = trun.Parameter()
+    table = trun.Parameter()
+    dataset = trun.Parameter()
+    location = trun.Parameter(default=None)
+    extract_gcs_file = trun.Parameter()
 
-    destination_format = luigi.Parameter(
+    destination_format = trun.Parameter(
         default=bigquery.DestinationFormat.CSV)
-    print_header = luigi.Parameter(
+    print_header = trun.Parameter(
         default=bigquery.PrintHeader.TRUE)
-    field_delimiter = luigi.Parameter(
+    field_delimiter = trun.Parameter(
         default=bigquery.FieldDelimiter.COMMA)
 
     def output(self):
@@ -538,7 +538,7 @@ class BigQueryLoadAvroTest(unittest.TestCase):
         self._produce_test_input()
 
     def test_load_avro_dir_and_propagate_doc(self):
-        class BigQueryLoadAvroTestInput(luigi.ExternalStep):
+        class BigQueryLoadAvroTestInput(trun.ExternalStep):
             def output(_):
                 return gcs.GCSTarget(self.gcs_dir_url)
 

@@ -19,20 +19,20 @@ import random
 from collections import defaultdict
 from heapq import nlargest
 
-import luigi
-import luigi.contrib.hdfs
-import luigi.contrib.postgres
-import luigi.contrib.spark
+import trun
+import trun.contrib.hdfs
+import trun.contrib.postgres
+import trun.contrib.spark
 
 
-class ExternalStreams(luigi.ExternalStep):
+class ExternalStreams(trun.ExternalStep):
     """
     Example of a possible external data dump
 
     To depend on external targets (typically at the top of your dependency graph), you can define
     an ExternalStep like this.
     """
-    date = luigi.DateParameter()
+    date = trun.DateParameter()
 
     def output(self):
         """
@@ -40,16 +40,16 @@ class ExternalStreams(luigi.ExternalStep):
         In this case, it expects a file to be present in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y-%m-%d.tsv'))
+        return trun.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y-%m-%d.tsv'))
 
 
-class Streams(luigi.Step):
+class Streams(trun.Step):
     """
     Faked version right now, just generates bogus data.
     """
-    date = luigi.DateParameter()
+    date = trun.DateParameter()
 
     def run(self):
         """
@@ -68,9 +68,9 @@ class Streams(luigi.Step):
         In this case, a successful execution of this step will create a file in the local file system.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
+        return trun.LocalTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
 
 
 class StreamsHdfs(Streams):
@@ -87,18 +87,18 @@ class StreamsHdfs(Streams):
         In this case, a successful execution of this step will create a file in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
+        return trun.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
 
 
-class AggregateArtists(luigi.Step):
+class AggregateArtists(trun.Step):
     """
     This step runs over the target data returned by :py:meth:`~/.Streams.output` and
     writes the result into its :py:meth:`~.AggregateArtists.output` target (local file).
     """
 
-    date_interval = luigi.DateIntervalParameter()
+    date_interval = trun.DateIntervalParameter()
 
     def output(self):
         """
@@ -106,9 +106,9 @@ class AggregateArtists(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget("data/artist_streams_{}.tsv".format(self.date_interval))
+        return trun.LocalTarget("data/artist_streams_{}.tsv".format(self.date_interval))
 
     def requires(self):
         """
@@ -116,7 +116,7 @@ class AggregateArtists(luigi.Step):
 
         * :py:class:`~.Streams`
 
-        :return: list of object (:py:class:`luigi.step.Step`)
+        :return: list of object (:py:class:`trun.step.Step`)
         """
         return [Streams(date) for date in self.date_interval]
 
@@ -134,14 +134,14 @@ class AggregateArtists(luigi.Step):
                 out_file.write('{}\t{}\n'.format(artist, count))
 
 
-class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
+class AggregateArtistsSpark(trun.contrib.spark.SparkSubmitStep):
     """
-    This step runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
+    This step runs a :py:class:`trun.contrib.spark.SparkSubmitStep` step
     over each target data returned by :py:meth:`~/.StreamsHdfs.output` and
     writes the result into its :py:meth:`~.AggregateArtistsSpark.output` target (a file in HDFS).
     """
 
-    date_interval = luigi.DateIntervalParameter()
+    date_interval = trun.DateIntervalParameter()
 
     """
     The Pyspark script to run.
@@ -162,9 +162,9 @@ class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
         In this case, a successful execution of this step will create a file in HDFS.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.contrib.hdfs.HdfsTarget("data/artist_streams_%s.tsv" % self.date_interval)
+        return trun.contrib.hdfs.HdfsTarget("data/artist_streams_%s.tsv" % self.date_interval)
 
     def requires(self):
         """
@@ -172,26 +172,26 @@ class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
 
         * :py:class:`~.StreamsHdfs`
 
-        :return: list of object (:py:class:`luigi.step.Step`)
+        :return: list of object (:py:class:`trun.step.Step`)
         """
         return [StreamsHdfs(date) for date in self.date_interval]
 
     def app_options(self):
-        # :func:`~luigi.step.Step.input` returns the targets produced by the steps in
-        # `~luigi.step.Step.requires`.
+        # :func:`~trun.step.Step.input` returns the targets produced by the steps in
+        # `~trun.step.Step.requires`.
         return [','.join([p.path for p in self.input()]),
                 self.output().path]
 
 
-class Top10Artists(luigi.Step):
+class Top10Artists(trun.Step):
     """
     This step runs over the target data returned by :py:meth:`~/.AggregateArtists.output` or
     :py:meth:`~/.AggregateArtistsSpark.output` in case :py:attr:`~/.Top10Artists.use_spark` is set and
     writes the result into its :py:meth:`~.Top10Artists.output` target (a file in local filesystem).
     """
 
-    date_interval = luigi.DateIntervalParameter()
-    use_spark = luigi.BoolParameter()
+    date_interval = trun.DateIntervalParameter()
+    use_spark = trun.BoolParameter()
 
     def requires(self):
         """
@@ -200,7 +200,7 @@ class Top10Artists(luigi.Step):
         * :py:class:`~.AggregateArtists` or
         * :py:class:`~.AggregateArtistsSpark` if :py:attr:`~/.Top10Artists.use_spark` is set.
 
-        :return: object (:py:class:`luigi.step.Step`)
+        :return: object (:py:class:`trun.step.Step`)
         """
         if self.use_spark:
             return AggregateArtistsSpark(self.date_interval)
@@ -213,9 +213,9 @@ class Top10Artists(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget("data/top_artists_%s.tsv" % self.date_interval)
+        return trun.LocalTarget("data/top_artists_%s.tsv" % self.date_interval)
 
     def run(self):
         top_10 = nlargest(10, self._input_iterator())
@@ -236,23 +236,23 @@ class Top10Artists(luigi.Step):
                 yield int(streams), artist
 
 
-class ArtistToplistToDatabase(luigi.contrib.postgres.CopyToTable):
+class ArtistToplistToDatabase(trun.contrib.postgres.CopyToTable):
     """
-    This step runs a :py:class:`luigi.contrib.postgres.CopyToTable` step
+    This step runs a :py:class:`trun.contrib.postgres.CopyToTable` step
     over the target data returned by :py:meth:`~/.Top10Artists.output` and
     writes the result into its :py:meth:`~.ArtistToplistToDatabase.output` target which,
-    by default, is :py:class:`luigi.contrib.postgres.PostgresTarget` (a table in PostgreSQL).
+    by default, is :py:class:`trun.contrib.postgres.PostgresTarget` (a table in PostgreSQL).
 
-    This class uses :py:meth:`luigi.contrib.postgres.CopyToTable.run`
-    and :py:meth:`luigi.contrib.postgres.CopyToTable.output`.
+    This class uses :py:meth:`trun.contrib.postgres.CopyToTable.run`
+    and :py:meth:`trun.contrib.postgres.CopyToTable.output`.
     """
 
-    date_interval = luigi.DateIntervalParameter()
-    use_spark = luigi.BoolParameter()
+    date_interval = trun.DateIntervalParameter()
+    use_spark = trun.BoolParameter()
 
     host = "localhost"
     database = "toplists"
-    user = "luigi"
+    user = "trun"
     password = "abc123"  # ;)
     table = "top10"
 
@@ -267,10 +267,10 @@ class ArtistToplistToDatabase(luigi.contrib.postgres.CopyToTable):
 
         * :py:class:`~.Top10Artists`
 
-        :return: list of object (:py:class:`luigi.step.Step`)
+        :return: list of object (:py:class:`trun.step.Step`)
         """
         return Top10Artists(self.date_interval, self.use_spark)
 
 
 if __name__ == "__main__":
-    luigi.run()
+    trun.run()

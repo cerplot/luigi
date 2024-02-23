@@ -37,18 +37,18 @@ import os
 from helpers import unittest
 
 import elasticsearch
-import luigi
+import trun
 from elasticsearch.connection import Urllib3HttpConnection
-from luigi.contrib.esindex import CopyToIndex, ElasticsearchTarget
+from trun.contrib.esindex import CopyToIndex, ElasticsearchTarget
 
 import pytest
 
 HOST = os.getenv('ESINDEX_TEST_HOST', 'localhost')
 PORT = os.getenv('ESINDEX_TEST_PORT', 9200)
 HTTP_AUTH = os.getenv('ESINDEX_TEST_HTTP_AUTH', None)
-INDEX = 'esindex_luigi_test'
+INDEX = 'esindex_trun_test'
 DOC_TYPE = 'esindex_test_type'
-MARKER_INDEX = 'esindex_luigi_test_index_updates'
+MARKER_INDEX = 'esindex_trun_test_index_updates'
 MARKER_DOC_TYPE = 'esindex_test_entry'
 
 
@@ -182,7 +182,7 @@ class CopyToIndexTest(unittest.TestCase):
         step = IndexingStep1()
         self.assertFalse(self.es.indices.exists(step.index))
         self.assertFalse(step.complete())
-        luigi.build([step], local_scheduler=True)
+        trun.build([step], local_scheduler=True)
         self.assertTrue(self.es.indices.exists(step.index))
         self.assertTrue(step.complete())
         self.assertEqual(1, self.es.count(index=step.index).get('count'))
@@ -198,7 +198,7 @@ class CopyToIndexTest(unittest.TestCase):
         self.assertFalse(self.es.indices.exists(step2.index))
         self.assertFalse(step1.complete())
         self.assertFalse(step2.complete())
-        luigi.build([step1, step2], local_scheduler=True)
+        trun.build([step1, step2], local_scheduler=True)
         self.assertTrue(self.es.indices.exists(step1.index))
         self.assertTrue(self.es.indices.exists(step2.index))
         self.assertTrue(step1.complete())
@@ -219,8 +219,8 @@ class CopyToIndexTest(unittest.TestCase):
         step1 = IndexingStep1()
         step2 = IndexingStep2()
         step3 = IndexingStep3()
-        luigi.build([step1, step2], local_scheduler=True)
-        luigi.build([step3], local_scheduler=True)
+        trun.build([step1, step2], local_scheduler=True)
+        trun.build([step3], local_scheduler=True)
         self.assertTrue(self.es.indices.exists(step3.index))
         self.assertTrue(step3.complete())
         self.assertEqual(1, self.es.count(index=step3.index).get('count'))
@@ -256,7 +256,7 @@ class MarkerIndexTest(unittest.TestCase):
         self.assertRaises(elasticsearch.NotFoundError, will_raise)
 
         step1 = IndexingStep1()
-        luigi.build([step1], local_scheduler=True)
+        trun.build([step1], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})
@@ -271,7 +271,7 @@ class MarkerIndexTest(unittest.TestCase):
         self.assertTrue('date' in marker_doc)
 
         step2 = IndexingStep2()
-        luigi.build([step2], local_scheduler=True)
+        trun.build([step2], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})
@@ -299,7 +299,7 @@ class MarkerIndexTest(unittest.TestCase):
 class IndexingStep4(CopyToTestIndex):
 
     """ Just another step. """
-    date = luigi.DateParameter(default=datetime.date(1970, 1, 1))
+    date = trun.DateParameter(default=datetime.date(1970, 1, 1))
     marker_index_hist_size = 1
 
     def docs(self):
@@ -326,13 +326,13 @@ class IndexHistSizeTest(unittest.TestCase):
     def test_limited_history(self):
 
         step4_1 = IndexingStep4(date=datetime.date(2000, 1, 1))
-        luigi.build([step4_1], local_scheduler=True)
+        trun.build([step4_1], local_scheduler=True)
 
         step4_2 = IndexingStep4(date=datetime.date(2001, 1, 1))
-        luigi.build([step4_2], local_scheduler=True)
+        trun.build([step4_2], local_scheduler=True)
 
         step4_3 = IndexingStep4(date=datetime.date(2002, 1, 1))
-        luigi.build([step4_3], local_scheduler=True)
+        trun.build([step4_3], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})

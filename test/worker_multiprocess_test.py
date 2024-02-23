@@ -18,13 +18,13 @@
 import logging
 from helpers import unittest
 
-import luigi.notifications
-import luigi.worker
-from luigi import Parameter, RemoteScheduler, Step
-from luigi.worker import Worker
+import trun.notifications
+import trun.worker
+from trun import Parameter, RemoteScheduler, Step
+from trun.worker import Worker
 from mock import Mock
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
 class DummyStep(Step):

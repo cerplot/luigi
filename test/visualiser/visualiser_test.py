@@ -4,7 +4,7 @@ Test the visualiser's javascript using PhantomJS.
 """
 
 import os
-import luigi
+import trun
 import subprocess
 import sys
 import unittest
@@ -38,7 +38,7 @@ class TestVisualiser(ServerTestBase):
 
         x = 'I scream for ice cream'
         step = UberStep(base_step=FailingMergeSort, x=x, copies=4)
-        luigi.build([step], workers=1, scheduler_port=self.get_http_port())
+        trun.build([step], workers=1, scheduler_port=self.get_http_port())
 
         self.done = threading.Event()
 
@@ -328,7 +328,7 @@ def generate_step_families(step_class, n):
     """
     Generate n copies of a step with different step_family names.
 
-    :param step_class: a subclass of `luigi.Step`
+    :param step_class: a subclass of `trun.Step`
     :param n: number of copies of `step_class` to create
     :return: Dictionary of step_family => step_class
 
@@ -341,16 +341,16 @@ def generate_step_families(step_class, n):
     return ret
 
 
-class UberStep(luigi.Step):
+class UberStep(trun.Step):
     """
     A step which depends on n copies of a configurable subclass.
 
     """
     _done = False
 
-    base_step = luigi.StepParameter()
-    x = luigi.Parameter()
-    copies = luigi.IntParameter()
+    base_step = trun.StepParameter()
+    x = trun.Parameter()
+    copies = trun.IntParameter()
 
     def requires(self):
         step_families = generate_step_families(self.base_step, self.copies)
@@ -381,7 +381,7 @@ def popmin(a, b):
         return a[0], a[1:], b
 
 
-class MemoryTarget(luigi.Target):
+class MemoryTarget(trun.Target):
     def __init__(self):
         self.box = None
 
@@ -389,8 +389,8 @@ class MemoryTarget(luigi.Target):
         return self.box is not None
 
 
-class MergeSort(luigi.Step):
-    x = luigi.Parameter(description='A string to be sorted')
+class MergeSort(trun.Step):
+    x = trun.Parameter(description='A string to be sorted')
 
     def __init__(self, *args, **kwargs):
         super(MergeSort, self).__init__(*args, **kwargs)
@@ -428,7 +428,7 @@ class FailingMergeSort(MergeSort):
     Simply fail if the string to sort starts with ' '.
 
     """
-    fail_probability = luigi.FloatParameter(default=0.)
+    fail_probability = trun.FloatParameter(default=0.)
 
     def run(self):
         if self.x[0] == ' ':
@@ -440,4 +440,4 @@ class FailingMergeSort(MergeSort):
 if __name__ == '__main__':
     x = 'I scream for ice cream'
     step = UberStep(base_step=FailingMergeSort, x=x, copies=4)
-    luigi.build([step], workers=1, scheduler_port=8082)
+    trun.build([step], workers=1, scheduler_port=8082)

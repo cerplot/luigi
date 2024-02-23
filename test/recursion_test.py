@@ -18,13 +18,13 @@
 import datetime
 from helpers import unittest
 
-import luigi
-import luigi.interface
-from luigi.mock import MockTarget
+import trun
+import trun.interface
+from trun.mock import MockTarget
 
 
-class Popularity(luigi.Step):
-    date = luigi.DateParameter(default=datetime.date.today() - datetime.timedelta(1))
+class Popularity(trun.Step):
+    date = trun.DateParameter(default=datetime.date.today() - datetime.timedelta(1))
 
     def output(self):
         return MockTarget('/tmp/popularity/%s.txt' % self.date.strftime('%Y-%m-%d'))
@@ -46,6 +46,6 @@ class RecursionTest(unittest.TestCase):
         MockTarget.fs.get_all_data()['/tmp/popularity/2009-01-01.txt'] = b'0\n'
 
     def test_invoke(self):
-        luigi.build([Popularity(datetime.date(2009, 1, 5))], local_scheduler=True)
+        trun.build([Popularity(datetime.date(2009, 1, 5))], local_scheduler=True)
 
         self.assertEqual(MockTarget.fs.get_data('/tmp/popularity/2009-01-05.txt'), b'4\n')

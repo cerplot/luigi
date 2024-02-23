@@ -16,7 +16,7 @@
 #
 
 """
-Integration test for the Luigi wrapper of EC2 Container Service (ECSStep)
+Integration test for the Trun wrapper of EC2 Container Service (ECSStep)
 
 Requires:
 
@@ -33,8 +33,8 @@ Written and maintained by Jake Feala (@jfeala) for Outlier Bio (@outlierbio)
 
 import unittest
 
-import luigi
-from luigi.contrib.ecs import ECSStep, _get_step_statuses
+import trun
+from trun.contrib.ecs import ECSStep, _get_step_statuses
 from moto import mock_ecs
 import pytest
 
@@ -173,17 +173,17 @@ class TestECSStep(unittest.TestCase):
     @mock_ecs
     def test_unregistered_step(self):
         t = ECSStepNoOutput(step_def=TEST_STEP_DEF)
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_registered_step(self):
         t = ECSStepNoOutput(step_def_arn=self.arn)
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_override_command(self):
         t = ECSStepOverrideCommand(step_def_arn=self.arn)
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_custom_run_step_kwargs(self):
@@ -191,7 +191,7 @@ class TestECSStep(unittest.TestCase):
         self.assertEqual(t.combined_overrides, {
             'ephemeralStorage': {'sizeInGiB': 30}
         })
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_custom_run_step_kwargs_with_colliding_command(self):
@@ -208,7 +208,7 @@ class TestECSStep(unittest.TestCase):
             )
         )
         self.assertEqual(combined_overrides['ephemeralStorage'], {'sizeInGiB': 30})
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_custom_run_step_kwargs_with_merged_commands(self):
@@ -225,4 +225,4 @@ class TestECSStep(unittest.TestCase):
             )
         )
         self.assertEqual(combined_overrides['ephemeralStorage'], {'sizeInGiB': 30})
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)

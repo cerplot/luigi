@@ -4,7 +4,7 @@ from smtplib import SMTPServerDisconnected
 import mock
 import unittest
 
-import luigi.batch_notifier
+import trun.batch_notifier
 
 
 BATCH_NOTIFIER_DEFAULTS = {
@@ -14,7 +14,7 @@ BATCH_NOTIFIER_DEFAULTS = {
 }
 
 
-class BatchNotifier(luigi.batch_notifier.BatchNotifier):
+class BatchNotifier(trun.batch_notifier.BatchNotifier):
     """BatchNotifier class with defaults that produce smaller output for testing"""
     def __init__(self, **kwargs):
         full_args = BATCH_NOTIFIER_DEFAULTS.copy()
@@ -24,14 +24,14 @@ class BatchNotifier(luigi.batch_notifier.BatchNotifier):
 
 class BatchNotifierTest(unittest.TestCase):
     def setUp(self):
-        self.time_mock = mock.patch('luigi.batch_notifier.time.time')
+        self.time_mock = mock.patch('trun.batch_notifier.time.time')
         self.time = self.time_mock.start()
         self.time.return_value = 0.0
 
-        self.send_email_mock = mock.patch('luigi.batch_notifier.send_email')
+        self.send_email_mock = mock.patch('trun.batch_notifier.send_email')
         self.send_email = self.send_email_mock.start()
 
-        self.email_mock = mock.patch('luigi.batch_notifier.email')
+        self.email_mock = mock.patch('trun.batch_notifier.email')
         self.email = self.email_mock.start()
         self.email().sender = 'sender@test.com'
         self.email().receiver = 'r@test.com'
@@ -52,7 +52,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=5)', 'Step', {'a': 5}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Step(a=5) (1 failure)'
         )
 
@@ -69,7 +69,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=5)', 'Step', {'a': 5}, 'error', ['owner@test.com'])
         bn.send_email()
         self.check_email_send(
-            'Luigi: Your steps have 1 failure in the last 60 minutes',
+            'Trun: Your steps have 1 failure in the last 60 minutes',
             '- Step(a=5) (1 failure)',
             receiver='owner@test.com',
         )
@@ -81,7 +81,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_disable('Step(a=5)', 'Step', {'a': 5}, [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 10 failures, 1 disable in the last 60 minutes',
+            'Trun: 10 failures, 1 disable in the last 60 minutes',
             '- Step(a=5) (10 failures, 1 disable)'
         )
 
@@ -94,7 +94,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_disable('Step(a=6)', 'Step', {'a': 6}, [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 20 failures, 2 disables in the last 60 minutes',
+            'Trun: 20 failures, 2 disables in the last 60 minutes',
             '- Step (20 failures, 2 disables)'
         )
 
@@ -103,7 +103,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_scheduling_fail('Step()', 'Step', {}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 scheduling failure in the last 60 minutes',
+            'Trun: 1 scheduling failure in the last 60 minutes',
             '- Step (1 scheduling failure)',
         )
 
@@ -114,7 +114,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=5)', 'Step', {'a': 5}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 3 failures in the last 60 minutes',
+            'Trun: 3 failures in the last 60 minutes',
             '- Step(a=5) (3 failures)'
         )
 
@@ -125,7 +125,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=6)', 'Step', {'a': 6}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 3 failures in the last 60 minutes',
+            'Trun: 3 failures in the last 60 minutes',
             '- Step(a=6) (2 failures)\n'
             '- Step(a=5) (1 failure)'
         )
@@ -138,7 +138,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('OtherStep(a=6)', 'OtherStep', {'a': 6}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 4 failures in the last 60 minutes',
+            'Trun: 4 failures in the last 60 minutes',
             '- Step (3 failures)\n'
             '- OtherStep (1 failure)'
         )
@@ -157,7 +157,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('OtherStep(a=6, b=3)', 'OtherStep', {'a': 6}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 10 failures in the last 60 minutes',
+            'Trun: 10 failures in the last 60 minutes',
             '- Step(a=6) (4 failures)\n'
             '- OtherStep(a=6) (3 failures)\n'
             '- Step(a=5) (2 failures)\n'
@@ -172,7 +172,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.send_email()
         self.check_email_send(
-            'Luigi: 3 failures in the last 60 minutes',
+            'Trun: 3 failures in the last 60 minutes',
             '- Step (2 failures)\n'
             '\n'
             '      error 2\n'
@@ -190,7 +190,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.send_email()
         self.check_email_send(
-            'Luigi: 3 failures in the last 60 minutes',
+            'Trun: 3 failures in the last 60 minutes',
             '- Step (2 failures)\n'
             '\n'
             '      error 1\n'
@@ -207,7 +207,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=1)', 'Step', {'a': '1'}, 'line 1\nline 2\nline 3\nline 4\n', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Step (1 failure)\n'
             '\n'
             '      line 3\n'
@@ -221,7 +221,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.send_email()
         send_calls = [
             mock.call(
-                'Luigi: Your steps have 1 failure in the last 60 minutes',
+                'Trun: Your steps have 1 failure in the last 60 minutes',
                 '- Step (1 failure)\n'
                 '\n'
                 '      msg1',
@@ -229,7 +229,7 @@ class BatchNotifierTest(unittest.TestCase):
                 ('a@test.com',),
             ),
             mock.call(
-                'Luigi: Your steps have 1 failure in the last 60 minutes',
+                'Trun: Your steps have 1 failure in the last 60 minutes',
                 '- Step (1 failure)\n'
                 '\n'
                 '      msg2',
@@ -237,7 +237,7 @@ class BatchNotifierTest(unittest.TestCase):
                 ('b@test.com',),
             ),
             mock.call(
-                'Luigi: 2 failures in the last 60 minutes',
+                'Trun: 2 failures in the last 60 minutes',
                 '- Step (2 failures)\n'
                 '\n'
                 '      msg2',
@@ -256,7 +256,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.send_email()
         self.check_email_send(
-            'Luigi: 3 failures in the last 60 minutes',
+            'Trun: 3 failures in the last 60 minutes',
             '<ul>\n'
             '<li>Step (2 failures)\n'
             '<pre>error 1</pre>\n'
@@ -272,7 +272,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=1)', 'Step', {'a': 1}, 'line 1\nline 2\nline 3\nline 4\n', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '<ul>\n'
             '<li>Step (1 failure)\n'
             '<pre>line 3\n'
@@ -311,7 +311,7 @@ class BatchNotifierTest(unittest.TestCase):
             bn.add_scheduling_fail('Step(a=6)', 'Step', {'a': 6}, 'scheduling error {}'.format(i), [])
             bn.send_email()
             self.check_email_send(
-                'Luigi: 1 failure, 1 disable, 1 scheduling failure in the last 60 minutes',
+                'Trun: 1 failure, 1 disable, 1 scheduling failure in the last 60 minutes',
                 '- Step(a=5) (1 failure, 1 disable)\n'
                 '\n'
                 '      error {}\n'
@@ -333,7 +333,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.update()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Step(a=5) (1 failure)'
         )
 
@@ -348,7 +348,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.update()
         self.check_email_send(
-            'Luigi: 1 disable in the last 60 minutes',
+            'Trun: 1 disable in the last 60 minutes',
             '- Step(a=5) (1 disable)'
         )
 
@@ -368,7 +368,7 @@ class BatchNotifierTest(unittest.TestCase):
 
         bn.update()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Step(a=5) (1 failure)'
         )
 
@@ -400,21 +400,21 @@ class BatchNotifierTest(unittest.TestCase):
 
         send_calls = [
             mock.call(
-                'Luigi: 3 failures in the last 60 minutes',
+                'Trun: 3 failures in the last 60 minutes',
                 '- Step(a=1) (2 failures)\n'
                 '- Step(a=2) (1 failure)',
                 'sender@test.com',
                 ('r@test.com',),
             ),
             mock.call(
-                'Luigi: Your steps have 2 failures in the last 60 minutes',
+                'Trun: Your steps have 2 failures in the last 60 minutes',
                 '- Step(a=1) (1 failure)\n'
                 '- Step(a=2) (1 failure)',
                 'sender@test.com',
                 ('a@test.com',),
             ),
             mock.call(
-                'Luigi: Your steps have 2 failures in the last 60 minutes',
+                'Trun: Your steps have 2 failures in the last 60 minutes',
                 '- Step(a=1) (2 failures)',
                 'sender@test.com',
                 ('b@test.com',),
@@ -429,13 +429,13 @@ class BatchNotifierTest(unittest.TestCase):
 
         send_calls = [
             mock.call(
-                'Luigi: 1 disable in the last 60 minutes',
+                'Trun: 1 disable in the last 60 minutes',
                 '- Step(a=1) (1 disable)',
                 'sender@test.com',
                 ('r@test.com',),
             ),
             mock.call(
-                'Luigi: Your steps have 1 disable in the last 60 minutes',
+                'Trun: Your steps have 1 disable in the last 60 minutes',
                 '- Step(a=1) (1 disable)',
                 'sender@test.com',
                 ('a@test.com',),
@@ -452,7 +452,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=4)', 'Step', {'a': '4'}, 'msg2', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 5 failures in the last 60 minutes',
+            'Trun: 5 failures in the last 60 minutes',
             '- Step(a=1) (1 failure)\n'
             '  Step(a=2) (1 failure)\n'
             '  Step(a=3) (1 failure)\n'
@@ -474,7 +474,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step(a=4)', 'Step', {'a': '4'}, 'msg2', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 5 failures in the last 60 minutes',
+            'Trun: 5 failures in the last 60 minutes',
             '<ul>\n'
             '<li>Step(a=1) (1 failure)\n'
             '<br>Step(a=2) (1 failure)\n'
@@ -490,7 +490,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step()', 'Step', {}, 'Érror', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Step() (1 failure)\n'
             '\n'
             '      Érror'
@@ -502,7 +502,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Step()', 'Step', {}, 'Érror', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '<ul>\n'
             '<li>Step() (1 failure)\n'
             '<pre>Érror</pre>\n'
@@ -516,7 +516,7 @@ class BatchNotifierTest(unittest.TestCase):
             bn.add_failure('Step(a=á)', 'Step', {'a': 'á'}, 'error', [])
             bn.send_email()
             self.check_email_send(
-                'Luigi: 1 failure in the last 60 minutes',
+                'Trun: 1 failure in the last 60 minutes',
                 '- Step(a=á) (1 failure)'
             )
 
@@ -528,7 +528,7 @@ class BatchNotifierTest(unittest.TestCase):
             bn.add_failure('Step(a=á)', 'Step', {'a': 'á'}, 'error', [])
             bn.send_email()
             self.check_email_send(
-                'Luigi: 1 failure in the last 60 minutes',
+                'Trun: 1 failure in the last 60 minutes',
                 '<ul>\n'
                 '<li>Step(a=á) (1 failure)\n'
                 '</ul>'
@@ -541,7 +541,7 @@ class BatchNotifierTest(unittest.TestCase):
             bn.add_failure('Step(á=a)', 'Step', {'á': 'a'}, 'error', [])
             bn.send_email()
             self.check_email_send(
-                'Luigi: 1 failure in the last 60 minutes',
+                'Trun: 1 failure in the last 60 minutes',
                 '- Step(á=a) (1 failure)'
             )
 
@@ -553,7 +553,7 @@ class BatchNotifierTest(unittest.TestCase):
             bn.add_failure('Step(á=a)', 'Step', {'á': 'a'}, 'error', [])
             bn.send_email()
             self.check_email_send(
-                'Luigi: 1 failure in the last 60 minutes',
+                'Trun: 1 failure in the last 60 minutes',
                 '<ul>\n'
                 '<li>Step(á=a) (1 failure)\n'
                 '</ul>'
@@ -564,7 +564,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Tásk()', 'Tásk', {}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '- Tásk() (1 failure)'
         )
 
@@ -574,7 +574,7 @@ class BatchNotifierTest(unittest.TestCase):
         bn.add_failure('Tásk()', 'Tásk', {}, 'error', [])
         bn.send_email()
         self.check_email_send(
-            'Luigi: 1 failure in the last 60 minutes',
+            'Trun: 1 failure in the last 60 minutes',
             '<ul>\n'
             '<li>Tásk() (1 failure)\n'
             '</ul>'

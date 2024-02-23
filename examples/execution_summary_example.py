@@ -18,14 +18,14 @@ You can run this example like this:
 
     .. code:: console
 
-            $ luigi --module examples.execution_summary_example examples.EntryPoint --local-scheduler
+            $ trun --module examples.execution_summary_example examples.EntryPoint --local-scheduler
             ...
             ... lots of spammy output
             ...
             INFO: There are 11 pending steps unique to this worker
             INFO: Worker Worker(salt=843361665, workers=1, host=arash-spotify-T440s, username=arash, pid=18534) was stopped. Shutting down Keep-Alive thread
             INFO:
-            ===== Luigi Execution Summary =====
+            ===== Trun Execution Summary =====
 
             Scheduled 218 steps of which:
             * 195 complete ones were encountered:
@@ -42,22 +42,22 @@ You can run this example like this:
 
             This progress looks :| because there were missing external dependencies
 
-            ===== Luigi Execution Summary =====
+            ===== Trun Execution Summary =====
 """
 import datetime
 
-import luigi
+import trun
 
 
-class MyExternal(luigi.ExternalStep):
+class MyExternal(trun.ExternalStep):
 
     def complete(self):
         return False
 
 
-class Boom(luigi.Step):
+class Boom(trun.Step):
     step_namespace = 'examples'
-    this_is_a_really_long_I_mean_way_too_long_and_annoying_parameter = luigi.IntParameter()
+    this_is_a_really_long_I_mean_way_too_long_and_annoying_parameter = trun.IntParameter()
 
     def run(self):
         print("Running Boom")
@@ -67,10 +67,10 @@ class Boom(luigi.Step):
             yield Bar(i)
 
 
-class Foo(luigi.Step):
+class Foo(trun.Step):
     step_namespace = 'examples'
-    num = luigi.IntParameter()
-    num2 = luigi.IntParameter()
+    num = trun.IntParameter()
+    num2 = trun.IntParameter()
 
     def run(self):
         print("Running Foo")
@@ -80,21 +80,21 @@ class Foo(luigi.Step):
         yield Boom(0)
 
 
-class Bar(luigi.Step):
+class Bar(trun.Step):
     step_namespace = 'examples'
-    num = luigi.IntParameter()
+    num = trun.IntParameter()
 
     def run(self):
         self.output().open('w').close()
 
     def output(self):
-        return luigi.LocalTarget('/tmp/bar/%d' % self.num)
+        return trun.LocalTarget('/tmp/bar/%d' % self.num)
 
 
-class DateStep(luigi.Step):
+class DateStep(trun.Step):
     step_namespace = 'examples'
-    date = luigi.DateParameter()
-    num = luigi.IntParameter()
+    date = trun.DateParameter()
+    num = trun.IntParameter()
 
     def run(self):
         print("Running DateStep")
@@ -104,7 +104,7 @@ class DateStep(luigi.Step):
         yield Boom(0)
 
 
-class EntryPoint(luigi.Step):
+class EntryPoint(trun.Step):
     step_namespace = 'examples'
 
     def run(self):

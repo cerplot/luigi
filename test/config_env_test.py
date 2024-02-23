@@ -16,13 +16,13 @@
 #
 import os
 
-from luigi.configuration import LuigiConfigParser, LuigiTomlParser, get_config
-from luigi.configuration.cfg_parser import InterpolationMissingEnvvarError
+from trun.configuration import TrunConfigParser, TrunTomlParser, get_config
+from trun.configuration.cfg_parser import InterpolationMissingEnvvarError
 
-from helpers import LuigiTestCase, with_config
+from helpers import TrunTestCase, with_config
 
 
-class ConfigParserTest(LuigiTestCase):
+class ConfigParserTest(TrunTestCase):
 
     environ = {
         "TESTVAR": "1",
@@ -35,7 +35,7 @@ class ConfigParserTest(LuigiTestCase):
         }
         for key, value in self.environ.items():
             os.environ[key] = value
-        LuigiConfigParser._instance = None
+        TrunConfigParser._instance = None
         super(ConfigParserTest, self).setUp()
 
     def tearDown(self):
@@ -43,8 +43,8 @@ class ConfigParserTest(LuigiTestCase):
             os.environ.pop(key)
         for key, value in self.environ_backup:
             os.environ[key] = value
-        if 'LUIGI_CONFIG_PARSER' in os.environ:
-            del os.environ["LUIGI_CONFIG_PARSER"]
+        if 'TRUN_CONFIG_PARSER' in os.environ:
+            del os.environ["TRUN_CONFIG_PARSER"]
 
     @with_config({"test": {
         "a": "testval",
@@ -100,7 +100,7 @@ class ConfigParserTest(LuigiTestCase):
 
     def test_default_parser(self):
         config = get_config()
-        self.assertIsInstance(config, LuigiConfigParser)
-        os.environ["LUIGI_CONFIG_PARSER"] = "toml"
+        self.assertIsInstance(config, TrunConfigParser)
+        os.environ["TRUN_CONFIG_PARSER"] = "toml"
         config = get_config()
-        self.assertIsInstance(config, LuigiTomlParser)
+        self.assertIsInstance(config, TrunTomlParser)

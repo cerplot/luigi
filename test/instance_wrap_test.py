@@ -19,15 +19,15 @@ import datetime
 import decimal
 from helpers import unittest
 
-import luigi
-import luigi.notifications
-from luigi.mock import MockTarget
+import trun
+import trun.notifications
+from trun.mock import MockTarget
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class Report(luigi.Step):
-    date = luigi.DateParameter()
+class Report(trun.Step):
+    date = trun.DateParameter()
 
     def run(self):
         f = self.output().open('w')
@@ -40,8 +40,8 @@ class Report(luigi.Step):
         return MockTarget(self.date.strftime('/tmp/report-%Y-%m-%d'))
 
 
-class ReportReader(luigi.Step):
-    date = luigi.DateParameter()
+class ReportReader(trun.Step):
+    date = trun.DateParameter()
 
     def requires(self):
         return Report(self.date)
@@ -57,9 +57,9 @@ class ReportReader(luigi.Step):
         return False
 
 
-class CurrencyExchanger(luigi.Step):
-    step = luigi.Parameter()
-    currency_to = luigi.Parameter()
+class CurrencyExchanger(trun.Step):
+    step = trun.Parameter()
+    currency_to = trun.Parameter()
 
     exchange_rates = {('USD', 'USD'): decimal.Decimal(1),
                       ('EUR', 'USD'): decimal.Decimal('1.25')}
@@ -95,6 +95,6 @@ class InstanceWrapperTest(unittest.TestCase):
         r = ReportReader(d)
         ex = CurrencyExchanger(r, 'USD')
 
-        luigi.build([ex], local_scheduler=True)
+        trun.build([ex], local_scheduler=True)
         self.assertEqual(ex.get_line(0), (decimal.Decimal('10.0'), 'USD'))
         self.assertEqual(ex.get_line(1), (decimal.Decimal('5.0'), 'USD'))

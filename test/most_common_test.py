@@ -17,7 +17,7 @@
 
 from helpers import unittest
 
-from luigi.tools.range import most_common
+from trun.tools.range import most_common
 
 
 class MostCommonTest(unittest.TestCase):

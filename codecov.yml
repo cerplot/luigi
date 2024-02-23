@@ -14,7 +14,7 @@ coverage:
       default: false  # disable the default status that measures entire project
       core:
         target: 92%
-        paths: "luigi/*.py" 
+        paths: "trun/*.py"
     patch:  # Just copied from default
       default:
         if_no_uploads: error
@@ -23,16 +23,16 @@ coverage:
   
   ignore:
     - "examples/"
-    - "luigi/tools"  # These are tested as actual run commands without coverage
+    - "trun/tools"  # These are tested as actual run commands without coverage
     # List modules who's tests are not run by Travis or
     # are run in a subprocesses (like on cluster).
-    - "luigi/contrib/gcs.py"
-    - "luigi/contrib/bigquery.py"
-    - "luigi/contrib/bigquery_avro.py"
-    - "luigi/contrib/hdfs/"
-    - "luigi/contrib/hadoop.py"
-    - "luigi/contrib/mrrunner.py"
-    - "luigi/contrib/kubernetes.py"
+    - "trun/contrib/gcs.py"
+    - "trun/contrib/bigquery.py"
+    - "trun/contrib/bigquery_avro.py"
+    - "trun/contrib/hdfs/"
+    - "trun/contrib/hadoop.py"
+    - "trun/contrib/mrrunner.py"
+    - "trun/contrib/kubernetes.py"
 
-# For luigi we do not want any comments
+# For trun we do not want any comments
 comment: false

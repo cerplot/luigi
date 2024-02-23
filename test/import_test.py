@@ -26,15 +26,15 @@ class ImportTest(unittest.TestCase):
         """Test that all module can be imported
         """
 
-        luigidir = os.path.join(
+        trundir = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             '..'
         )
 
-        packagedir = os.path.join(luigidir, 'luigi')
+        packagedir = os.path.join(trundir, 'trun')
 
         for root, subdirs, files in os.walk(packagedir):
-            package = os.path.relpath(root, luigidir).replace('/', '.')
+            package = os.path.relpath(root, trundir).replace('/', '.')
 
             if '__init__.py' in files:
                 __import__(package)
@@ -43,27 +43,27 @@ class ImportTest(unittest.TestCase):
                 if f.endswith('.py') and not f.startswith('_'):
                     __import__(package + '.' + f[:-3])
 
-    def import_luigi_test(self):
+    def import_trun_test(self):
         """
-        Test that the top luigi package can be imported and contains the usual suspects.
+        Test that the top trun package can be imported and contains the usual suspects.
         """
-        import luigi
+        import trun
 
         # These should exist (if not, this will cause AttributeErrors)
         expected = [
-            luigi.Event,
-            luigi.Config,
-            luigi.Step, luigi.ExternalStep, luigi.WrapperStep,
-            luigi.Target, luigi.LocalTarget,
-            luigi.namespace,
-            luigi.RemoteScheduler,
-            luigi.RPCError,
-            luigi.run, luigi.build,
-            luigi.Parameter,
-            luigi.DateHourParameter, luigi.DateMinuteParameter, luigi.DateSecondParameter, luigi.DateParameter,
-            luigi.MonthParameter, luigi.YearParameter,
-            luigi.DateIntervalParameter, luigi.TimeDeltaParameter,
-            luigi.IntParameter, luigi.FloatParameter,
-            luigi.BoolParameter,
+            trun.Event,
+            trun.Config,
+            trun.Step, trun.ExternalStep, trun.WrapperStep,
+            trun.Target, trun.LocalTarget,
+            trun.namespace,
+            trun.RemoteScheduler,
+            trun.RPCError,
+            trun.run, trun.build,
+            trun.Parameter,
+            trun.DateHourParameter, trun.DateMinuteParameter, trun.DateSecondParameter, trun.DateParameter,
+            trun.MonthParameter, trun.YearParameter,
+            trun.DateIntervalParameter, trun.TimeDeltaParameter,
+            trun.IntParameter, trun.FloatParameter,
+            trun.BoolParameter,
         ]
         self.assertGreater(len(expected), 0)

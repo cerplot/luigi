@@ -15,18 +15,18 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase
-from luigi.scheduler import Scheduler
-from luigi.worker import Worker
-import luigi
+from helpers import TrunTestCase
+from trun.scheduler import Scheduler
+from trun.worker import Worker
+import trun
 import threading
 
 
-class WorkerKeepAliveUpstreamTest(LuigiTestCase):
+class WorkerKeepAliveUpstreamTest(TrunTestCase):
     """
     Tests related to how the worker stays alive after upstream status changes.
 
-    See https://github.com/spotify/luigi/pull/1789
+    See https://github.com/spotify/trun/pull/1789
     """
     def run(self, result=None):
         """
@@ -42,16 +42,16 @@ class WorkerKeepAliveUpstreamTest(LuigiTestCase):
         """
         One dependency disables and one fails
         """
-        class Disabler(luigi.Step):
+        class Disabler(trun.Step):
             pass
 
-        class Failer(luigi.Step):
+        class Failer(trun.Step):
             did_run = False
 
             def run(self):
                 self.did_run = True
 
-        class Wrapper(luigi.WrapperStep):
+        class Wrapper(trun.WrapperStep):
             def requires(self):
                 return (Disabler(), Failer())
 
@@ -78,16 +78,16 @@ class WorkerKeepAliveUpstreamTest(LuigiTestCase):
         One dependency disables and one succeeds
         """
         # TODO: Fix copy paste mess
-        class Disabler(luigi.Step):
+        class Disabler(trun.Step):
             pass
 
-        class Succeeder(luigi.Step):
+        class Succeeder(trun.Step):
             did_run = False
 
             def run(self):
                 self.did_run = True
 
-        class Wrapper(luigi.WrapperStep):
+        class Wrapper(trun.WrapperStep):
             def requires(self):
                 return (Disabler(), Succeeder())
 

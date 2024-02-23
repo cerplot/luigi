@@ -23,17 +23,17 @@ import shutil
 from multiprocessing import Process
 from helpers import unittest
 
-import luigi.scheduler
-import luigi.server
-import luigi.configuration
+import trun.scheduler
+import trun.server
+import trun.configuration
 from helpers import with_config
-from luigi.target import FileAlreadyExists
+from trun.target import FileAlreadyExists
 
 
 class SchedulerIoTest(unittest.TestCase):
 
     def test_pretty_id_unicode(self):
-        scheduler = luigi.scheduler.Scheduler()
+        scheduler = trun.scheduler.Scheduler()
         scheduler.add_step(worker='A', step_id='1', params={u'foo': u'\u2192bar'})
         [step] = list(scheduler._state.get_active_steps())
         step.pretty_id
@@ -47,7 +47,7 @@ class SchedulerIoTest(unittest.TestCase):
                 state = (steps, active_workers)
                 pickle.dump(state, fobj)
 
-            state = luigi.scheduler.SimpleStepState(
+            state = trun.scheduler.SimpleStepState(
                 state_path=fn.name)
             state.load()
 
@@ -58,7 +58,7 @@ class SchedulerIoTest(unittest.TestCase):
             with open(fn.name, 'w') as fobj:
                 print("b0rk", file=fobj)
 
-            state = luigi.scheduler.SimpleStepState(
+            state = trun.scheduler.SimpleStepState(
                 state_path=fn.name)
             state.load()  # bad if this crashes
 
@@ -66,29 +66,29 @@ class SchedulerIoTest(unittest.TestCase):
 
     @with_config({'scheduler': {'retry_count': '44', 'worker_disconnect_delay': '55'}})
     def test_scheduler_with_config(self):
-        scheduler = luigi.scheduler.Scheduler()
+        scheduler = trun.scheduler.Scheduler()
         self.assertEqual(44, scheduler._config.retry_count)
         self.assertEqual(55, scheduler._config.worker_disconnect_delay)
 
         # Override
-        scheduler = luigi.scheduler.Scheduler(retry_count=66,
+        scheduler = trun.scheduler.Scheduler(retry_count=66,
                                               worker_disconnect_delay=77)
         self.assertEqual(66, scheduler._config.retry_count)
         self.assertEqual(77, scheduler._config.worker_disconnect_delay)
 
     @with_config({'resources': {'a': '100', 'b': '200'}})
     def test_scheduler_with_resources(self):
-        scheduler = luigi.scheduler.Scheduler()
+        scheduler = trun.scheduler.Scheduler()
         self.assertEqual({'a': 100, 'b': 200}, scheduler._resources)
 
     @with_config({'scheduler': {'record_step_history': 'True'},
                   'step_history': {'db_connection': 'sqlite:////none/existing/path/hist.db'}})
     def test_local_scheduler_step_history_status(self):
-        ls = luigi.interface._WorkerSchedulerFactory().create_local_scheduler()
+        ls = trun.interface._WorkerSchedulerFactory().create_local_scheduler()
         self.assertEqual(False, ls._config.record_step_history)
 
     def test_load_recovers_steps_index(self):
-        scheduler = luigi.scheduler.Scheduler()
+        scheduler = trun.scheduler.Scheduler()
         scheduler.add_step(worker='A', step_id='1')
         scheduler.add_step(worker='B', step_id='2')
         scheduler.add_step(worker='C', step_id='3')
@@ -99,7 +99,7 @@ class SchedulerIoTest(unittest.TestCase):
             def reload_from_disk(scheduler):
                 scheduler._state._state_path = fn.name
                 scheduler.dump()
-                scheduler = luigi.scheduler.Scheduler()
+                scheduler = trun.scheduler.Scheduler()
                 scheduler._state._state_path = fn.name
                 scheduler.load()
                 return scheduler
@@ -111,9 +111,9 @@ class SchedulerIoTest(unittest.TestCase):
 
     def test_worker_prune_after_init(self):
         """
-        See https://github.com/spotify/luigi/pull/1019
+        See https://github.com/spotify/trun/pull/1019
         """
-        worker = luigi.scheduler.Worker(123)
+        worker = trun.scheduler.Worker(123)
 
         class TmpCfg:
             def __init__(self):
@@ -122,19 +122,19 @@ class SchedulerIoTest(unittest.TestCase):
         worker.prune(TmpCfg())
 
     def test_get_empty_retry_policy(self):
-        retry_policy = luigi.scheduler._get_empty_retry_policy()
+        retry_policy = trun.scheduler._get_empty_retry_policy()
         self.assertEqual(3, len(retry_policy))
         self.assertEqual(["retry_count", "disable_hard_timeout", "disable_window"], list(retry_policy._asdict().keys()))
         self.assertEqual([None, None, None], list(retry_policy._asdict().values()))
 
     @with_config({'scheduler': {'retry_count': '9', 'disable_hard_timeout': '99', 'disable_window': '999'}})
     def test_scheduler_get_retry_policy(self):
-        s = luigi.scheduler.Scheduler()
-        self.assertEqual(luigi.scheduler.RetryPolicy(9, 99, 999), s._config._get_retry_policy())
+        s = trun.scheduler.Scheduler()
+        self.assertEqual(trun.scheduler.RetryPolicy(9, 99, 999), s._config._get_retry_policy())
 
     @with_config({'scheduler': {'retry_count': '9', 'disable_hard_timeout': '99', 'disable_window': '999'}})
     def test_generate_retry_policy(self):
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
 
         try:
             s._generate_retry_policy({'inexist_attr': True})
@@ -143,17 +143,17 @@ class SchedulerIoTest(unittest.TestCase):
             self.assertTrue(True)
 
         retry_policy = s._generate_retry_policy({})
-        self.assertEqual(luigi.scheduler.RetryPolicy(9, 99, 999), retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(9, 99, 999), retry_policy)
 
         retry_policy = s._generate_retry_policy({'retry_count': 1})
-        self.assertEqual(luigi.scheduler.RetryPolicy(1, 99, 999), retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(1, 99, 999), retry_policy)
 
         retry_policy = s._generate_retry_policy({'retry_count': 1, 'disable_hard_timeout': 11, 'disable_window': 111})
-        self.assertEqual(luigi.scheduler.RetryPolicy(1, 11, 111), retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(1, 11, 111), retry_policy)
 
     @with_config({'scheduler': {'retry_count': '44'}})
     def test_per_step_retry_policy(self):
-        cps = luigi.scheduler.Scheduler()
+        cps = trun.scheduler.Scheduler()
 
         cps.add_step(worker='test_worker1', step_id='test_step_1', deps=['test_step_2', 'test_step_3'])
         steps = list(cps._state.get_active_steps())
@@ -168,13 +168,13 @@ class SchedulerIoTest(unittest.TestCase):
         self.assertEqual('test_step_2', step_2.id)
         self.assertEqual('test_step_3', step_3.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_1.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_2.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_3.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_1.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_2.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_3.retry_policy)
 
         cps._state._steps = {}
         cps.add_step(worker='test_worker2', step_id='test_step_4', deps=['test_step_5', 'test_step_6'],
-                     retry_policy_dict=luigi.scheduler.RetryPolicy(99, 999, 9999)._asdict())
+                     retry_policy_dict=trun.scheduler.RetryPolicy(99, 999, 9999)._asdict())
 
         steps = list(cps._state.get_active_steps())
         self.assertEqual(3, len(steps))
@@ -188,14 +188,14 @@ class SchedulerIoTest(unittest.TestCase):
         self.assertEqual('test_step_5', step_5.id)
         self.assertEqual('test_step_6', step_6.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), step_4.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_5.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_6.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(99, 999, 9999), step_4.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_5.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_6.retry_policy)
 
         cps._state._steps = {}
         cps.add_step(worker='test_worker3', step_id='test_step_7', deps=['test_step_8', 'test_step_9'])
-        cps.add_step(worker='test_worker3', step_id='test_step_8', retry_policy_dict=luigi.scheduler.RetryPolicy(99, 999, 9999)._asdict())
-        cps.add_step(worker='test_worker3', step_id='test_step_9', retry_policy_dict=luigi.scheduler.RetryPolicy(11, 111, 1111)._asdict())
+        cps.add_step(worker='test_worker3', step_id='test_step_8', retry_policy_dict=trun.scheduler.RetryPolicy(99, 999, 9999)._asdict())
+        cps.add_step(worker='test_worker3', step_id='test_step_9', retry_policy_dict=trun.scheduler.RetryPolicy(11, 111, 1111)._asdict())
 
         steps = list(cps._state.get_active_steps())
         self.assertEqual(3, len(steps))
@@ -209,9 +209,9 @@ class SchedulerIoTest(unittest.TestCase):
         self.assertEqual('test_step_8', step_8.id)
         self.assertEqual('test_step_9', step_9.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_7.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), step_8.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(11, 111, 1111), step_9.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(44, 999999999, 3600), step_7.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(99, 999, 9999), step_8.retry_policy)
+        self.assertEqual(trun.scheduler.RetryPolicy(11, 111, 1111), step_9.retry_policy)
 
         # Step 7 which is disable-failures 44 and its has_excessive_failures method returns False under 44
         for i in range(43):
@@ -236,56 +236,56 @@ class SchedulerIoTest(unittest.TestCase):
 
     @with_config({'scheduler': {'record_step_history': 'true'}})
     def test_has_step_history(self):
-        cfg = luigi.configuration.get_config()
+        cfg = trun.configuration.get_config()
         with tempfile.NamedTemporaryFile(suffix='.db', delete=True) as fn:
             cfg.set('step_history', 'db_connection', 'sqlite:///' + fn.name)
-            s = luigi.scheduler.Scheduler()
+            s = trun.scheduler.Scheduler()
             self.assertTrue(s.has_step_history())
 
     @with_config({'scheduler': {'record_step_history': 'false'}})
     def test_has_no_step_history(self):
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         self.assertFalse(s.has_step_history())
 
     @with_config({'scheduler': {'pause_enabled': 'false'}})
     def test_pause_disabled(self):
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         self.assertFalse(s.is_pause_enabled()['enabled'])
         self.assertFalse(s.is_paused()['paused'])
         s.pause()
         self.assertFalse(s.is_paused()['paused'])
 
     def test_default_metrics_collector(self):
-        from luigi.metrics import MetricsCollector
+        from trun.metrics import MetricsCollector
 
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         scheduler_state = s._state
         collector = scheduler_state._metrics_collector
         self.assertTrue(isinstance(collector, MetricsCollector))
 
     @with_config({'scheduler': {'metrics_collector': 'datadog'}})
     def test_datadog_metrics_collector(self):
-        from luigi.contrib.datadog_metric import DatadogMetricsCollector
+        from trun.contrib.datadog_metric import DatadogMetricsCollector
 
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         scheduler_state = s._state
         collector = scheduler_state._metrics_collector
         self.assertTrue(isinstance(collector, DatadogMetricsCollector))
 
     @with_config({'scheduler': {'metrics_collector': 'prometheus'}})
     def test_prometheus_metrics_collector(self):
-        from luigi.contrib.prometheus_metric import PrometheusMetricsCollector
+        from trun.contrib.prometheus_metric import PrometheusMetricsCollector
 
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         scheduler_state = s._state
         collector = scheduler_state._metrics_collector
         self.assertTrue(isinstance(collector, PrometheusMetricsCollector))
 
-    @with_config({'scheduler': {'metrics_collector': 'custom', 'metrics_custom_import': 'luigi.contrib.prometheus_metric.PrometheusMetricsCollector'}})
+    @with_config({'scheduler': {'metrics_collector': 'custom', 'metrics_custom_import': 'trun.contrib.prometheus_metric.PrometheusMetricsCollector'}})
     def test_custom_metrics_collector(self):
-        from luigi.contrib.prometheus_metric import PrometheusMetricsCollector
+        from trun.contrib.prometheus_metric import PrometheusMetricsCollector
 
-        s = luigi.scheduler.Scheduler()
+        s = trun.scheduler.Scheduler()
         scheduler_state = s._state
         collector = scheduler_state._metrics_collector
         self.assertTrue(isinstance(collector, PrometheusMetricsCollector))
@@ -296,7 +296,7 @@ class SchedulerWorkerTest(unittest.TestCase):
         return {step.id for step in worker.get_steps(state, 'PENDING')}
 
     def test_get_pending_steps_with_many_done_steps(self):
-        sch = luigi.scheduler.Scheduler()
+        sch = trun.scheduler.Scheduler()
         sch.add_step(worker='NON_TRIVIAL', step_id='A', resources={'a': 1})
         sch.add_step(worker='TRIVIAL', step_id='B', status='PENDING')
         sch.add_step(worker='TRIVIAL', step_id='C', status='DONE')
@@ -310,10 +310,10 @@ class SchedulerWorkerTest(unittest.TestCase):
         self.assertEqual({'A'}, self.get_pending_ids(non_trivial_worker, scheduler_state))
 
 
-class FailingOnDoubleRunStep(luigi.Step):
+class FailingOnDoubleRunStep(trun.Step):
     time_to_check_secs = 1
     time_to_run_secs = 2
-    output_dir = luigi.Parameter(default="")
+    output_dir = trun.Parameter(default="")
 
     def __init__(self, *args, **kwargs):
         super(FailingOnDoubleRunStep, self).__init__(*args, **kwargs)
@@ -341,14 +341,14 @@ class StableDoneCooldownSecsTest(unittest.TestCase):
         shutil.rmtree(self.p)
 
     def run_step(self):
-        return luigi.build([FailingOnDoubleRunStep(output_dir=self.p)],
+        return trun.build([FailingOnDoubleRunStep(output_dir=self.p)],
                            detailed_summary=True,
                            parallel_scheduling=True,
                            parallel_scheduling_processes=2)
 
     @with_config({'worker': {'keep_alive': 'false'}})
     def get_second_run_result_on_double_run(self):
-        server_process = Process(target=luigi.server.run)
+        server_process = Process(target=trun.server.run)
         process = Process(target=self.run_step)
         try:
             # scheduler is started

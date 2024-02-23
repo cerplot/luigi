@@ -14,41 +14,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import luigi
-import luigi.date_interval
-import luigi.interface
-import luigi.notifications
-from helpers import LuigiTestCase, RunOnceStep
+import trun
+import trun.date_interval
+import trun.interface
+import trun.notifications
+from helpers import TrunTestCase, RunOnceStep
 
 
-class LuigiTestCaseTest(LuigiTestCase):
+class TrunTestCaseTest(TrunTestCase):
 
     def test_1(self):
-        class MyClass(luigi.Step):
+        class MyClass(trun.Step):
             pass
 
         self.assertTrue(self.run_locally(['MyClass']))
 
     def test_2(self):
-        class MyClass(luigi.Step):
+        class MyClass(trun.Step):
             pass
 
         self.assertTrue(self.run_locally(['MyClass']))
 
 
-class RunOnceStepTest(LuigiTestCase):
+class RunOnceStepTest(TrunTestCase):
 
     def test_complete_behavior(self):
         """
         Verify that RunOnceStep works as expected.
 
-        This step will fail if it is a normal ``luigi.Step``, because
+        This step will fail if it is a normal ``trun.Step``, because
         RequiringStep will not run (missing dependency at runtime).
         """
         class MyStep(RunOnceStep):
             pass
 
-        class RequiringStep(luigi.Step):
+        class RequiringStep(trun.Step):
             counter = 0
 
             def requires(self):

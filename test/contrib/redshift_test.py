@@ -19,12 +19,12 @@ import sys
 import mock
 from moto import mock_s3
 
-import luigi
-import luigi.contrib.redshift
-import luigi.notifications
+import trun
+import trun.contrib.redshift
+import trun.notifications
 from helpers import unittest, with_config
-from luigi.contrib import redshift
-from luigi.contrib.s3 import S3Client
+from trun.contrib import redshift
+from trun.contrib.s3 import S3Client
 
 import pytest
 
@@ -57,21 +57,21 @@ def generate_manifest_json(path_to_folders, file_names):
     return {'entries': entries}
 
 
-class DummyS3CopyToTableBase(luigi.contrib.redshift.S3CopyToTable):
+class DummyS3CopyToTableBase(trun.contrib.redshift.S3CopyToTable):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     host = 'dummy_host'
     database = 'dummy_database'
     user = 'dummy_user'
     password = 'dummy_password'
-    table = luigi.Parameter(default='dummy_table')
-    columns = luigi.TupleParameter(
+    table = trun.Parameter(default='dummy_table')
+    columns = trun.TupleParameter(
         default=(
             ('some_text', 'varchar(255)'),
             ('some_int', 'int'),
         )
     )
-    table_constraints = luigi.Parameter(default='')
+    table_constraints = trun.Parameter(default='')
 
     copy_options = ''
     prune_table = ''
@@ -82,7 +82,7 @@ class DummyS3CopyToTableBase(luigi.contrib.redshift.S3CopyToTable):
         return 's3://%s/%s' % (BUCKET, KEY)
 
 
-class DummyS3CopyJSONToTableBase(luigi.contrib.redshift.S3CopyJSONToTable):
+class DummyS3CopyJSONToTableBase(trun.contrib.redshift.S3CopyJSONToTable):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     aws_access_key_id = AWS_ACCESS_KEY
@@ -92,8 +92,8 @@ class DummyS3CopyJSONToTableBase(luigi.contrib.redshift.S3CopyJSONToTable):
     database = 'dummy_database'
     user = 'dummy_user'
     password = 'dummy_password'
-    table = luigi.Parameter(default='dummy_table')
-    columns = luigi.TupleParameter(
+    table = trun.Parameter(default='dummy_table')
+    columns = trun.TupleParameter(
         default=(
             ('some_text', 'varchar(255)'),
             ('some_int', 'int'),
@@ -131,7 +131,7 @@ class DummyS3CopyToTableRole(DummyS3CopyToTableBase):
 
 class DummyS3CopyToTempTable(DummyS3CopyToTableKey):
     # Extend/alter DummyS3CopyToTable for temp table copying
-    table = luigi.Parameter(default='stage_dummy_table')
+    table = trun.Parameter(default='stage_dummy_table')
 
     table_type = 'TEMP'
 
@@ -166,10 +166,10 @@ class TestExternalCredentials(unittest.TestCase, DummyS3CopyToTableBase):
 
 @pytest.mark.aws
 class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_with_metadata_columns_enabled(self,
                                                 mock_redshift_target,
                                                 mock_add_columns,
@@ -181,10 +181,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_with_metadata_columns_disabled(self,
                                                  mock_redshift_target,
                                                  mock_add_columns,
@@ -196,10 +196,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
         self.assertFalse(mock_add_columns.called)
         self.assertFalse(mock_update_columns.called)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_json_copy_with_metadata_columns_enabled(self,
                                                      mock_redshift_target,
                                                      mock_add_columns,
@@ -211,10 +211,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
+    @mock.patch("trun.contrib.redshift.S3CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_json_copy_with_metadata_columns_disabled(self,
                                                       mock_redshift_target,
                                                       mock_add_columns,
@@ -229,7 +229,7 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
 
 @pytest.mark.aws
 class TestS3CopyToTable(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_copy_missing_creds(self, mock_redshift_target):
 
         # Make sure credentials are not set as env vars
@@ -252,8 +252,8 @@ class TestS3CopyToTable(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             step.copy(mock_cursor, step.s3_load_path())
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.copy")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_table(self, mock_redshift_target, mock_copy):
         step = DummyS3CopyToTableKey()
         step.run()
@@ -289,9 +289,9 @@ class TestS3CopyToTable(unittest.TestCase):
 
         return
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_table_exist",
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_table_exist",
                 return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_table(self,
                                       mock_redshift_target,
                                       mock_does_exist):
@@ -314,8 +314,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
         return
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_schema(self, mock_redshift_target, mock_does_exist):
         step = DummyS3CopyToTableKey(table='schema.table_with_schema')
         step.run()
@@ -328,8 +328,8 @@ class TestS3CopyToTable(unittest.TestCase):
         executed_query = mock_cursor.execute.call_args_list[0][0][0]
         assert executed_query.startswith("CREATE SCHEMA IF NOT EXISTS schema")
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_schema_with_no_schema(self, mock_redshift_target, mock_does_exist):
         step = DummyS3CopyToTableKey(table='table_with_no_schema')
         step.run()
@@ -342,8 +342,8 @@ class TestS3CopyToTable(unittest.TestCase):
         executed_query = mock_cursor.execute.call_args_list[0][0][0]
         assert not executed_query.startswith("CREATE SCHEMA IF NOT EXISTS")
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=True)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=True)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_existing_schema_with_schema(self, mock_redshift_target, mock_does_exist):
         step = DummyS3CopyToTableKey(table='schema.table_with_schema')
         step.run()
@@ -356,9 +356,9 @@ class TestS3CopyToTable(unittest.TestCase):
         executed_query = mock_cursor.execute.call_args_list[0][0][0]
         assert not executed_query.startswith("CREATE SCHEMA IF NOT EXISTS")
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_table_exist",
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_table_exist",
                 return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_table_with_compression_encodings(self,
                                                                  mock_redshift_target,
                                                                  mock_does_exist):
@@ -388,8 +388,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
         return
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_table_exist", return_value=False)
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.does_table_exist", return_value=False)
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_table_with_table_constraints(self, mock_redshift_target, mock_does_exist):
         table_constraints = 'PRIMARY KEY (COL1, COL2)'
 
@@ -413,8 +413,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
         assert executed_query.startswith(expectation)
 
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.copy")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_temp_table(self, mock_redshift_target, mock_copy):
         step = DummyS3CopyToTempTable()
         step.run()
@@ -452,7 +452,7 @@ class TestS3CopyToTable(unittest.TestCase):
             (step.table,),
         )
 
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_valid_columns(self, mock_redshift_target):
         step = DummyS3CopyToTableKey()
         step.run()
@@ -490,7 +490,7 @@ class TestS3CopyToTable(unittest.TestCase):
             options='')
         )
 
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_default_columns(self, mock_redshift_target):
         step = DummyS3CopyToTableKey(columns=[])
         step.run()
@@ -528,7 +528,7 @@ class TestS3CopyToTable(unittest.TestCase):
             options='')
         )
 
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_nonetype_columns(self, mock_redshift_target):
         step = DummyS3CopyToTableKey(columns=None)
         step.run()
@@ -569,8 +569,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
 @pytest.mark.aws
 class TestS3CopyToSchemaTable(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.S3CopyToTable.copy")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_table(self, mock_redshift_target, mock_copy):
         step = DummyS3CopyToTableKey(table='dummy_schema.dummy_table')
         step.run()
@@ -593,14 +593,14 @@ class TestS3CopyToSchemaTable(unittest.TestCase):
         )
 
 
-class DummyRedshiftUnloadStep(luigi.contrib.redshift.RedshiftUnloadStep):
+class DummyRedshiftUnloadStep(trun.contrib.redshift.RedshiftUnloadStep):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     host = 'dummy_host'
     database = 'dummy_database'
     user = 'dummy_user'
     password = 'dummy_password'
-    table = luigi.Parameter(default='dummy_table')
+    table = trun.Parameter(default='dummy_table')
     columns = (
         ('some_text', 'varchar(255)'),
         ('some_int', 'int'),
@@ -618,7 +618,7 @@ class DummyRedshiftUnloadStep(luigi.contrib.redshift.RedshiftUnloadStep):
 
 @pytest.mark.aws
 class TestRedshiftUnloadStep(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_redshift_unload_command(self, mock_redshift_target):
 
         step = DummyRedshiftUnloadStep()
@@ -640,14 +640,14 @@ class TestRedshiftUnloadStep(unittest.TestCase):
         )
 
 
-class DummyRedshiftAutocommitQuery(luigi.contrib.redshift.RedshiftQuery):
+class DummyRedshiftAutocommitQuery(trun.contrib.redshift.RedshiftQuery):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     host = 'dummy_host'
     database = 'dummy_database'
     user = 'dummy_user'
     password = 'dummy_password'
-    table = luigi.Parameter(default='dummy_table')
+    table = trun.Parameter(default='dummy_table')
     autocommit = True
 
     def query(self):
@@ -656,7 +656,7 @@ class DummyRedshiftAutocommitQuery(luigi.contrib.redshift.RedshiftQuery):
 
 @pytest.mark.aws
 class TestRedshiftAutocommitQuery(unittest.TestCase):
-    @mock.patch("luigi.contrib.redshift.RedshiftTarget")
+    @mock.patch("trun.contrib.redshift.RedshiftTarget")
     def test_redshift_autocommit_query(self, mock_redshift_target):
 
         step = DummyRedshiftAutocommitQuery()
@@ -686,9 +686,9 @@ class TestRedshiftManifestStep(unittest.TestCase):
             folder_paths = [folder_path]
 
             m = mock.mock_open()
-            with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
+            with mock.patch('trun.contrib.s3.S3Target.open', m, create=True):
                 t = redshift.RedshiftManifestStep(path, folder_paths)
-                luigi.build([t], local_scheduler=True)
+                trun.build([t], local_scheduler=True)
 
             expected_manifest_output = json.dumps(
                 generate_manifest_json(folder_paths, FILES))
@@ -710,9 +710,9 @@ class TestRedshiftManifestStep(unittest.TestCase):
             path = 's3://%s/%s/%s' % (BUCKET, 'manifest', 'test.manifest')
 
             m = mock.mock_open()
-            with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
+            with mock.patch('trun.contrib.s3.S3Target.open', m, create=True):
                 t = redshift.RedshiftManifestStep(path, folder_paths)
-                luigi.build([t], local_scheduler=True)
+                trun.build([t], local_scheduler=True)
 
             expected_manifest_output = json.dumps(
                 generate_manifest_json(folder_paths, FILES))

@@ -19,19 +19,19 @@ from setuptools import setup
 
 
 def get_static_files(path):
-    return [os.path.join(dirpath.replace("luigi/", ""), ext)
+    return [os.path.join(dirpath.replace("trun/", ""), ext)
             for (dirpath, dirnames, filenames) in os.walk(path)
             for ext in ["*.html", "*.js", "*.css", "*.png",
                         "*.eot", "*.svg", "*.ttf", "*.woff", "*.woff2"]]
 
 
-luigi_package_data = sum(map(get_static_files, ["luigi/static", "luigi/templates"]), [])
+trun_package_data = sum(map(get_static_files, ["trun/static", "trun/templates"]), [])
 
 readme_note = """
 .. note::
 
    For the latest source, discussion, etc, please visit the
-   `GitHub repository <https://github.com/spotify/luigi>`_
+   `GitHub repository <https://github.com/spotify/trun>`_
 """
 
 with open('README.rst') as fobj:
@@ -60,7 +60,7 @@ if sys.version_info[:2] < (3, 4):
     install_requires.append('enum34>1.1.0')
 
 if os.environ.get('READTHEDOCS', None) == 'True':
-    # So that we can build documentation for luigi.db_step_history and luigi.contrib.sqla
+    # So that we can build documentation for trun.db_step_history and trun.contrib.sqla
     install_requires.append('sqlalchemy')
     # readthedocs don't like python-daemon, see #1342
     install_requires = [x for x in install_requires if not x.startswith('python-daemon')]
@@ -68,11 +68,11 @@ if os.environ.get('READTHEDOCS', None) == 'True':
 
 # load meta package infos
 meta = {}
-with open("luigi/__meta__.py", "r") as f:
+with open("trun/__meta__.py", "r") as f:
     exec(f.read(), meta)
 
 setup(
-    name='luigi',
+    name='trun',
     version=meta['__version__'],
     description=meta['__doc__'].strip(),
     long_description=long_description,
@@ -80,22 +80,22 @@ setup(
     url=meta['__contact__'],
     license=meta['__license__'],
     packages=[
-        'luigi',
-        'luigi.configuration',
-        'luigi.contrib',
-        'luigi.contrib.hdfs',
-        'luigi.tools'
+        'trun',
+        'trun.configuration',
+        'trun.contrib',
+        'trun.contrib.hdfs',
+        'trun.tools'
     ],
     package_data={
-        'luigi': luigi_package_data
+        'trun': trun_package_data
     },
     entry_points={
         'console_scripts': [
-            'luigi = luigi.cmdline:luigi_run',
-            'luigid = luigi.cmdline:luigid',
-            'luigi-grep = luigi.tools.luigi_grep:main',
-            'luigi-deps = luigi.tools.deps:main',
-            'luigi-deps-tree = luigi.tools.deps_tree:main'
+            'trun = trun.cmdline:trun_run',
+            'trund = trun.cmdline:trund',
+            'trun-grep = trun.tools.trun_grep:main',
+            'trun-deps = trun.tools.deps:main',
+            'trun-deps-tree = trun.tools.deps_tree:main'
         ]
     },
     install_requires=install_requires,

@@ -15,14 +15,14 @@
 # limitations under the License.
 #
 
-import luigi
+import trun
 
 
-class OtherModuleStep(luigi.Step):
-    p = luigi.Parameter()
+class OtherModuleStep(trun.Step):
+    p = trun.Parameter()
 
     def output(self):
-        return luigi.LocalTarget(self.p)
+        return trun.LocalTarget(self.p)
 
     def run(self):
         with self.output().open('w') as f:

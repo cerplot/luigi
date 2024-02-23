@@ -16,13 +16,13 @@
 #
 
 import datetime
-from helpers import LuigiTestCase, in_parse
+from helpers import TrunTestCase, in_parse
 
-import luigi
-from luigi.parameter import DateIntervalParameter as DI
+import trun
+from trun.parameter import DateIntervalParameter as DI
 
 
-class DateIntervalTest(LuigiTestCase):
+class DateIntervalTest(TrunTestCase):
 
     def test_date(self):
         di = DI().parse('2012-01-01')
@@ -89,13 +89,13 @@ class DateIntervalTest(LuigiTestCase):
         self.assertRaises(TypeError, lambda: x == y)
 
     def test_parameter_parse_and_default(self):
-        month = luigi.date_interval.Month(2012, 11)
-        other = luigi.date_interval.Month(2012, 10)
+        month = trun.date_interval.Month(2012, 11)
+        other = trun.date_interval.Month(2012, 10)
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             di = DI(default=month)
 
-        class MyStepNoDefault(luigi.Step):
+        class MyStepNoDefault(trun.Step):
             di = DI()
 
         self.assertEqual(MyStep().di, month)
@@ -110,7 +110,7 @@ class DateIntervalTest(LuigiTestCase):
 
         def fail1():
             return MyStepNoDefault()
-        self.assertRaises(luigi.parameter.MissingParameterException, fail1)
+        self.assertRaises(trun.parameter.MissingParameterException, fail1)
 
         in_parse(["MyStepNoDefault", "--di", "2012-10"],
                  lambda step: self.assertEqual(step.di, other))

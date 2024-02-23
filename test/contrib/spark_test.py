@@ -19,12 +19,12 @@ import unittest
 import os
 import sys
 import pickle
-import luigi
-import luigi.contrib.hdfs
-from luigi.mock import MockTarget
+import trun
+import trun.contrib.hdfs
+from trun.mock import MockTarget
 from helpers import with_config, temporary_unloaded_module
-from luigi.contrib.external_program import ExternalProgramRunError
-from luigi.contrib.spark import SparkSubmitStep, PySparkStep
+from trun.contrib.external_program import ExternalProgramRunError
+from trun.contrib.spark import SparkSubmitStep, PySparkStep
 from mock import mock, patch, call, MagicMock
 from functools import partial
 from multiprocessing import Value
@@ -70,20 +70,20 @@ class TestSparkSubmitStep(SparkSubmitStep):
     app = "file"
     pyspark_python = '/a/b/c'
     pyspark_driver_python = '/b/c/d'
-    hadoop_user_name = 'luigiuser'
+    hadoop_user_name = 'trunuser'
 
     def app_options(self):
         return ["arg1", "arg2"]
 
     def output(self):
-        return luigi.LocalTarget('output')
+        return trun.LocalTarget('output')
 
 
 class TestDefaultSparkSubmitStep(SparkSubmitStep):
     app = 'test.py'
 
     def output(self):
-        return luigi.LocalTarget('output')
+        return trun.LocalTarget('output')
 
 
 class TestPySparkStep(PySparkStep):
@@ -119,7 +119,7 @@ class SparkSubmitStepTest(unittest.TestCase):
 
     @with_config(
         {'spark': {'spark-submit': ss, 'master': "yarn-client", 'hadoop-conf-dir': 'path', 'deploy-mode': 'client'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_run(self, proc):
         setup_run_process(proc)
         job = TestSparkSubmitStep()
@@ -139,7 +139,7 @@ class SparkSubmitStepTest(unittest.TestCase):
                           '--queue', 'queue', '--num-executors', '2', 'file', 'arg1', 'arg2'])
 
     @with_config({'spark': {'hadoop-conf-dir': 'path'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_environment_is_set_correctly(self, proc):
         setup_run_process(proc)
         job = TestSparkSubmitStep()
@@ -150,14 +150,14 @@ class SparkSubmitStepTest(unittest.TestCase):
             'spark.pyspark.python': '/a/b/c',
             'spark.pyspark.driver.python': '/b/c/d'
         }
-        assert job.program_environment()['HADOOP_USER_NAME'] == 'luigiuser'
+        assert job.program_environment()['HADOOP_USER_NAME'] == 'trunuser'
         self.assertIn('HADOOP_CONF_DIR', proc.call_args[1]['env'])
         self.assertEqual(proc.call_args[1]['env']['HADOOP_CONF_DIR'], 'path')
 
     @with_config(
         {'spark': {'spark-submit': ss, 'master': 'spark://host:7077', 'conf': 'prop1=val1', 'jars': 'jar1.jar,jar2.jar',
                    'files': 'file1,file2', 'py-files': 'file1.py,file2.py', 'archives': 'archive1'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_defaults(self, proc):
         proc.return_value.returncode = 0
         job = TestDefaultSparkSubmitStep()
@@ -167,9 +167,9 @@ class SparkSubmitStepTest(unittest.TestCase):
                           '--py-files', 'file1.py,file2.py', '--files', 'file1,file2', '--archives', 'archive1',
                           '--conf', 'prop1=val1', 'test.py'])
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_handle_failed_job(self, proc, file, logger):
         proc.return_value.returncode = 1
         file.return_value = BytesIO(b'spark test error')
@@ -184,9 +184,9 @@ class SparkSubmitStepTest(unittest.TestCase):
         else:
             self.fail("Should have thrown ExternalProgramRunError")
 
-    @patch('luigi.contrib.external_program.logger')
-    @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.logger')
+    @patch('trun.contrib.external_program.tempfile.TemporaryFile')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_dont_log_stderr_on_success(self, proc, file, logger):
         proc.return_value.returncode = 0
         file.return_value = BytesIO(b'spark normal error output')
@@ -197,13 +197,13 @@ class SparkSubmitStepTest(unittest.TestCase):
             'Program stderr:\nspark normal error output'),
             logger.mock_calls)
 
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_app_must_be_set(self, proc):
         with self.assertRaises(NotImplementedError):
             job = SparkSubmitStep()
             job.run()
 
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_app_interruption(self, proc):
 
         def interrupt():
@@ -230,7 +230,7 @@ class SparkSubmitStepTest(unittest.TestCase):
                          shell=True, **kwargs)
 
         step = TestSparkSubmitStep()
-        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+        with mock.patch('trun.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
             with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
                 step.run()
                 self.assertEqual(test_val.value, 1)
@@ -247,7 +247,7 @@ class SparkSubmitStepTest(unittest.TestCase):
             return Popen('>&2 echo "tracking URL: https://127.0.0.1:4040"', shell=True, **kwargs)
 
         step = TestSparkSubmitStep()
-        with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
+        with mock.patch('trun.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
             with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
                 step.run()
                 self.assertEqual(test_val.value, 1)
@@ -258,7 +258,7 @@ class PySparkStepTest(unittest.TestCase):
     ss = 'ss-stub'
 
     @with_config({'spark': {'spark-submit': ss, 'master': "spark://host:7077", 'deploy-mode': 'client'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_run(self, proc):
         setup_run_process(proc)
         job = TestPySparkStep()
@@ -271,11 +271,11 @@ class PySparkStepTest(unittest.TestCase):
         self.assertTrue(proc_arg_list[8].endswith('TestPySparkStep.pickle'))
 
     @with_config({'spark': {'spark-submit': ss, 'master': "spark://host:7077", 'deploy-mode': 'client'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_run_with_pickle_dump(self, proc):
         setup_run_process(proc)
         job = TestPySparkStep()
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         self.assertEqual(proc.call_count, 1)
         proc_arg_list = proc.call_args[0][0]
         self.assertEqual(proc_arg_list[0:7],
@@ -285,7 +285,7 @@ class PySparkStepTest(unittest.TestCase):
         self.assertTrue(proc_arg_list[8].endswith('TestPySparkStep.pickle'))
 
     @with_config({'spark': {'spark-submit': ss, 'master': "spark://host:7077", 'deploy-mode': 'cluster'}})
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_run_with_cluster(self, proc):
         setup_run_process(proc)
         job = TestPySparkStep()
@@ -304,7 +304,7 @@ class PySparkStepTest(unittest.TestCase):
         sc = spark_context.return_value
 
         def mock_spark_submit(step):
-            from luigi.contrib.pyspark_runner import PySparkRunner
+            from trun.contrib.pyspark_runner import PySparkRunner
             PySparkRunner(*step.app_command()[1:]).run()
             # Check py-package exists
             self.assertTrue(os.path.exists(sc.addPyFile.call_args[0][0]))
@@ -335,7 +335,7 @@ class PySparkStepTest(unittest.TestCase):
             sc = spark.sparkContext
 
             def mock_spark_submit(step):
-                from luigi.contrib.pyspark_runner import PySparkSessionRunner
+                from trun.contrib.pyspark_runner import PySparkSessionRunner
                 PySparkSessionRunner(*step.app_command()[1:]).run()
                 # Check py-package exists
                 self.assertTrue(os.path.exists(sc.addPyFile.call_args[0][0]))
@@ -363,7 +363,7 @@ class PySparkStepTest(unittest.TestCase):
         pyspark_sql = MagicMock()
         with patch.dict(sys.modules, {'pyspark': pyspark, 'pyspark.sql': pyspark_sql}):
             def mock_spark_submit(step):
-                from luigi.contrib.pyspark_runner import PySparkSessionRunner
+                from trun.contrib.pyspark_runner import PySparkSessionRunner
                 self.assertRaises(RuntimeError, PySparkSessionRunner(*step.app_command()[1:]).run)
 
             with patch.object(SparkSubmitStep, 'run', mock_spark_submit):
@@ -371,7 +371,7 @@ class PySparkStepTest(unittest.TestCase):
                 with temporary_unloaded_module(b'') as step_module:
                     with_config({'spark': {'py-packages': step_module}})(job.run)()
 
-    @patch('luigi.contrib.external_program.subprocess.Popen')
+    @patch('trun.contrib.external_program.subprocess.Popen')
     def test_name_cleanup(self, proc):
         setup_run_process(proc)
         job = MessyNamePySparkStep()

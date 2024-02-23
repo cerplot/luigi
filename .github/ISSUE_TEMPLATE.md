@@ -1,6 +1,6 @@
 <!---
 We use GitHub issues mainly for tracking bugs and feature requests.
-Questions for how to use luigi can be sent to the mailing list.
+Questions for how to use trun can be sent to the mailing list.
 
 Currently, there are no strict procedures or guidelines for submitting issues.
 In short, please just use common sense.

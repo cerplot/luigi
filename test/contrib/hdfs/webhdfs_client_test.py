@@ -19,7 +19,7 @@ import unittest
 import pytest
 
 from helpers import with_config
-from luigi.contrib.hdfs import WebHdfsClient
+from trun.contrib.hdfs import WebHdfsClient
 
 InsecureClient = pytest.importorskip('hdfs.InsecureClient')
 KerberosClient = pytest.importorskip('hdfs.ext.kerberos.KerberosClient')

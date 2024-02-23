@@ -15,25 +15,25 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase, temporary_unloaded_module
+from helpers import TrunTestCase, temporary_unloaded_module
 
-import luigi
-import luigi.interface
+import trun
+import trun.interface
 
 CONTENTS = b'''
-import luigi
+import trun
 
-class FooStep(luigi.Step):
-    x = luigi.IntParameter()
+class FooStep(trun.Step):
+    x = trun.IntParameter()
 
     def run(self):
-        luigi._testing_glob_var = self.x
+        trun._testing_glob_var = self.x
 '''
 
 
-class CmdlineTest(LuigiTestCase):
+class CmdlineTest(TrunTestCase):
 
     def test_dynamic_loading(self):
         with temporary_unloaded_module(CONTENTS) as temp_module_name:
-            luigi.interface.run(['--module', temp_module_name, 'FooStep', '--x', '123', '--local-scheduler', '--no-lock'])
-            self.assertEqual(luigi._testing_glob_var, 123)
+            trun.interface.run(['--module', temp_module_name, 'FooStep', '--x', '123', '--local-scheduler', '--no-lock'])
+            self.assertEqual(trun._testing_glob_var, 123)

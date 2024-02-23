@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-"""This is an integration test for the GCS-luigi binding.
+"""This is an integration test for the GCS-trun binding.
 
 This test requires credentials that can access GCS & access to a bucket below.
 Follow the directions in the gcloud tools to set up local credentials.
@@ -32,7 +32,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from luigi.contrib import gcs
+from trun.contrib import gcs
 from target_test import FileSystemTargetTestMixin
 import pytest
 

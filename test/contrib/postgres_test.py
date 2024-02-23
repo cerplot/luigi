@@ -13,9 +13,9 @@
 # the License.
 
 import datetime
-import luigi
-import luigi.contrib.postgres
-from luigi.tools.range import RangeDaily
+import trun
+import trun.contrib.postgres
+from trun.tools.range import RangeDaily
 from helpers import unittest
 import mock
 import pytest
@@ -44,8 +44,8 @@ class MockPostgresCursor(mock.Mock):
         return self.fetchone_result
 
 
-class DummyPostgresImporter(luigi.contrib.postgres.CopyToTable):
-    date = luigi.DateParameter()
+class DummyPostgresImporter(trun.contrib.postgres.CopyToTable):
+    date = trun.DateParameter()
 
     host = 'dummy_host'
     database = 'dummy_database'
@@ -83,8 +83,8 @@ class DailyCopyToTableTest(unittest.TestCase):
         self.assertFalse(step.complete())
 
 
-class DummyPostgresQuery(luigi.contrib.postgres.PostgresQuery):
-    date = luigi.DateParameter()
+class DummyPostgresQuery(trun.contrib.postgres.PostgresQuery):
+    date = trun.DateParameter()
 
     host = 'dummy_host'
     database = 'dummy_database'
@@ -141,11 +141,11 @@ class PostgresQueryTest(unittest.TestCase):
 
 @pytest.mark.postgres
 class TestCopyToTableWithMetaColumns(unittest.TestCase):
-    @mock.patch("luigi.contrib.postgres.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.postgres.CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.postgres.CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.postgres.CopyToTable.rows", return_value=['row1', 'row2'])
-    @mock.patch("luigi.contrib.postgres.PostgresTarget")
+    @mock.patch("trun.contrib.postgres.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.postgres.CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.postgres.CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.postgres.CopyToTable.rows", return_value=['row1', 'row2'])
+    @mock.patch("trun.contrib.postgres.PostgresTarget")
     @mock.patch('psycopg2.connect')
     def test_copy_with_metadata_columns_enabled(self,
                                                 mock_connect,
@@ -166,11 +166,11 @@ class TestCopyToTableWithMetaColumns(unittest.TestCase):
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
 
-    @mock.patch("luigi.contrib.postgres.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
-    @mock.patch("luigi.contrib.postgres.CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.postgres.CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.postgres.CopyToTable.rows", return_value=['row1', 'row2'])
-    @mock.patch("luigi.contrib.postgres.PostgresTarget")
+    @mock.patch("trun.contrib.postgres.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
+    @mock.patch("trun.contrib.postgres.CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.postgres.CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.postgres.CopyToTable.rows", return_value=['row1', 'row2'])
+    @mock.patch("trun.contrib.postgres.PostgresTarget")
     @mock.patch('psycopg2.connect')
     def test_copy_with_metadata_columns_disabled(self,
                                                  mock_connect,

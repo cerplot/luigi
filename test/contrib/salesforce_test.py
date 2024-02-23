@@ -20,11 +20,11 @@
 Unit test for the Salesforce contrib package
 """
 
-from luigi.contrib.salesforce import SalesforceAPI, QuerySalesforce
+from trun.contrib.salesforce import SalesforceAPI, QuerySalesforce
 
 from helpers import unittest
 import mock
-from luigi.mock import MockTarget
+from trun.mock import MockTarget
 import re
 
 import pytest

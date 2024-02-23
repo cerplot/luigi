@@ -24,10 +24,10 @@ import sys
 from helpers import unittest
 import mock
 
-import luigi.format
-from luigi import LocalTarget
-from luigi.local_target import LocalFileSystem
-from luigi.target import FileAlreadyExists, MissingParentDirectory
+import trun.format
+from trun import LocalTarget
+from trun.local_target import LocalFileSystem
+from trun.target import FileAlreadyExists, MissingParentDirectory
 from target_test import FileSystemTargetTestMixin
 
 import itertools
@@ -78,7 +78,7 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
         self.assertTrue(target.exists())
 
     def test_gzip_with_module(self):
-        t = LocalTarget(self.path, luigi.format.Gzip)
+        t = LocalTarget(self.path, trun.format.Gzip)
         p = t.open('w')
         test_data = b'test'
         p.write(test_data)
@@ -93,12 +93,12 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
         f.close()
 
         # Verifying our own gzip reader
-        f = LocalTarget(self.path, luigi.format.Gzip).open('r')
+        f = LocalTarget(self.path, trun.format.Gzip).open('r')
         self.assertTrue(test_data == f.read())
         f.close()
 
     def test_bzip2(self):
-        t = LocalTarget(self.path, luigi.format.Bzip2)
+        t = LocalTarget(self.path, trun.format.Bzip2)
         p = t.open('w')
         test_data = b'test'
         p.write(test_data)
@@ -113,7 +113,7 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
         f.close()
 
         # Verifying our own bzip2 reader
-        f = LocalTarget(self.path, luigi.format.Bzip2).open('r')
+        f = LocalTarget(self.path, trun.format.Bzip2).open('r')
         self.assertTrue(test_data == f.read())
         f.close()
 
@@ -169,8 +169,8 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
         self.assertEqual('test_data', LocalTarget(copy).open('r').read())
 
     def test_format_chain(self):
-        UTF8WIN = luigi.format.TextFormat(encoding='utf8', newline='\r\n')
-        t = LocalTarget(self.path, UTF8WIN >> luigi.format.Gzip)
+        UTF8WIN = trun.format.TextFormat(encoding='utf8', newline='\r\n')
+        t = LocalTarget(self.path, UTF8WIN >> trun.format.Gzip)
         a = u'我é\nçф'
 
         with t.open('w') as f:
@@ -183,7 +183,7 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
         self.assertEqual(b'\xe6\x88\x91\xc3\xa9\r\n\xc3\xa7\xd1\x84', b)
 
     def test_format_chain_reverse(self):
-        t = LocalTarget(self.path, luigi.format.UTF8 >> luigi.format.Gzip)
+        t = LocalTarget(self.path, trun.format.UTF8 >> trun.format.Gzip)
 
         f = gzip.open(self.path, 'wb')
         f.write(b'\xe6\x88\x91\xc3\xa9\r\n\xc3\xa7\xd1\x84')
@@ -196,7 +196,7 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
 
     @mock.patch('os.linesep', '\r\n')
     def test_format_newline(self):
-        t = LocalTarget(self.path, luigi.format.SysNewLine)
+        t = LocalTarget(self.path, trun.format.SysNewLine)
 
         with t.open('w') as f:
             f.write(b'a\rb\nc\r\nd')
@@ -238,33 +238,33 @@ class LocalTargetTest(unittest.TestCase, FileSystemTargetTestMixin):
                 modes.add(mode)
         return modes
 
-    def valid_write_io_modes_for_luigi(self):
+    def valid_write_io_modes_for_trun(self):
         return self.valid_io_modes('w', plus=[''])
 
-    def valid_read_io_modes_for_luigi(self):
+    def valid_read_io_modes_for_trun(self):
         return self.valid_io_modes('r', plus=[''])
 
-    def invalid_io_modes_for_luigi(self):
+    def invalid_io_modes_for_trun(self):
         return self.valid_io_modes().difference(
-            self.valid_write_io_modes_for_luigi(),
-            self.valid_read_io_modes_for_luigi())
+            self.valid_write_io_modes_for_trun(),
+            self.valid_read_io_modes_for_trun())
 
     def test_open_modes(self):
         t = LocalTarget(is_tmp=True)
         print('Valid write mode:', end=' ')
-        for mode in self.valid_write_io_modes_for_luigi():
+        for mode in self.valid_write_io_modes_for_trun():
             print(mode, end=' ')
             p = t.open(mode)
             p.close()
         print()
         print('Valid read mode:', end=' ')
-        for mode in self.valid_read_io_modes_for_luigi():
+        for mode in self.valid_read_io_modes_for_trun():
             print(mode, end=' ')
             p = t.open(mode)
             p.close()
         print()
         print('Invalid mode:', end=' ')
-        for mode in self.invalid_io_modes_for_luigi():
+        for mode in self.invalid_io_modes_for_trun():
             print(mode, end=' ')
             self.assertRaises(Exception, t.open, mode)
         print()
@@ -304,7 +304,7 @@ class TmpFileTest(unittest.TestCase):
 
 
 class FileSystemTest(unittest.TestCase):
-    path = '/tmp/luigi-test-dir'
+    path = '/tmp/trun-test-dir'
     fs = LocalFileSystem()
 
     def setUp(self):

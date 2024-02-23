@@ -18,7 +18,7 @@
 # this is an integration test. to run this test requires that an actuall FTP server
 # is running somewhere. to run a local ftp server do the following
 # pip install pyftpdlib==1.5.0
-# mkdir /tmp/luigi-test-ftp/
+# mkdir /tmp/trun-test-ftp/
 # sudo python -m _test_ftp
 
 
@@ -32,7 +32,7 @@ from helpers import unittest
 from io import StringIO
 
 
-from luigi.contrib.ftp import RemoteFileSystem, RemoteTarget
+from trun.contrib.ftp import RemoteFileSystem, RemoteTarget
 
 # dumb files
 FILE1 = """this is file1"""
@@ -40,7 +40,7 @@ FILE2 = """this is file2"""
 FILE3 = """this is file3"""
 
 HOST = "localhost"
-USER = "luigi"
+USER = "trun"
 PWD = "some_password"
 
 
@@ -101,8 +101,8 @@ class TestFTPFilesystemUpload(unittest.TestCase):
 
     def test_single(self):
         """ Test upload file with creation of intermediate folders """
-        ftp_path = "/test/nest/luigi-test"
-        local_filepath = "/tmp/luigi-test-ftp"
+        ftp_path = "/test/nest/trun-test"
+        local_filepath = "/tmp/trun-test-ftp"
 
         # create local temp file
         with open(local_filepath, 'w') as outfile:
@@ -116,10 +116,10 @@ class TestFTPFilesystemUpload(unittest.TestCase):
         ftp.cwd("/test/nest")
         list_dir = ftp.nlst()
         # file is successfuly created
-        self.assertTrue("luigi-test" in list_dir)
+        self.assertTrue("trun-test" in list_dir)
 
         # delete tmp files
-        ftp.delete("luigi-test")
+        ftp.delete("trun-test")
         ftp.cwd("/")
         ftp.rmd("/test/nest")
         ftp.rmd("test")
@@ -131,7 +131,7 @@ class TestRemoteTarget(unittest.TestCase):
 
     def test_put(self):
         """ Test RemoteTarget put method with uploading to an FTP """
-        local_filepath = "/tmp/luigi-remotetarget-write-test"
+        local_filepath = "/tmp/trun-remotetarget-write-test"
         remote_file = "/test/example.put.file"
 
         # create local temp file
@@ -158,8 +158,8 @@ class TestRemoteTarget(unittest.TestCase):
 
     def test_get(self):
         """ Test Remote target get method downloading a file from ftp """
-        local_filepath = "/tmp/luigi-remotetarget-read-test"
-        tmp_filepath = "/tmp/tmp-luigi-remotetarget-read-test"
+        local_filepath = "/tmp/trun-remotetarget-read-test"
+        tmp_filepath = "/tmp/tmp-trun-remotetarget-read-test"
         remote_file = "/test/example.get.file"
 
         # create local temp file
@@ -218,7 +218,7 @@ def _run_ftp_server():
     # Instantiate a dummy authorizer for managing 'virtual' users
     authorizer = DummyAuthorizer()
 
-    tmp_folder = '/tmp/luigi-test-ftp-server/'
+    tmp_folder = '/tmp/trun-test-ftp-server/'
     if os.path.exists(tmp_folder):
         shutil.rmtree(tmp_folder)
     os.mkdir(tmp_folder)

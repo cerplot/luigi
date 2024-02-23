@@ -15,7 +15,7 @@
 # the License.
 #
 """
-This file implements unit test cases for luigi/contrib/sqla.py
+This file implements unit test cases for trun/contrib/sqla.py
 Author: Gouthaman Balaraman
 Date: 01/02/2015
 """
@@ -24,15 +24,15 @@ import shutil
 import tempfile
 import unittest
 
-import luigi
+import trun
 import sqlalchemy
-from luigi.contrib import sqla
-from luigi.mock import MockTarget
+from trun.contrib import sqla
+from trun.mock import MockTarget
 import pytest
 from helpers import skipOnTravisAndGithubActions
 
 
-class BaseStep(luigi.Step):
+class BaseStep(trun.Step):
 
     STEP_LIST = ["item%d\tproperty%d\n" % (i, i) for i in range(10)]
 
@@ -149,7 +149,7 @@ class TestSQLA(unittest.TestCase):
 
     def test_rows(self):
         step, step0 = self.SQLAStep(), BaseStep()
-        luigi.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
 
         for i, row in enumerate(step.rows()):
             given = BaseStep.STEP_LIST[i].strip("\n").split("\t")
@@ -163,11 +163,11 @@ class TestSQLA(unittest.TestCase):
         """
         step, step0 = self.SQLAStep(), BaseStep()
         self.engine = sqlalchemy.create_engine(step.connection_string)
-        luigi.build([step0, step], local_scheduler=True)
+        trun.build([step0, step], local_scheduler=True)
         self._check_entries(self.engine)
 
         # rerun and the num entries should be the same
-        luigi.build([step0, step], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step0, step], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_run_with_chunk_size(self):
@@ -178,7 +178,7 @@ class TestSQLA(unittest.TestCase):
         step, step0 = self.SQLAStep(), BaseStep()
         self.engine = sqlalchemy.create_engine(step.connection_string)
         step.chunk_size = 2  # change chunk size and check it runs ok
-        luigi.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_reflect(self):
@@ -209,7 +209,7 @@ class TestSQLA(unittest.TestCase):
                     yield line.strip("\n").split("\t")
 
         step0, step1, step2 = AnotherSQLAStep(), self.SQLAStep(), BaseStep()
-        luigi.build([step0, step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step0, step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_create_marker_table(self):
@@ -252,7 +252,7 @@ class TestSQLA(unittest.TestCase):
                     yield row
 
         step = SQLARowOverloadTest()
-        luigi.build([step], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_column_row_separator(self):
@@ -260,7 +260,7 @@ class TestSQLA(unittest.TestCase):
         Test alternate column row separator works
         :return:
         """
-        class ModBaseStep(luigi.Step):
+        class ModBaseStep(trun.Step):
 
             def output(self):
                 return MockTarget("ModBaseStep", mirror_on_stderr=True)
@@ -286,7 +286,7 @@ class TestSQLA(unittest.TestCase):
                 return ModBaseStep()
 
         step1, step2 = ModBaseStep(), ModSQLAStep()
-        luigi.build([step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_update_rows_test(self):
@@ -294,7 +294,7 @@ class TestSQLA(unittest.TestCase):
         Overload the copy() method and implement an update action.
         :return:
         """
-        class ModBaseStep(luigi.Step):
+        class ModBaseStep(trun.Step):
 
             def output(self):
                 return MockTarget("BaseStep", mirror_on_stderr=True)
@@ -338,18 +338,18 @@ class TestSQLA(unittest.TestCase):
 
         # Running only step1, and step2 should fail
         step1, step2, step3 = ModBaseStep(), ModSQLAStep(), UpdateSQLAStep()
-        luigi.build([step1, step2, step3], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step1, step2, step3], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
-    @skipOnTravisAndGithubActions('AssertionError: 10 != 7; https://travis-ci.org/spotify/luigi/jobs/156732446')
+    @skipOnTravisAndGithubActions('AssertionError: 10 != 7; https://travis-ci.org/spotify/trun/jobs/156732446')
     def test_multiple_steps(self):
         """
         Test a case where there are multiple steps
         :return:
         """
         class SmallSQLAStep(sqla.CopyToTable):
-            item = luigi.Parameter()
-            property = luigi.Parameter()
+            item = trun.Parameter()
+            property = trun.Parameter()
             columns = [
                 (["item", sqlalchemy.String(64)], {}),
                 (["property", sqlalchemy.String(64)], {})
@@ -361,14 +361,14 @@ class TestSQLA(unittest.TestCase):
             def rows(self):
                 yield (self.item, self.property)
 
-        class ManyBaseStep(luigi.Step):
+        class ManyBaseStep(trun.Step):
             def requires(self):
                 for t in BaseStep.STEP_LIST:
                     item, property = t.strip().split("\t")
                     yield SmallSQLAStep(item=item, property=property)
 
         step2 = ManyBaseStep()
-        luigi.build([step2], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_multiple_engines(self):
@@ -382,7 +382,7 @@ class TestSQLA(unittest.TestCase):
 
         step0, step1, step2 = BaseStep(), self.SQLAStep(), MultiEngineStep()
         self.assertTrue(step1.output().engine != step2.output().engine)
-        luigi.build([step2, step1, step0], local_scheduler=True, workers=self.NUM_WORKERS)
+        trun.build([step2, step1, step0], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(step1.output().engine)
         self._check_entries(step2.output().engine)
 

@@ -22,18 +22,18 @@ import tempfile
 import shutil
 import contextlib
 
-import luigi
-from luigi.scheduler import Scheduler
-from luigi.worker import Worker
+import trun
+from trun.scheduler import Scheduler
+from trun.worker import Worker
 
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
 
-class WorkerSchedulerCommunicationTest(LuigiTestCase):
+class WorkerSchedulerCommunicationTest(TrunTestCase):
     """
     Tests related to communication between Worker and Scheduler that is based on the ping polling.
 
-    See https://github.com/spotify/luigi/pull/1993
+    See https://github.com/spotify/trun/pull/1993
     """
 
     def run(self, result=None):
@@ -50,14 +50,14 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
     def wrapper_step(test_self):
         tmp = tempfile.mkdtemp()
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
 
-            n = luigi.IntParameter()
+            n = trun.IntParameter()
             delay = 3
 
             def output(self):
                 basename = "%s_%s.txt" % (self.__class__.__name__, self.n)
-                return luigi.LocalTarget(os.path.join(tmp, basename))
+                return trun.LocalTarget(os.path.join(tmp, basename))
 
             def run(self):
                 time.sleep(self.delay)

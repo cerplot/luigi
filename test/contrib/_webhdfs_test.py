@@ -18,7 +18,7 @@
 import os
 from helpers import unittest
 
-from luigi.contrib import webhdfs
+from trun.contrib import webhdfs
 
 import pytest
 
@@ -28,12 +28,12 @@ class TestWebHdfsTarget(unittest.TestCase):
 
     '''
     This test requires a running Hadoop cluster with WebHdfs enabled
-    This test requires the luigi.cfg file to have a `hdfs` section
+    This test requires the trun.cfg file to have a `hdfs` section
     with the namenode_host, namenode_port and user settings.
     '''
 
     def setUp(self):
-        self.testDir = "/tmp/luigi-test".format()
+        self.testDir = "/tmp/trun-test".format()
         self.path = os.path.join(self.testDir, 'out.txt')
         self.client = webhdfs.WebHdfsClient()
         self.target = webhdfs.WebHdfsTarget(self.path)

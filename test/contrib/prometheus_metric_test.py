@@ -2,9 +2,9 @@ from helpers import unittest
 import pytest
 from prometheus_client import CONTENT_TYPE_LATEST
 
-from luigi.contrib.prometheus_metric import PrometheusMetricsCollector
-from luigi.metrics import MetricsCollectors
-from luigi.scheduler import Scheduler
+from trun.contrib.prometheus_metric import PrometheusMetricsCollector
+from trun.metrics import MetricsCollectors
+from trun.scheduler import Scheduler
 
 try:
     from unittest import mock
@@ -22,7 +22,7 @@ class PrometheusMetricTest(unittest.TestCase):
     def setUp(self):
         self.collector = PrometheusMetricsCollector()
         self.s = Scheduler(metrics_collector=MetricsCollectors.prometheus)
-        self.gauge_name = 'luigi_step_execution_time_seconds'
+        self.gauge_name = 'trun_step_execution_time_seconds'
         self.labels = {'family': STEP_FAMILY}
 
     def startStep(self):
@@ -36,7 +36,7 @@ class PrometheusMetricTest(unittest.TestCase):
         step = self.startStep()
         self.collector.handle_step_started(step)
 
-        counter_name = 'luigi_step_started_total'
+        counter_name = 'trun_step_started_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
@@ -47,7 +47,7 @@ class PrometheusMetricTest(unittest.TestCase):
         step = self.startStep()
         self.collector.handle_step_failed(step)
 
-        counter_name = 'luigi_step_failed_total'
+        counter_name = 'trun_step_failed_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
@@ -58,7 +58,7 @@ class PrometheusMetricTest(unittest.TestCase):
         step = self.startStep()
         self.collector.handle_step_disabled(step, self.s._config)
 
-        counter_name = 'luigi_step_disabled_total'
+        counter_name = 'trun_step_disabled_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
@@ -69,7 +69,7 @@ class PrometheusMetricTest(unittest.TestCase):
         step = self.startStep()
         self.collector.handle_step_done(step)
 
-        counter_name = 'luigi_step_done_total'
+        counter_name = 'trun_step_done_total'
         gauge_name = self.gauge_name
         labels = self.labels
 

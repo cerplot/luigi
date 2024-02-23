@@ -20,34 +20,34 @@ import sys
 import json
 import unittest
 
-import luigi
-import luigi.format
-import luigi.contrib.hadoop
-import luigi.contrib.hdfs
-import luigi.contrib.mrrunner
-import luigi.notifications
+import trun
+import trun.format
+import trun.contrib.hadoop
+import trun.contrib.hdfs
+import trun.contrib.mrrunner
+import trun.notifications
 import mock
-from luigi.mock import MockTarget
+from trun.mock import MockTarget
 from io import StringIO
 import pytest
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class OutputMixin(luigi.Step):
-    use_hdfs = luigi.BoolParameter(default=False)
+class OutputMixin(trun.Step):
+    use_hdfs = trun.BoolParameter(default=False)
 
     def get_output(self, fn):
         if self.use_hdfs:
-            return luigi.contrib.hdfs.HdfsTarget('/tmp/' + fn, format=luigi.format.get_default_format() >> luigi.contrib.hdfs.PlainDir)
+            return trun.contrib.hdfs.HdfsTarget('/tmp/' + fn, format=trun.format.get_default_format() >> trun.contrib.hdfs.PlainDir)
         else:
             return MockTarget(fn)
 
 
-class HadoopJobStep(luigi.contrib.hadoop.JobStep, OutputMixin):
+class HadoopJobStep(trun.contrib.hadoop.JobStep, OutputMixin):
 
     def job_runner(self):
-        return luigi.contrib.hadoop.LocalJobRunner()
+        return trun.contrib.hadoop.LocalJobRunner()
 
 
 class Words(OutputMixin):
@@ -104,7 +104,7 @@ class WordFreqJob(HadoopJobStep):
         return Words(self.use_hdfs)
 
     def output(self):
-        return self.get_output('luigitest-2')
+        return self.get_output('truntest-2')
 
     def extra_files(self):
         fn = os.listdir('.')[0]  # Just return some file, doesn't matter which
@@ -124,7 +124,7 @@ class MapOnlyJob(HadoopJobStep):
         return Words(self.use_hdfs)
 
     def output(self):
-        return self.get_output('luigitest-3')
+        return self.get_output('truntest-3')
 
 
 class UnicodeJob(HadoopJobStep):
@@ -140,7 +140,7 @@ class UnicodeJob(HadoopJobStep):
         return Words(self.use_hdfs)
 
     def output(self):
-        return self.get_output('luigitest-4')
+        return self.get_output('truntest-4')
 
 
 class UseJsonAsDataInteterchangeFormatJob(HadoopJobStep):
@@ -158,7 +158,7 @@ class UseJsonAsDataInteterchangeFormatJob(HadoopJobStep):
         return Words(self.use_hdfs)
 
     def output(self):
-        return self.get_output('luigitest-5')
+        return self.get_output('truntest-5')
 
 
 class FailingJobException(Exception):
@@ -174,8 +174,8 @@ class FailingJob(HadoopJobStep):
         return self.get_output('failing')
 
 
-class MyStreamingJob(luigi.contrib.hadoop.JobStep):
-    param = luigi.Parameter()
+class MyStreamingJob(trun.contrib.hadoop.JobStep):
+    param = trun.Parameter()
 
 
 def read_wordcount_output(p):
@@ -191,21 +191,21 @@ class CommonTests:
     @staticmethod
     def test_run(test_case):
         job = WordCountJob(use_hdfs=test_case.use_hdfs)
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         c = read_wordcount_output(job.output())
         test_case.assertEqual(int(c['jk']), 6)
 
     @staticmethod
     def test_run_2(test_case):
         job = WordFreqJob(use_hdfs=test_case.use_hdfs)
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         c = read_wordcount_output(job.output())
         test_case.assertAlmostEquals(float(c['jk']), 6.0 / 33.0)
 
     @staticmethod
     def test_map_only(test_case):
         job = MapOnlyJob(use_hdfs=test_case.use_hdfs)
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         c = []
         for line in job.output().open('r'):
             c.append(line.strip())
@@ -215,7 +215,7 @@ class CommonTests:
     @staticmethod
     def test_unicode_job(test_case):
         job = UnicodeJob(use_hdfs=test_case.use_hdfs)
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         c = []
         for line in job.output().open('r'):
             c.append(line)
@@ -227,7 +227,7 @@ class CommonTests:
     @staticmethod
     def test_use_json_as_data_interchange_format_job(test_case):
         job = UseJsonAsDataInteterchangeFormatJob(use_hdfs=test_case.use_hdfs)
-        luigi.build([job], local_scheduler=True)
+        trun.build([job], local_scheduler=True)
         c = []
         for line in job.output().open('r'):
             c.append(line)
@@ -237,7 +237,7 @@ class CommonTests:
     def test_failing_job(test_case):
         job = FailingJob(use_hdfs=test_case.use_hdfs)
 
-        success = luigi.build([job], local_scheduler=True)
+        success = trun.build([job], local_scheduler=True)
         test_case.assertFalse(success)
 
 
@@ -246,7 +246,7 @@ class MapreduceLocalTest(unittest.TestCase):
     use_hdfs = False
 
     def run_and_check(self, args):
-        run_exit_status = luigi.run(['--local-scheduler', '--no-lock'] + args)
+        run_exit_status = trun.run(['--local-scheduler', '--no-lock'] + args)
         return run_exit_status
 
     def test_run(self):
@@ -268,12 +268,12 @@ class MapreduceLocalTest(unittest.TestCase):
         CommonTests.test_failing_job(self)
 
     def test_instantiate_job(self):
-        # See https://github.com/spotify/luigi/issues/738
+        # See https://github.com/spotify/trun/issues/738
         MyStreamingJob('param_value')
 
     def test_cmd_line(self):
-        class DummyHadoopStep(luigi.contrib.hadoop.JobStep):
-            param = luigi.Parameter()
+        class DummyHadoopStep(trun.contrib.hadoop.JobStep):
+            param = trun.Parameter()
 
             def run(self):
                 if 'mypool' not in ''.join(self.jobconfs()):
@@ -319,49 +319,49 @@ class CreatePackagesArchive(unittest.TestCase):
     def test_create_packages_archive_module(self, tar):
         module = __import__("module", None, None, 'dummy')
         module.__file__ = os.path.relpath(module.__file__, os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([module], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([module], '/dev/null')
         self._assert_module(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package(self, tar):
         package = __import__("package", None, None, 'dummy')
         package.__path__[0] = os.path.relpath(package.__path__[0], os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package], '/dev/null')
         self._assert_package(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package_submodule(self, tar):
         package_submodule = __import__("package.submodule", None, None, 'dummy')
         package_submodule.__file__ = os.path.relpath(package_submodule.__file__, os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package_submodule], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package_submodule], '/dev/null')
         self._assert_package(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package_submodule_with_absolute_import(self, tar):
         package_submodule_with_absolute_import = __import__("package.submodule_with_absolute_import", None, None, 'dummy')
         package_submodule_with_absolute_import.__file__ = os.path.relpath(package_submodule_with_absolute_import.__file__, os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package_submodule_with_absolute_import], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package_submodule_with_absolute_import], '/dev/null')
         self._assert_package(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package_submodule_without_imports(self, tar):
         package_submodule_without_imports = __import__("package.submodule_without_imports", None, None, 'dummy')
         package_submodule_without_imports.__file__ = os.path.relpath(package_submodule_without_imports.__file__, os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package_submodule_without_imports], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package_submodule_without_imports], '/dev/null')
         self._assert_package(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package_subpackage(self, tar):
         package_subpackage = __import__("package.subpackage", None, None, 'dummy')
         package_subpackage.__path__[0] = os.path.relpath(package_subpackage.__path__[0], os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package_subpackage], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package_subpackage], '/dev/null')
         self._assert_package_subpackage(tar.return_value.add)
 
     @mock.patch('tarfile.open')
     def test_create_packages_archive_package_subpackage_submodule(self, tar):
         package_subpackage_submodule = __import__("package.subpackage.submodule", None, None, 'dummy')
         package_subpackage_submodule.__file__ = os.path.relpath(package_subpackage_submodule.__file__, os.getcwd())
-        luigi.contrib.hadoop.create_packages_archive([package_subpackage_submodule], '/dev/null')
+        trun.contrib.hadoop.create_packages_archive([package_subpackage_submodule], '/dev/null')
         self._assert_package_subpackage(tar.return_value.add)
 
 
@@ -397,9 +397,9 @@ class JobRunnerTest(unittest.TestCase):
         self.tracking_urls.append(url)
 
     def _run_and_track(self, err_lines, returncode):
-        with mock.patch('luigi.contrib.hadoop.subprocess') as subprocess:
+        with mock.patch('trun.contrib.hadoop.subprocess') as subprocess:
             subprocess.Popen.return_value = MockProcess(err_lines, returncode)
-            _, err = luigi.contrib.hadoop.run_and_track_hadoop_job([], self.track)
+            _, err = trun.contrib.hadoop.run_and_track_hadoop_job([], self.track)
             self.assertEqual(err, ''.join(err_lines))
 
     def test_tracking_url_yarn(self):
@@ -448,16 +448,16 @@ class JobRunnerTest(unittest.TestCase):
         err_lines = [
             'The url to track the job: %s\n' % url,
         ]
-        with self.assertRaises(luigi.contrib.hadoop.HadoopJobError):
+        with self.assertRaises(trun.contrib.hadoop.HadoopJobError):
             self._run_and_track(err_lines, 1)
         self.assertEqual([url], self.tracking_urls)
 
     def _run_and_track_with_interrupt(self, err_lines):
         proc = KeyboardInterruptedMockProcess(err_lines)
-        with mock.patch('luigi.contrib.hadoop.subprocess') as subprocess:
+        with mock.patch('trun.contrib.hadoop.subprocess') as subprocess:
             subprocess.Popen.return_value = proc
             with self.assertRaises(KeyboardInterrupt):
-                luigi.contrib.hadoop.run_and_track_hadoop_job([], proc)
+                trun.contrib.hadoop.run_and_track_hadoop_job([], proc)
         return subprocess
 
     def test_kill_job_on_interrupt(self):

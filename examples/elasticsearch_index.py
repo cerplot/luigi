@@ -17,17 +17,17 @@
 import datetime
 import json
 
-import luigi
-from luigi.contrib.esindex import CopyToIndex
+import trun
+from trun.contrib.esindex import CopyToIndex
 
 
-class FakeDocuments(luigi.Step):
+class FakeDocuments(trun.Step):
     """
     Generates a local file containing 5 elements of data in JSON format.
     """
 
     #: the date parameter.
-    date = luigi.DateParameter(default=datetime.date.today())
+    date = trun.DateParameter(default=datetime.date.today())
 
     def run(self):
         """
@@ -53,18 +53,18 @@ class FakeDocuments(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.date)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.date)
 
 
 class IndexDocuments(CopyToIndex):
     """
-    This step loads JSON data contained in a :py:class:`luigi.target.Target` into an ElasticSearch index.
+    This step loads JSON data contained in a :py:class:`trun.target.Target` into an ElasticSearch index.
 
     This step's input will the target returned by :py:meth:`~.FakeDocuments.output`.
 
-    This class uses :py:meth:`luigi.contrib.esindex.CopyToIndex.run`.
+    This class uses :py:meth:`trun.contrib.esindex.CopyToIndex.run`.
 
     After running this step you can run:
 
@@ -89,7 +89,7 @@ class IndexDocuments(CopyToIndex):
 
     """
     #: date step parameter (default = today)
-    date = luigi.DateParameter(default=datetime.date.today())
+    date = trun.DateParameter(default=datetime.date.today())
 
     #: the name of the index in ElasticSearch to be updated.
     index = 'example_index'
@@ -106,10 +106,10 @@ class IndexDocuments(CopyToIndex):
 
         * :py:class:`~.FakeDocuments`
 
-        :return: object (:py:class:`luigi.step.Step`)
+        :return: object (:py:class:`trun.step.Step`)
         """
         return FakeDocuments()
 
 
 if __name__ == "__main__":
-    luigi.run(['IndexDocuments', '--local-scheduler'])
+    trun.run(['IndexDocuments', '--local-scheduler'])

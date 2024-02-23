@@ -3,14 +3,14 @@ You can run this example like this:
 
     .. code:: console
 
-            $ luigi --module examples.hello_world examples.HelloWorldStep --local-scheduler
+            $ trun --module examples.hello_world examples.HelloWorldStep --local-scheduler
 
 If that does not work, see :ref:`CommandLine`.
 """
-import luigi
+import trun
 
 
-class HelloWorldStep(luigi.Step):
+class HelloWorldStep(trun.Step):
     step_namespace = 'examples'
 
     def run(self):
@@ -18,4 +18,4 @@ class HelloWorldStep(luigi.Step):
 
 
 if __name__ == '__main__':
-    luigi.run(['examples.HelloWorldStep', '--workers', '1', '--local-scheduler'])
+    trun.run(['examples.HelloWorldStep', '--workers', '1', '--local-scheduler'])

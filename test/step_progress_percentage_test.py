@@ -15,19 +15,19 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
-import luigi
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.scheduler
+import trun.worker
 
 
-class StepProgressPercentageTest(LuigiTestCase):
+class StepProgressPercentageTest(TrunTestCase):
 
     def test_run(self):
-        sch = luigi.scheduler.Scheduler()
-        with luigi.worker.Worker(scheduler=sch) as w:
-            class MyStep(luigi.Step):
+        sch = trun.scheduler.Scheduler()
+        with trun.worker.Worker(scheduler=sch) as w:
+            class MyStep(trun.Step):
                 def run(self):
                     self.set_progress_percentage(30)
 

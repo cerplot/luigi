@@ -1,11 +1,11 @@
-import luigi
+import trun
 import mock
 import random
 import unittest
 
-from luigi.contrib.opener import OpenerTarget, NoOpenerError
-from luigi.mock import MockTarget
-from luigi.local_target import LocalTarget
+from trun.contrib.opener import OpenerTarget, NoOpenerError
+from trun.mock import MockTarget
+from trun.local_target import LocalTarget
 
 import pytest
 
@@ -78,8 +78,8 @@ class TestOpenerTarget(unittest.TestCase):
         target.open('w').close()
         self.assertTrue(LocalTarget.fs.exists(self.local_file))
 
-    @mock.patch('luigi.local_target.LocalTarget.__init__')
-    @mock.patch('luigi.local_target.LocalTarget.__del__')
+    @mock.patch('trun.local_target.LocalTarget.__init__')
+    @mock.patch('trun.local_target.LocalTarget.__del__')
     def test_local_tmp_target(self, lt_del_patch, lt_init_patch):
         '''Verify local target url with query string
 
@@ -91,7 +91,7 @@ class TestOpenerTarget(unittest.TestCase):
         OpenerTarget(local_file)
         lt_init_patch.assert_called_with(self.local_file, is_tmp=True)
 
-    @mock.patch('luigi.contrib.s3.S3Target.__init__')
+    @mock.patch('trun.contrib.s3.S3Target.__init__')
     def test_s3_parse(self, s3_init_patch):
         '''Verify basic s3 target url
 
@@ -102,7 +102,7 @@ class TestOpenerTarget(unittest.TestCase):
         OpenerTarget(local_file)
         s3_init_patch.assert_called_with("s3://zefr/foo/bar.txt")
 
-    @mock.patch('luigi.contrib.s3.S3Target.__init__')
+    @mock.patch('trun.contrib.s3.S3Target.__init__')
     def test_s3_parse_param(self, s3_init_patch):
         '''Verify s3 target url with params
 
@@ -125,6 +125,6 @@ class TestOpenerTarget(unittest.TestCase):
 
         # Verify the format is passed to the target and write binary data
         fp = OpenerTarget("mock://file.txt",
-                          format=luigi.format.MixedUnicodeBytes).open('w')
+                          format=trun.format.MixedUnicodeBytes).open('w')
         fp.write(b'\x07\x08\x07')
         fp.close()

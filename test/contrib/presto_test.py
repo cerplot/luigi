@@ -4,7 +4,7 @@ import mock
 from pyhive.presto import Cursor, Connection
 from pyhive.exc import DatabaseError
 
-from luigi.contrib.presto import PrestoStep, PrestoClient, PrestoTarget
+from trun.contrib.presto import PrestoStep, PrestoClient, PrestoTarget
 
 
 class WithPrestoClientTest(unittest.TestCase):
@@ -43,7 +43,7 @@ class WithPrestoClientTest(unittest.TestCase):
 
 
 class PrestoClientTest(unittest.TestCase):
-    @mock.patch('luigi.contrib.presto.sleep', return_value=None)
+    @mock.patch('trun.contrib.presto.sleep', return_value=None)
     def test_watch(self, sleep):
         # arrange
         status = {
@@ -71,7 +71,7 @@ class PrestoClientTest(unittest.TestCase):
         cursor.execute.assert_called_once_with(query, None)
         cursor.close.assert_called_once_with()
 
-    @mock.patch('luigi.contrib.presto.sleep', return_value=None)
+    @mock.patch('trun.contrib.presto.sleep', return_value=None)
     def test_fetch(self, sleep):
         # arrange
         status = {
@@ -176,7 +176,7 @@ class PrestoTargetTest(unittest.TestCase):
 
 class PrestoTest(unittest.TestCase):
 
-    @mock.patch('luigi.contrib.presto.sleep', return_value=None)
+    @mock.patch('trun.contrib.presto.sleep', return_value=None)
     def test_run(self, sleep):
         # arrange
         client = mock.MagicMock(spec=PrestoClient)
@@ -194,7 +194,7 @@ class PrestoTest(unittest.TestCase):
             query = 'select 1'
 
         # act
-        with mock.patch('luigi.contrib.presto.PrestoClient', return_value=client):
+        with mock.patch('trun.contrib.presto.PrestoClient', return_value=client):
             step = _Step()
             step.set_progress_percentage = mock.MagicMock()
             step.set_tracking_url = mock.MagicMock()

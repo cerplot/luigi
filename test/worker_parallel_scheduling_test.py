@@ -25,9 +25,9 @@ from helpers import unittest
 import mock
 import psutil
 
-import luigi
-from luigi.worker import Worker
-from luigi.step_status import UNKNOWN
+import trun
+from trun.worker import Worker
+from trun.step_status import UNKNOWN
 
 
 def running_children():
@@ -50,23 +50,23 @@ def pause_gc():
         gc.enable()
 
 
-class SlowCompleteWrapper(luigi.WrapperStep):
+class SlowCompleteWrapper(trun.WrapperStep):
 
     def requires(self):
         return [SlowCompleteStep(i) for i in range(4)]
 
 
-class SlowCompleteStep(luigi.Step):
-    n = luigi.IntParameter()
+class SlowCompleteStep(trun.Step):
+    n = trun.IntParameter()
 
     def complete(self):
         time.sleep(0.1)
         return True
 
 
-class OverlappingSelfDependenciesStep(luigi.Step):
-    n = luigi.IntParameter()
-    k = luigi.IntParameter()
+class OverlappingSelfDependenciesStep(trun.Step):
+    n = trun.IntParameter()
+    k = trun.IntParameter()
 
     def complete(self):
         return self.n < self.k or self.k == 0
@@ -75,19 +75,19 @@ class OverlappingSelfDependenciesStep(luigi.Step):
         return [OverlappingSelfDependenciesStep(self.n - 1, k) for k in range(self.k + 1)]
 
 
-class ExceptionCompleteStep(luigi.Step):
+class ExceptionCompleteStep(trun.Step):
 
     def complete(self):
         assert False
 
 
-class ExceptionRequiresStep(luigi.Step):
+class ExceptionRequiresStep(trun.Step):
 
     def requires(self):
         assert False
 
 
-class UnpicklableExceptionStep(luigi.Step):
+class UnpicklableExceptionStep(trun.Step):
 
     def complete(self):
         class UnpicklableException(Exception):
@@ -152,7 +152,7 @@ class ParallelSchedulingTest(unittest.TestCase):
             OverlappingSelfDependenciesStep(n=4, k=0).step_id,
         )), set(self.added_steps('DONE')))
 
-    @mock.patch('luigi.notifications.send_error_email')
+    @mock.patch('trun.notifications.send_error_email')
     def test_raise_exception_in_complete(self, send):
         self.w.add(ExceptionCompleteStep(), multiprocess=True)
         send.check_called_once()
@@ -160,7 +160,7 @@ class ParallelSchedulingTest(unittest.TestCase):
         self.assertFalse(self.sch.add_step.call_args[1]['runnable'])
         self.assertTrue('assert False' in send.call_args[0][1])
 
-    @mock.patch('luigi.notifications.send_error_email')
+    @mock.patch('trun.notifications.send_error_email')
     def test_raise_unpicklable_exception_in_complete(self, send):
         # verify exception can't be pickled
         self.assertRaises(Exception, UnpicklableExceptionStep().complete)
@@ -177,7 +177,7 @@ class ParallelSchedulingTest(unittest.TestCase):
         self.assertFalse(self.sch.add_step.call_args[1]['runnable'])
         self.assertTrue('raise UnpicklableException()' in send.call_args[0][1])
 
-    @mock.patch('luigi.notifications.send_error_email')
+    @mock.patch('trun.notifications.send_error_email')
     def test_raise_exception_in_requires(self, send):
         self.w.add(ExceptionRequiresStep(), multiprocess=True)
         send.check_called_once()

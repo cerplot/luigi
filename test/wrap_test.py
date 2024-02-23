@@ -18,15 +18,15 @@
 import datetime
 from helpers import unittest
 
-import luigi
-import luigi.notifications
-from luigi.mock import MockTarget
-from luigi.util import inherits
+import trun
+import trun.notifications
+from trun.mock import MockTarget
+from trun.util import inherits
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class A(luigi.Step):
+class A(trun.Step):
     step_namespace = 'wrap'  # to prevent step name conflict between tests
 
     def output(self):
@@ -38,8 +38,8 @@ class A(luigi.Step):
         f.close()
 
 
-class B(luigi.Step):
-    date = luigi.DateParameter()
+class B(trun.Step):
+    date = trun.DateParameter()
 
     def output(self):
         return MockTarget(self.date.strftime('/tmp/b-%Y-%m-%d.txt'))
@@ -52,7 +52,7 @@ class B(luigi.Step):
 
 def XMLWrapper(cls):
     @inherits(cls)
-    class XMLWrapperCls(luigi.Step):
+    class XMLWrapperCls(trun.Step):
 
         def requires(self):
             return self.clone_parent()
@@ -91,11 +91,11 @@ class WrapperTest(unittest.TestCase):
         MockTarget.fs.clear()
 
     def test_a(self):
-        luigi.build([AXML()], local_scheduler=True, no_lock=True, workers=self.workers)
+        trun.build([AXML()], local_scheduler=True, no_lock=True, workers=self.workers)
         self.assertEqual(MockTarget.fs.get_data('/tmp/a.xml'), b'<?xml version="1.0" ?>\n<dummy-xml>hello, world</dummy-xml>\n')
 
     def test_b(self):
-        luigi.build([BXML(datetime.date(2012, 1, 1))], local_scheduler=True, no_lock=True, workers=self.workers)
+        trun.build([BXML(datetime.date(2012, 1, 1))], local_scheduler=True, no_lock=True, workers=self.workers)
         self.assertEqual(MockTarget.fs.get_data('/tmp/b-2012-01-01.xml'), b'<?xml version="1.0" ?>\n<dummy-xml>goodbye, space</dummy-xml>\n')
 
 

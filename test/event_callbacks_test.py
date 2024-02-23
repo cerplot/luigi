@@ -17,10 +17,10 @@
 
 from helpers import unittest
 
-import luigi
-from luigi import Event, Step, build
-from luigi.mock import MockTarget, MockFileSystem
-from luigi.step import flatten
+import trun
+from trun import Event, Step, build
+from trun.mock import MockTarget, MockFileSystem
+from trun.step import flatten
 from mock import patch
 
 
@@ -29,7 +29,7 @@ class DummyException(Exception):
 
 
 class EmptyStep(Step):
-    fail = luigi.BoolParameter()
+    fail = trun.BoolParameter()
 
     def run(self):
         self.trigger_event(Event.PROGRESS, self, {"foo": "bar"})
@@ -145,7 +145,7 @@ class TestEventCallbacks(unittest.TestCase):
 
         times = [43.0, 1.0]
         t = EmptyStep(fail)
-        with patch('luigi.worker.time') as mock:
+        with patch('trun.worker.time') as mock:
             mock.time = times.pop
             build([t], local_scheduler=True)
 
@@ -181,7 +181,7 @@ class ConsistentMockOutput:
     '''
     Computes output location and contents from the step and its parameters. Rids us of writing ad-hoc boilerplate output() et al.
     '''
-    param = luigi.IntParameter(default=1)
+    param = trun.IntParameter(default=1)
 
     def output(self):
         return MockTarget('/%s/%u' % (self.__class__.__name__, self.param))
@@ -191,7 +191,7 @@ class ConsistentMockOutput:
             o.write(repr([self.step_id] + sorted([eval_contents(i) for i in flatten(self.input())])))
 
 
-class HappyTestFriend(ConsistentMockOutput, luigi.Step):
+class HappyTestFriend(ConsistentMockOutput, trun.Step):
 
     '''
     Does trivial "work", outputting the list of inputs. Results in a convenient lispy comparable.
@@ -201,7 +201,7 @@ class HappyTestFriend(ConsistentMockOutput, luigi.Step):
         self.produce_output()
 
 
-class D(ConsistentMockOutput, luigi.ExternalStep):
+class D(ConsistentMockOutput, trun.ExternalStep):
     pass
 
 
@@ -235,15 +235,15 @@ class TestDependencyEvents(unittest.TestCase):
         # yucky to create separate callbacks; would be nicer if the callback
         # received an instance of a subclass of Event, so one callback could
         # accumulate all types
-        @luigi.Step.event_handler(Event.DEPENDENCY_DISCOVERED)
+        @trun.Step.event_handler(Event.DEPENDENCY_DISCOVERED)
         def callback_dependency_discovered(*args):
             actual_events.setdefault(Event.DEPENDENCY_DISCOVERED, set()).add(tuple(map(lambda t: t.step_id, args)))
 
-        @luigi.Step.event_handler(Event.DEPENDENCY_MISSING)
+        @trun.Step.event_handler(Event.DEPENDENCY_MISSING)
         def callback_dependency_missing(*args):
             actual_events.setdefault(Event.DEPENDENCY_MISSING, set()).add(tuple(map(lambda t: t.step_id, args)))
 
-        @luigi.Step.event_handler(Event.DEPENDENCY_PRESENT)
+        @trun.Step.event_handler(Event.DEPENDENCY_PRESENT)
         def callback_dependency_present(*args):
             actual_events.setdefault(Event.DEPENDENCY_PRESENT, set()).add(tuple(map(lambda t: t.step_id, args)))
 

@@ -26,21 +26,21 @@ import threading
 import time
 
 import psutil
-from helpers import (unittest, with_config, skipOnTravisAndGithubActions, LuigiTestCase,
+from helpers import (unittest, with_config, skipOnTravisAndGithubActions, TrunTestCase,
                      temporary_unloaded_module)
 
-import luigi.notifications
-import luigi.step_register
-import luigi.worker
+import trun.notifications
+import trun.step_register
+import trun.worker
 import mock
-from luigi import ExternalStep, RemoteScheduler, Step, Event
-from luigi.mock import MockTarget, MockFileSystem
-from luigi.scheduler import Scheduler
-from luigi.worker import Worker
-from luigi.rpc import RPCError
-from luigi.cmdline import luigi_run
+from trun import ExternalStep, RemoteScheduler, Step, Event
+from trun.mock import MockTarget, MockFileSystem
+from trun.scheduler import Scheduler
+from trun.worker import Worker
+from trun.rpc import RPCError
+from trun.cmdline import trun_run
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
 class DummyStep(Step):
@@ -58,11 +58,11 @@ class DummyStep(Step):
 
 
 class DynamicDummyStep(Step):
-    p = luigi.Parameter()
-    sleep = luigi.FloatParameter(default=0.5, significant=False)
+    p = trun.Parameter()
+    sleep = trun.FloatParameter(default=0.5, significant=False)
 
     def output(self):
-        return luigi.LocalTarget(self.p)
+        return trun.LocalTarget(self.p)
 
     def run(self):
         with self.output().open('w') as f:
@@ -75,11 +75,11 @@ class DynamicDummyStepWithNamespace(DynamicDummyStep):
 
 
 class DynamicRequires(Step):
-    p = luigi.Parameter()
-    use_banana_step = luigi.BoolParameter(default=False)
+    p = trun.Parameter()
+    use_banana_step = trun.BoolParameter(default=False)
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(self.p, 'parent'))
+        return trun.LocalTarget(os.path.join(self.p, 'parent'))
 
     def run(self):
         if self.use_banana_step:
@@ -97,10 +97,10 @@ class DynamicRequires(Step):
 
 
 class DynamicRequiresWrapped(Step):
-    p = luigi.Parameter()
+    p = trun.Parameter()
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(self.p, 'parent'))
+        return trun.LocalTarget(os.path.join(self.p, 'parent'))
 
     def run(self):
         reqs = [
@@ -109,7 +109,7 @@ class DynamicRequiresWrapped(Step):
         ]
 
         # yield again as DynamicRequires
-        yield luigi.DynamicRequirements(reqs)
+        yield trun.DynamicRequirements(reqs)
 
         # and again with a custom complete function that does base name comparisons
         def custom_complete(complete_fn):
@@ -121,17 +121,17 @@ class DynamicRequiresWrapped(Step):
             self._custom_complete_result = all(os.path.basename(path) in basenames for path in paths)
             return self._custom_complete_result
 
-        yield luigi.DynamicRequirements(reqs, custom_complete)
+        yield trun.DynamicRequirements(reqs, custom_complete)
 
         with self.output().open('w') as f:
             f.write('Done!')
 
 
 class DynamicRequiresOtherModule(Step):
-    p = luigi.Parameter()
+    p = trun.Parameter()
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(self.p, 'baz'))
+        return trun.LocalTarget(os.path.join(self.p, 'baz'))
 
     def run(self):
         import other_module
@@ -150,7 +150,7 @@ class DummyErrorStep(Step):
         raise Exception("Retry index is %s for %s" % (self.retry_index, self.step_family))
 
 
-class WorkerTest(LuigiTestCase):
+class WorkerTest(TrunTestCase):
 
     def run(self, result=None):
         self.sch = Scheduler(retry_delay=100, remove_delay=1000, worker_disconnect_delay=10, stable_done_cooldown_secs=0)
@@ -238,7 +238,7 @@ class WorkerTest(LuigiTestCase):
 
         class B(A):
             def requires(self):
-                return luigi.step.externalize(a)
+                return trun.step.externalize(a)
         b = B()
 
         self.assertTrue(self.w.add(b))
@@ -419,7 +419,7 @@ class WorkerTest(LuigiTestCase):
     def test_check_unfulfilled_deps_config(self):
         class A(Step):
 
-            i = luigi.IntParameter()
+            i = trun.IntParameter()
 
             def __init__(self, *args, **kwargs):
                 super(A, self).__init__(*args, **kwargs)
@@ -469,7 +469,7 @@ class WorkerTest(LuigiTestCase):
     def test_cache_step_completion_config(self):
         class A(Step):
 
-            i = luigi.IntParameter()
+            i = trun.IntParameter()
 
             def __init__(self, *args, **kwargs):
                 super(A, self).__init__(*args, **kwargs)
@@ -585,7 +585,7 @@ class WorkerTest(LuigiTestCase):
         self.assertFalse(self.w.run())
 
     def test_fails_registering_signal(self):
-        with mock.patch('luigi.worker.signal', spec=['signal']):
+        with mock.patch('trun.worker.signal', spec=['signal']):
             # mock will raise an attribute error getting signal.SIGUSR1
             Worker()
 
@@ -593,7 +593,7 @@ class WorkerTest(LuigiTestCase):
         class A(Step):
 
             """ Step that must run twice to succeed """
-            i = luigi.IntParameter()
+            i = trun.IntParameter()
 
             runs = 0
 
@@ -635,7 +635,7 @@ class WorkerTest(LuigiTestCase):
             def requires(self):
                 return a
 
-        ExternalB = luigi.step.externalize(B)
+        ExternalB = trun.step.externalize(B)
 
         b = B()
         eb = ExternalB()
@@ -659,7 +659,7 @@ class WorkerTest(LuigiTestCase):
         class B(DummyStep):
             pass
 
-        ExternalB = luigi.step.externalize(B)
+        ExternalB = trun.step.externalize(B)
 
         b = B()
         eb = ExternalB()
@@ -809,8 +809,8 @@ class WorkerTest(LuigiTestCase):
     def test_run_csv_batch_job(self):
         completed = set()
 
-        class CsvBatchJob(luigi.Step):
-            values = luigi.parameter.Parameter(batch_method=','.join)
+        class CsvBatchJob(trun.Step):
+            values = trun.parameter.Parameter(batch_method=','.join)
             has_run = False
 
             def run(self):
@@ -832,8 +832,8 @@ class WorkerTest(LuigiTestCase):
     def test_run_max_batch_job(self):
         completed = set()
 
-        class MaxBatchJob(luigi.Step):
-            value = luigi.IntParameter(batch_method=max)
+        class MaxBatchJob(trun.Step):
+            value = trun.IntParameter(batch_method=max)
             has_run = False
 
             def run(self):
@@ -856,8 +856,8 @@ class WorkerTest(LuigiTestCase):
     def test_run_batch_job_unbatched(self):
         completed = set()
 
-        class MaxNonBatchJob(luigi.Step):
-            value = luigi.IntParameter(batch_method=max)
+        class MaxNonBatchJob(trun.Step):
+            value = trun.IntParameter(batch_method=max)
             has_run = False
 
             batchable = False
@@ -882,8 +882,8 @@ class WorkerTest(LuigiTestCase):
         completed = set()
         runs = []
 
-        class CsvLimitedBatchJob(luigi.Step):
-            value = luigi.parameter.Parameter(batch_method=','.join)
+        class CsvLimitedBatchJob(trun.Step):
+            value = trun.parameter.Parameter(batch_method=','.join)
             has_run = False
 
             max_batch_size = 4
@@ -906,8 +906,8 @@ class WorkerTest(LuigiTestCase):
         self.assertEqual(3, len(runs))
 
     def test_fail_max_batch_job(self):
-        class MaxBatchFailJob(luigi.Step):
-            value = luigi.IntParameter(batch_method=max)
+        class MaxBatchFailJob(trun.Step):
+            value = trun.IntParameter(batch_method=max)
             has_run = False
 
             def run(self):
@@ -931,7 +931,7 @@ class WorkerTest(LuigiTestCase):
     def test_gracefully_handle_batch_method_failure(self):
         class BadBatchMethodStep(DummyStep):
             priority = 10
-            batch_int_param = luigi.IntParameter(batch_method=int.__add__)  # should be sum
+            batch_int_param = trun.IntParameter(batch_method=int.__add__)  # should be sum
 
         bad_steps = [BadBatchMethodStep(i) for i in range(5)]
         good_steps = [DummyStep()]
@@ -951,7 +951,7 @@ class WorkerTest(LuigiTestCase):
 
     def test_post_error_message_for_failed_batch_methods(self):
         class BadBatchMethodStep(DummyStep):
-            batch_int_param = luigi.IntParameter(batch_method=int.__add__)  # should be sum
+            batch_int_param = trun.IntParameter(batch_method=int.__add__)  # should be sum
 
         steps = [BadBatchMethodStep(1), BadBatchMethodStep(2)]
 
@@ -964,7 +964,7 @@ class WorkerTest(LuigiTestCase):
         self.assertTrue(all(self.sch.fetch_error(step_id)['error'] for step_id in failed_ids))
 
 
-class WorkerKeepAliveTests(LuigiTestCase):
+class WorkerKeepAliveTests(TrunTestCase):
     def setUp(self):
         self.sch = Scheduler()
         super(WorkerKeepAliveTests, self).setUp()
@@ -1086,19 +1086,19 @@ class WorkerInterruptedTest(unittest.TestCase):
         Worker(no_install_shutdown_handler=True)
 
     @with_config({"worker": {"no_install_shutdown_handler": "True"}})
-    def test_can_run_luigi_in_thread(self):
+    def test_can_run_trun_in_thread(self):
         class A(DummyStep):
             pass
         step = A()
         # Note that ``signal.signal(signal.SIGUSR1, fn)`` can only be called in the main thread.
         # So if we do not disable the shutdown handler, this would fail.
-        t = threading.Thread(target=lambda: luigi.build([step], local_scheduler=True))
+        t = threading.Thread(target=lambda: trun.build([step], local_scheduler=True))
         t.start()
         t.join()
         self.assertTrue(step.complete())
 
 
-class WorkerDisabledTest(LuigiTestCase):
+class WorkerDisabledTest(TrunTestCase):
     def make_sch(self):
         return Scheduler(retry_delay=100, remove_delay=1000, worker_disconnect_delay=10)
 
@@ -1107,7 +1107,7 @@ class WorkerDisabledTest(LuigiTestCase):
         I got motivated to create this test case when I saw that the
         execution_summary crashed after my first attempted solution.
         """
-        class KillWorkerStep(luigi.Step):
+        class KillWorkerStep(trun.Step):
             did_actually_run = False
 
             def run(self):
@@ -1121,7 +1121,7 @@ class WorkerDisabledTest(LuigiTestCase):
             def create_worker(self, *args, **kwargs):
                 return worker
 
-        luigi.build([KillWorkerStep()], worker_scheduler_factory=Factory(), local_scheduler=True)
+        trun.build([KillWorkerStep()], worker_scheduler_factory=Factory(), local_scheduler=True)
         self.assertTrue(KillWorkerStep.did_actually_run)
 
     def _test_stop_getting_new_work_manual(self, sch, worker):
@@ -1167,7 +1167,7 @@ class DynamicDependenciesTest(unittest.TestCase):
     def test_dynamic_dependencies(self, use_banana_step=False):
         t0 = time.time()
         t = DynamicRequires(p=self.p, use_banana_step=use_banana_step)
-        luigi.build([t], local_scheduler=True, workers=self.n_workers)
+        trun.build([t], local_scheduler=True, workers=self.n_workers)
         self.assertTrue(t.complete())
 
         # loop through output and verify
@@ -1182,12 +1182,12 @@ class DynamicDependenciesTest(unittest.TestCase):
 
     def test_dynamic_dependencies_other_module(self):
         t = DynamicRequiresOtherModule(p=self.p)
-        luigi.build([t], local_scheduler=True, workers=self.n_workers)
+        trun.build([t], local_scheduler=True, workers=self.n_workers)
         self.assertTrue(t.complete())
 
     def test_wrapped_dynamic_requirements(self):
         t = DynamicRequiresWrapped(p=self.p)
-        luigi.build([t], local_scheduler=True, workers=1)
+        trun.build([t], local_scheduler=True, workers=1)
         self.assertTrue(t.complete())
         self.assertTrue(getattr(t, '_custom_complete_called', False))
         self.assertTrue(getattr(t, '_custom_complete_result', False))
@@ -1261,7 +1261,7 @@ def custom_email_patch(config):
     return functools.partial(email_patch, email_config=config)
 
 
-class WorkerEmailTest(LuigiTestCase):
+class WorkerEmailTest(TrunTestCase):
 
     def run(self, result=None):
         super(WorkerEmailTest, self).setUp()
@@ -1285,7 +1285,7 @@ class WorkerEmailTest(LuigiTestCase):
             except RPCError as e:
                 self.assertTrue(str(e).find("Errors (3 attempts)") != -1)
                 self.assertNotEqual(emails, [])
-                self.assertTrue(emails[0].find("Luigi: Framework error while scheduling %s" % (a,)) != -1)
+                self.assertTrue(emails[0].find("Trun: Framework error while scheduling %s" % (a,)) != -1)
             else:
                 self.fail()
 
@@ -1299,9 +1299,9 @@ class WorkerEmailTest(LuigiTestCase):
         a = A()
         self.assertEqual(emails, [])
         self.worker.add(a)
-        self.assertTrue(emails[0].find("Luigi: %s failed scheduling" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s failed scheduling" % (a,)) != -1)
         self.worker.run()
-        self.assertTrue(emails[0].find("Luigi: %s failed scheduling" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s failed scheduling" % (a,)) != -1)
         self.assertFalse(a.has_run)
 
     @with_config({'batch_email': {'email_interval': '0'}, 'worker': {'send_failure_email': 'False'}})
@@ -1363,7 +1363,7 @@ class WorkerEmailTest(LuigiTestCase):
                                side_effect=Exception('Unexpected')), self.assertRaises(Exception):
             worker.add(a)
         self.assertTrue(len(emails) == 2)  # One for `complete` error, one for exception in announcing.
-        self.assertTrue('Luigi: Framework error while scheduling' in emails[1])
+        self.assertTrue('Trun: Framework error while scheduling' in emails[1])
         self.assertTrue('a_owner@test.com' in emails[1])
 
     @email_patch
@@ -1376,7 +1376,7 @@ class WorkerEmailTest(LuigiTestCase):
         a = A()
         self.assertEqual(emails, [])
         self.worker.add(a)
-        self.assertTrue(emails[0].find("Luigi: %s failed scheduling" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s failed scheduling" % (a,)) != -1)
         self.worker.run()
         self.assertFalse(a.has_run)
 
@@ -1409,9 +1409,9 @@ class WorkerEmailTest(LuigiTestCase):
         a = A()
         self.assertEqual(emails, [])
         self.worker.add(a)
-        self.assertTrue(emails[0].find("Luigi: %s failed scheduling" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s failed scheduling" % (a,)) != -1)
         self.worker.run()
-        self.assertTrue(emails[0].find("Luigi: %s failed scheduling" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s failed scheduling" % (a,)) != -1)
         self.assertFalse(a.has_run)
 
     @with_config({'batch_email': {'email_interval': '0'}, 'worker': {'send_failure_email': 'False'}})
@@ -1436,30 +1436,30 @@ class WorkerEmailTest(LuigiTestCase):
 
     @email_patch
     def test_run_error(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             def run(self):
                 raise Exception("b0rk")
 
         a = A()
-        luigi.build([a], workers=1, local_scheduler=True)
+        trun.build([a], workers=1, local_scheduler=True)
         self.assertEqual(1, len(emails))
-        self.assertTrue(emails[0].find("Luigi: %s FAILED" % (a,)) != -1)
+        self.assertTrue(emails[0].find("Trun: %s FAILED" % (a,)) != -1)
 
     @email_patch
     def test_run_error_long_traceback(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             def run(self):
                 raise Exception("b0rk"*10500)
 
         a = A()
-        luigi.build([a], workers=1, local_scheduler=True)
+        trun.build([a], workers=1, local_scheduler=True)
         self.assertTrue(len(emails[0]) < 10000)
         self.assertTrue(emails[0].find("Traceback exceeds max length and has been truncated"))
 
     @with_config({'batch_email': {'email_interval': '0'}, 'worker': {'send_failure_email': 'False'}})
     @email_patch
     def test_run_error_email_batch(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             owner_email = ['a@test.com', 'b@test.com']
 
             def run(self):
@@ -1476,7 +1476,7 @@ class WorkerEmailTest(LuigiTestCase):
     @with_config({'batch_email': {'email_interval': '0'}, 'worker': {'send_failure_email': 'False'}})
     @email_patch
     def test_run_error_batch_email_string(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             owner_email = 'a@test.com'
 
             def run(self):
@@ -1492,11 +1492,11 @@ class WorkerEmailTest(LuigiTestCase):
     @with_config({'worker': {'send_failure_email': 'False'}})
     @email_patch
     def test_run_error_no_email(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             def run(self):
                 raise Exception("b0rk")
 
-        luigi.build([A()], workers=1, local_scheduler=True)
+        trun.build([A()], workers=1, local_scheduler=True)
         self.assertFalse(emails)
 
     @staticmethod
@@ -1507,43 +1507,43 @@ class WorkerEmailTest(LuigiTestCase):
     @email_patch
     def test_step_process_dies_with_email(self, emails):
         a = SendSignalStep(signal.SIGKILL)
-        luigi.build([a], workers=2, local_scheduler=True)
+        trun.build([a], workers=2, local_scheduler=True)
         self.assertEqual(1, len(emails))
         subject, body = self.read_email(emails[0])
-        self.assertIn("Luigi: {} FAILED".format(a), subject)
+        self.assertIn("Trun: {} FAILED".format(a), subject)
         self.assertIn("died unexpectedly with exit code -9", body)
 
     @with_config({'worker': {'send_failure_email': 'False'}})
     @email_patch
     def test_step_process_dies_no_email(self, emails):
-        luigi.build([SendSignalStep(signal.SIGKILL)], workers=2, local_scheduler=True)
+        trun.build([SendSignalStep(signal.SIGKILL)], workers=2, local_scheduler=True)
         self.assertEqual([], emails)
 
     @email_patch
     def test_step_times_out(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             worker_timeout = 0.0001
 
             def run(self):
                 time.sleep(5)
 
         a = A()
-        luigi.build([a], workers=2, local_scheduler=True)
+        trun.build([a], workers=2, local_scheduler=True)
         self.assertEqual(1, len(emails))
         subject, body = self.read_email(emails[0])
-        self.assertIn("Luigi: %s FAILED" % (a,), subject)
+        self.assertIn("Trun: %s FAILED" % (a,), subject)
         self.assertIn("timed out after 0.0001 seconds and was terminated.", body)
 
     @with_config({'worker': {'send_failure_email': 'False'}})
     @email_patch
     def test_step_times_out_no_email(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
             worker_timeout = 0.0001
 
             def run(self):
                 time.sleep(5)
 
-        luigi.build([A()], workers=2, local_scheduler=True)
+        trun.build([A()], workers=2, local_scheduler=True)
         self.assertEqual([], emails)
 
     @with_config(dict(worker=dict(retry_external_steps='true')))
@@ -1552,11 +1552,11 @@ class WorkerEmailTest(LuigiTestCase):
         """
         Test that we do not send error emails on the failures of external steps
         """
-        class A(luigi.ExternalStep):
+        class A(trun.ExternalStep):
             pass
 
         a = A()
-        luigi.build([a], workers=2, local_scheduler=True)
+        trun.build([a], workers=2, local_scheduler=True)
         self.assertEqual(emails, [])
 
     @email_patch
@@ -1573,7 +1573,7 @@ class WorkerEmailTest(LuigiTestCase):
 
     @custom_email_patch({"email": {"receiver": "not-a-real-email-address-for-test-only", 'format': 'none'}})
     def test_disable_emails(self, emails):
-        class A(luigi.Step):
+        class A(trun.Step):
 
             def complete(self):
                 raise Exception("b0rk")
@@ -1582,21 +1582,21 @@ class WorkerEmailTest(LuigiTestCase):
         self.assertEqual(emails, [])
 
 
-class RaiseSystemExit(luigi.Step):
+class RaiseSystemExit(trun.Step):
 
     def run(self):
         raise SystemExit("System exit!!")
 
 
-class SendSignalStep(luigi.Step):
-    signal = luigi.IntParameter()
+class SendSignalStep(trun.Step):
+    signal = trun.IntParameter()
 
     def run(self):
         os.kill(os.getpid(), self.signal)
 
 
-class HangTheWorkerStep(luigi.Step):
-    worker_timeout = luigi.IntParameter(default=None)
+class HangTheWorkerStep(trun.Step):
+    worker_timeout = trun.IntParameter(default=None)
 
     def run(self):
         while True:
@@ -1615,31 +1615,31 @@ class MultipleWorkersTest(unittest.TestCase):
         # various platform and how multiprocessing is implemented. If it's using os.fork
         # under the hood it should be fine, but dynamic classses can't be pickled, so
         # other implementations of multiprocessing (using spawn etc) may fail
-        class MyDynamicStep(luigi.Step):
-            x = luigi.Parameter()
+        class MyDynamicStep(trun.Step):
+            x = trun.Parameter()
 
             def run(self):
                 time.sleep(0.1)
 
         t0 = time.time()
-        luigi.build([MyDynamicStep(i) for i in range(100)], workers=100, local_scheduler=True)
+        trun.build([MyDynamicStep(i) for i in range(100)], workers=100, local_scheduler=True)
         self.assertTrue(time.time() < t0 + 5.0)  # should ideally take exactly 0.1s, but definitely less than 10.0
 
     def test_zero_workers(self):
         d = DummyStep()
-        luigi.build([d], workers=0, local_scheduler=True)
+        trun.build([d], workers=0, local_scheduler=True)
         self.assertFalse(d.complete())
 
     def test_system_exit(self):
         # This would hang indefinitely before this fix:
-        # https://github.com/spotify/luigi/pull/439
-        luigi.build([RaiseSystemExit()], workers=2, local_scheduler=True)
+        # https://github.com/spotify/trun/pull/439
+        trun.build([RaiseSystemExit()], workers=2, local_scheduler=True)
 
     def test_term_worker(self):
-        luigi.build([SendSignalStep(signal.SIGTERM)], workers=2, local_scheduler=True)
+        trun.build([SendSignalStep(signal.SIGTERM)], workers=2, local_scheduler=True)
 
     def test_kill_worker(self):
-        luigi.build([SendSignalStep(signal.SIGKILL)], workers=2, local_scheduler=True)
+        trun.build([SendSignalStep(signal.SIGKILL)], workers=2, local_scheduler=True)
 
     def test_purge_multiple_workers(self):
         w = Worker(worker_processes=2, wait_interval=0.01)
@@ -1672,7 +1672,7 @@ class MultipleWorkersTest(unittest.TestCase):
             self.assertTrue(is_running())
         self.assertFalse(is_running())
 
-    @mock.patch('luigi.worker.time')
+    @mock.patch('trun.worker.time')
     def test_no_process_leak_from_repeatedly_running_same_step(self, worker_time):
         with Worker(worker_processes=2) as w:
             hung_step = HangTheWorkerStep()
@@ -1693,13 +1693,13 @@ class MultipleWorkersTest(unittest.TestCase):
             self.assertEqual(children, set(psutil.Process().children()))
 
     def test_time_out_hung_worker(self):
-        luigi.build([HangTheWorkerStep(0.1)], workers=2, local_scheduler=True)
+        trun.build([HangTheWorkerStep(0.1)], workers=2, local_scheduler=True)
 
     def test_time_out_hung_single_worker(self):
-        luigi.build([HangTheWorkerStep(0.1)], workers=1, local_scheduler=True)
+        trun.build([HangTheWorkerStep(0.1)], workers=1, local_scheduler=True)
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/72953986')
-    @mock.patch('luigi.worker.time')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/72953986')
+    @mock.patch('trun.worker.time')
     def test_purge_hung_worker_default_timeout_time(self, mock_time):
         w = Worker(worker_processes=2, wait_interval=0.01, timeout=5)
         mock_time.time.return_value = 0
@@ -1715,8 +1715,8 @@ class MultipleWorkersTest(unittest.TestCase):
         w._handle_next_step()
         self.assertEqual(0, len(w._running_steps))
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/76645264')
-    @mock.patch('luigi.worker.time')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/76645264')
+    @mock.patch('trun.worker.time')
     def test_purge_hung_worker_override_timeout_time(self, mock_time):
         w = Worker(worker_processes=2, wait_interval=0.01, timeout=5)
         mock_time.time.return_value = 0
@@ -1734,7 +1734,7 @@ class MultipleWorkersTest(unittest.TestCase):
 
 
 class Dummy2Step(Step):
-    p = luigi.Parameter()
+    p = trun.Parameter()
 
     def output(self):
         return MockTarget(self.p)
@@ -1775,18 +1775,18 @@ class AssistantTest(unittest.TestCase):
 
     def test_unimported_job_type(self):
         MODULE_CONTENTS = b'''
-import luigi
+import trun
 
 
-class UnimportedStep(luigi.Step):
+class UnimportedStep(trun.Step):
     def complete(self):
         return False
 '''
-        reg = luigi.step_register.Register._get_reg()
+        reg = trun.step_register.Register._get_reg()
 
-        class UnimportedStep(luigi.Step):
+        class UnimportedStep(trun.Step):
             step_module = None  # Set it here, so it's generally settable
-        luigi.step_register.Register._set_reg(reg)
+        trun.step_register.Register._set_reg(reg)
 
         step = UnimportedStep()
 
@@ -1802,7 +1802,7 @@ class UnimportedStep(luigi.Step):
             self.assertEqual(list(self.sch.step_list('DONE', '').keys()), [step.step_id])
 
     def test_unimported_job_sends_failure_message(self):
-        class NotInAssistantStep(luigi.Step):
+        class NotInAssistantStep(trun.Step):
             step_family = 'Unknown'
             step_module = None
 
@@ -1813,10 +1813,10 @@ class UnimportedStep(luigi.Step):
         self.assertTrue(self.sch.fetch_error(step.step_id)['error'])
 
 
-class ForkBombStep(luigi.Step):
-    depth = luigi.IntParameter()
-    breadth = luigi.IntParameter()
-    p = luigi.Parameter(default=(0, ))  # ehm for some weird reason [0] becomes a tuple...?
+class ForkBombStep(trun.Step):
+    depth = trun.IntParameter()
+    breadth = trun.IntParameter()
+    p = trun.Parameter(default=(0, ))  # ehm for some weird reason [0] becomes a tuple...?
 
     def output(self):
         return MockTarget('.'.join(map(str, self.p)))
@@ -1908,43 +1908,43 @@ class WorkerWaitJitterTest(unittest.TestCase):
         mock_sleep.assert_called_with(4.3)
 
 
-class KeyboardInterruptBehaviorTest(LuigiTestCase):
+class KeyboardInterruptBehaviorTest(TrunTestCase):
 
     def test_propagation_when_executing(self):
         """
-        Ensure that keyboard interrupts causes luigi to quit when you are
+        Ensure that keyboard interrupts causes trun to quit when you are
         executing steps.
 
         TODO: Add a test that tests the multiprocessing (--worker >1) case
         """
-        class KeyboardInterruptStep(luigi.Step):
+        class KeyboardInterruptStep(trun.Step):
             def run(self):
                 raise KeyboardInterrupt()
 
         cmd = 'KeyboardInterruptStep --local-scheduler --no-lock'.split(' ')
-        self.assertRaises(KeyboardInterrupt, luigi_run, cmd)
+        self.assertRaises(KeyboardInterrupt, trun_run, cmd)
 
     def test_propagation_when_scheduling(self):
         """
-        Test that KeyboardInterrupt causes luigi to quit while scheduling.
+        Test that KeyboardInterrupt causes trun to quit while scheduling.
         """
-        class KeyboardInterruptStep(luigi.Step):
+        class KeyboardInterruptStep(trun.Step):
             def complete(self):
                 raise KeyboardInterrupt()
 
-        class ExternalKeyboardInterruptStep(luigi.ExternalStep):
+        class ExternalKeyboardInterruptStep(trun.ExternalStep):
             def complete(self):
                 raise KeyboardInterrupt()
 
-        self.assertRaises(KeyboardInterrupt, luigi_run,
+        self.assertRaises(KeyboardInterrupt, trun_run,
                           ['KeyboardInterruptStep', '--local-scheduler', '--no-lock'])
-        self.assertRaises(KeyboardInterrupt, luigi_run,
+        self.assertRaises(KeyboardInterrupt, trun_run,
                           ['ExternalKeyboardInterruptStep', '--local-scheduler', '--no-lock'])
 
 
 class WorkerPurgeEventHandlerTest(unittest.TestCase):
 
-    @mock.patch('luigi.worker.ContextManagedStepProcess')
+    @mock.patch('trun.worker.ContextManagedStepProcess')
     def test_process_killed_handler(self, step_proc):
         result = []
 
@@ -1964,7 +1964,7 @@ class WorkerPurgeEventHandlerTest(unittest.TestCase):
 
         self.assertEqual(result, [step])
 
-    @mock.patch('luigi.worker.time')
+    @mock.patch('trun.worker.time')
     def test_timeout_handler(self, mock_time):
         result = []
 
@@ -1984,7 +1984,7 @@ class WorkerPurgeEventHandlerTest(unittest.TestCase):
 
         self.assertEqual(result, [step])
 
-    @mock.patch('luigi.worker.time')
+    @mock.patch('trun.worker.time')
     def test_timeout_handler_single_worker(self, mock_time):
         result = []
 
@@ -2005,7 +2005,7 @@ class WorkerPurgeEventHandlerTest(unittest.TestCase):
         self.assertEqual(result, [step])
 
 
-class PerStepRetryPolicyBehaviorTest(LuigiTestCase):
+class PerStepRetryPolicyBehaviorTest(TrunTestCase):
     def setUp(self):
         super(PerStepRetryPolicyBehaviorTest, self).setUp()
         self.per_step_retry_count = 3
@@ -2032,7 +2032,7 @@ class PerStepRetryPolicyBehaviorTest(LuigiTestCase):
 
         e2 = TestErrorStep2()
 
-        class TestWrapperStep(luigi.WrapperStep):
+        class TestWrapperStep(trun.WrapperStep):
             def requires(self):
                 return [e2, e1]
 
@@ -2071,7 +2071,7 @@ class PerStepRetryPolicyBehaviorTest(LuigiTestCase):
 
         e2 = TestErrorStep2()
 
-        class TestWrapperStep(luigi.WrapperStep):
+        class TestWrapperStep(trun.WrapperStep):
             def requires(self):
                 return [e2, e1]
 
@@ -2115,7 +2115,7 @@ class PerStepRetryPolicyBehaviorTest(LuigiTestCase):
 
         e1 = TestErrorStep1()
 
-        class TestWrapperStep(luigi.WrapperStep):
+        class TestWrapperStep(trun.WrapperStep):
             def requires(self):
                 return [e1, s1]
 
@@ -2153,7 +2153,7 @@ class PerStepRetryPolicyBehaviorTest(LuigiTestCase):
 
         e1 = TestErrorStep1()
 
-        class TestWrapperStep(luigi.WrapperStep):
+        class TestWrapperStep(trun.WrapperStep):
             def requires(self):
                 return [e1, s1]
 

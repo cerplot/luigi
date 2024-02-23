@@ -5,7 +5,7 @@ You can run this example like this:
 
     .. code:: console
 
-            $ luigi --module examples.per_step_retry_policy examples.PerStepRetryPolicy --worker-keep-alive \
+            $ trun --module examples.per_step_retry_policy examples.PerStepRetryPolicy --worker-keep-alive \
             --local-scheduler --scheduler-retry-delay 5  --logging-conf-file test/testconfig/logging.cfg
 
             ...
@@ -25,7 +25,7 @@ You can run this example like this:
             DEBUG: ErrorStep1__99914b932b step num failures is 5 and limit is 5
             DEBUG: ErrorStep1__99914b932b step num failures limit(5) is exceeded
             INFO:
-            ===== Luigi Execution Summary =====
+            ===== Trun Execution Summary =====
 
             Scheduled 8 steps of which:
             * 2 ran successfully:
@@ -47,13 +47,13 @@ You can run this example like this:
 
             This progress looks :( because there were failed steps
 
-            ===== Luigi Execution Summary =====
+            ===== Trun Execution Summary =====
 """
 
-import luigi
+import trun
 
 
-class PerStepRetryPolicy(luigi.Step):
+class PerStepRetryPolicy(trun.Step):
     """
         Wrapper class for some error and success steps. Worker won't be shutdown unless there is
         pending steps or failed steps which will be retried. While keep-alive is active, workers
@@ -67,10 +67,10 @@ class PerStepRetryPolicy(luigi.Step):
         return [ErrorStep1(), ErrorStep2(), SuccessStep1(), DynamicErrorStepSubmitter()]
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class ErrorStep1(luigi.Step):
+class ErrorStep1(trun.Step):
     """
         This error class raises error to retry the step. retry-count for this step is 5. It can be seen on
     """
@@ -84,10 +84,10 @@ class ErrorStep1(luigi.Step):
         raise Exception('Test Exception. Retry Index %s for %s' % (self.retry, self.step_family))
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class ErrorStep2(luigi.Step):
+class ErrorStep2(trun.Step):
     """
         This error class raises error to retry the step. retry-count for this step is 2
     """
@@ -101,10 +101,10 @@ class ErrorStep2(luigi.Step):
         raise Exception('Test Exception. Retry Index %s for %s' % (self.retry, self.step_family))
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class DynamicErrorStepSubmitter(luigi.Step):
+class DynamicErrorStepSubmitter(trun.Step):
     target = None
 
     def run(self):
@@ -115,10 +115,10 @@ class DynamicErrorStepSubmitter(luigi.Step):
                 output.write('SUCCESS DynamicErrorStepSubmitter\n')
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class DynamicErrorStep1(luigi.Step):
+class DynamicErrorStep1(trun.Step):
     """
         This dynamic error step raises error to retry the step. retry-count for this step is 3
     """
@@ -132,10 +132,10 @@ class DynamicErrorStep1(luigi.Step):
         raise Exception('Test Exception. Retry Index %s for %s' % (self.retry, self.step_family))
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class SuccessStep1(luigi.Step):
+class SuccessStep1(trun.Step):
     def requires(self):
         return [SuccessSubStep1()]
 
@@ -144,10 +144,10 @@ class SuccessStep1(luigi.Step):
             output.write('SUCCESS Test Step 4\n')
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
 
 
-class SuccessSubStep1(luigi.Step):
+class SuccessSubStep1(trun.Step):
     """
         This success step sleeps for a while and then it is completed successfully.
     """
@@ -157,4 +157,4 @@ class SuccessSubStep1(luigi.Step):
             output.write('SUCCESS Test Step 4.1\n')
 
     def output(self):
-        return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)
+        return trun.LocalTarget(path='/tmp/_docs-%s.ldj' % self.step_id)

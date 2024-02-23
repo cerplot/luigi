@@ -10,27 +10,27 @@ Supported config parsers:
 
 .. _ConfigParser: https://docs.python.org/3/library/configparser.html
 
-You can choose right parser via ``LUIGI_CONFIG_PARSER`` environment variable. For example, ``LUIGI_CONFIG_PARSER=toml``.
+You can choose right parser via ``TRUN_CONFIG_PARSER`` environment variable. For example, ``TRUN_CONFIG_PARSER=toml``.
 
 Default (cfg) parser are looked for in:
 
-* ``/etc/luigi/client.cfg`` (deprecated)
-* ``/etc/luigi/luigi.cfg``
+* ``/etc/trun/client.cfg`` (deprecated)
+* ``/etc/trun/trun.cfg``
 * ``client.cfg`` (deprecated)
-* ``luigi.cfg``
-* ``LUIGI_CONFIG_PATH`` environment variable
+* ``trun.cfg``
+* ``TRUN_CONFIG_PATH`` environment variable
 
 `TOML <https://github.com/toml-lang/toml>`_ parser are looked for in:
 
-* ``/etc/luigi/luigi.toml``
-* ``luigi.toml``
-* ``LUIGI_CONFIG_PATH`` environment variable
+* ``/etc/trun/trun.toml``
+* ``trun.toml``
+* ``TRUN_CONFIG_PATH`` environment variable
 
 Both config lists increase in priority (from low to high). The order only
 matters in case of key conflicts (see docs for ConfigParser.read_).
-These files are meant for both the client and ``luigid``.
+These files are meant for both the client and ``trund``.
 If you decide to specify your own configuration you should make sure
-that both the client and ``luigid`` load it properly.
+that both the client and ``trund`` load it properly.
 
 .. _ConfigParser.read: https://docs.python.org/3.6/library/configparser.html#configparser.ConfigParser.read
 
@@ -45,7 +45,7 @@ Example cfg config:
     streaming_jar=/usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar
 
     [core]
-    scheduler_host=luigi-host.mycompany.foo
+    scheduler_host=trun-host.mycompany.foo
 
 Example toml config:
 
@@ -56,10 +56,10 @@ Example toml config:
     streaming_jar = "/usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar"
 
     [core]
-    scheduler_host = "luigi-host.mycompany.foo"
+    scheduler_host = "trun-host.mycompany.foo"
 
 Also see `examples/config.toml
-<https://github.com/spotify/luigi/blob/master/examples/config.toml>`_
+<https://github.com/spotify/trun/blob/master/examples/config.toml>`_
 for more complex example.
 
 .. _ParamConfigIngestion:
@@ -72,8 +72,8 @@ have a Step definition:
 
 .. code:: python
 
-    class DailyReport(luigi.contrib.hadoop.JobStep):
-        date = luigi.DateParameter(default=datetime.date.today())
+    class DailyReport(trun.contrib.hadoop.JobStep):
+        date = trun.DateParameter(default=datetime.date.today())
         # ...
 
 Then you can override the default value for ``DailyReport().date`` by providing
@@ -99,16 +99,16 @@ conventional way to do global configuration. Imagine this configuration.
     intoption=123
 
 
-We can create a :py:class:`~luigi.Config` class:
+We can create a :py:class:`~trun.Config` class:
 
 .. code:: python
 
-    import luigi
+    import trun
 
     # Config classes should be camel cased
-    class mysection(luigi.Config):
-        option = luigi.Parameter(default='world')
-        intoption = luigi.IntParameter(default=555)
+    class mysection(trun.Config):
+        option = trun.Parameter(default='world')
+        intoption = trun.IntParameter(default=555)
 
     mysection().option
     mysection().intoption
@@ -117,21 +117,21 @@ We can create a :py:class:`~luigi.Config` class:
 Configurable options
 --------------------
 
-Luigi comes with a lot of configurable options. Below, we describe each
+Trun comes with a lot of configurable options. Below, we describe each
 section and the parameters available within it.
 
 
 [core]
 ------
 
-These parameters control core Luigi behavior, such as error e-mails and
+These parameters control core Trun behavior, such as error e-mails and
 interactions between the worker and scheduler.
 
 autoload_range
   .. versionadded:: 2.8.11
 
   If false, prevents range steps from autoloading. They can still be loaded
-  using ``--module luigi.tools.range``. Defaults to true. Setting this to true
+  using ``--module trun.tools.range``. Defaults to true. Setting this to true
   explicitly disables the deprecation warning.
 
 default_scheduler_host
@@ -143,18 +143,18 @@ default_scheduler_port
 default_scheduler_url
   Full path to remote scheduler. Defaults to ``http://localhost:8082/``.
   For TLS support use the URL scheme: ``https``,
-  example: ``https://luigi.example.com:443/``
+  example: ``https://trun.example.com:443/``
   (Note: you will have to terminate TLS using an HTTP proxy)
   You can also use this to connect to a local Unix socket using the
   non-standard URI scheme: ``http+unix``
-  example: ``http+unix://%2Fvar%2Frun%2Fluigid%2Fluigid.sock/``
+  example: ``http+unix://%2Fvar%2Frun%2Ftrund%2Ftrund.sock/``
 
 hdfs_tmp_dir
   Base directory in which to store temporary files on hdfs. Defaults to
   tempfile.gettempdir()
 
 history_filename
-  If set, specifies a filename for Luigi to write stuff (currently just
+  If set, specifies a filename for Trun to write stuff (currently just
   job id) to in mapreduce job's output directory. Useful in a
   configuration where no history is stored in the output directory by
   Hadoop.
@@ -245,7 +245,7 @@ allow_credentials
 [worker]
 --------
 
-These parameters control Luigi worker behavior.
+These parameters control Trun worker behavior.
 
 count_uniques
   If true, workers will only count unique pending jobs when deciding
@@ -303,14 +303,14 @@ max_reschedules
 
 retry_external_steps
   If true, incomplete external steps (i.e. steps where the ``run()`` method is
-  NotImplemented) will be retested for completion while Luigi is running.
+  NotImplemented) will be retested for completion while Trun is running.
   This means that if external dependencies are satisfied after a workflow has
   started, any steps dependent on that resource will be eligible for running.
   Note: Every time the step remains incomplete, it will count as FAILED, so
   normal retry logic applies (see: ``retry_count`` and ``retry_delay``).
   This setting works best with ``worker_keep_alive: true``.
-  If false, external steps will only be evaluated when Luigi is first invoked.
-  In this case, Luigi will not check whether external dependencies are
+  If false, external steps will only be evaluated when Trun is first invoked.
+  In this case, Trun will not check whether external dependencies are
   satisfied  while a workflow is in progress, so dependent steps will remain
   PENDING until the workflow is reinvoked.
   Defaults to false for backwards compatibility.
@@ -319,7 +319,7 @@ no_install_shutdown_handler
   By default, workers will stop requesting new work and finish running
   pending steps after receiving a ``SIGUSR1`` signal. This provides a hook
   for gracefully shutting down workers that are in the process of running
-  (potentially expensive) steps. If set to true, Luigi will NOT install
+  (potentially expensive) steps. If set to true, Trun will NOT install
   this shutdown hook on workers. Note this hook does not work on Windows
   operating systems, or when jobs are launched outside the main execution
   thread.
@@ -344,20 +344,20 @@ check_unfulfilled_deps
   Defaults to true.
 
 force_multiprocessing
-  By default, luigi uses multiprocessing when *more than one* worker process is
+  By default, trun uses multiprocessing when *more than one* worker process is
   requested. When set to true, multiprocessing is used independent of the
   number of workers.
   Defaults to false.
 
 check_complete_on_run
-  By default, luigi steps are marked as 'done' when they finish running without
+  By default, trun steps are marked as 'done' when they finish running without
   raising an error. When set to true, steps will also verify that their outputs
   exist when they finish running, and will fail immediately if the outputs are
   missing.
   Defaults to false.
 
 cache_step_completion
-  By default, luigi step processes might check the completion status multiple
+  By default, trun step processes might check the completion status multiple
   times per step which is a safe way to avoid potential inconsistencies. For
   steps with many dynamic dependencies, yielded in multiple stages, this might
   become expensive, e.g. in case the per-step completion check entails remote
@@ -400,7 +400,7 @@ method
   The default value is "smtp".
 
   In order to send messages through Amazon SNS or SES set up your AWS
-  config files or run Luigi on an EC2 instance with proper instance
+  config files or run Trun on an EC2 instance with proper instance
   profile.
 
   In order to use sendgrid, fill in your sendgrid API key in the
@@ -411,14 +411,14 @@ method
 
 prefix
   Optional prefix to add to the subject line of all e-mails. For
-  example, setting this to "[LUIGI]" would change the subject line of an
-  e-mail from "Luigi: Framework error" to "[LUIGI] Luigi: Framework
+  example, setting this to "[TRUN]" would change the subject line of an
+  e-mail from "Trun: Framework error" to "[TRUN] Trun: Framework
   error"
 
 receiver
   Recipient of all error e-mails. If this is not set, no error e-mails
-  are sent when Luigi crashes unless the crashed job has owners set. If
-  Luigi is run from the command line, no e-mails will be sent unless
+  are sent when Trun crashes unless the crashed job has owners set. If
+  Trun is run from the command line, no e-mails will be sent unless
   output is redirected to a file.
 
   Set it to SNS Topic ARN if you want to receive notifications through
@@ -426,7 +426,7 @@ receiver
 
 sender
   User name in from field of error e-mails.
-  Default value: luigi-client@<server_name>
+  Default value: trun-client@<server_name>
 
 traceback_max_length
   Maximum length for traceback included in error email. Default is 5000.
@@ -563,7 +563,7 @@ snakebite_autoconfig
   namenode for snakebite queries. Defaults to false.
 
 tmp_dir
-  Path to where Luigi will put temporary files on hdfs
+  Path to where Trun will put temporary files on hdfs
 
 
 [hive]
@@ -672,16 +672,16 @@ is good practice to do so when you have a fixed set of resources.
 [retcode]
 ---------
 
-Configure return codes for the Luigi binary. In the case of multiple return
+Configure return codes for the Trun binary. In the case of multiple return
 codes that could apply, for example a failing step and missing data, the
 *numerically greatest* return code is returned.
 
-We recommend that you copy this set of exit codes to your ``luigi.cfg`` file:
+We recommend that you copy this set of exit codes to your ``trun.cfg`` file:
 
 .. code:: ini
 
   [retcode]
-  # The following return codes are the recommended exit codes for Luigi
+  # The following return codes are the recommended exit codes for Trun
   # They are in increasing level of severity (for most applications)
   already_running=10
   missing_data=20
@@ -696,7 +696,7 @@ already_running
   that some steps could not have been run, because other workers are already
   running the steps.
 missing_data
-  For when an :py:class:`~luigi.step.ExternalStep` is not complete, and this
+  For when an :py:class:`~trun.step.ExternalStep` is not complete, and this
   caused the worker to give up.  As an alternative to fiddling with this, see
   the [worker] keep_alive option.
 not_run
@@ -714,12 +714,12 @@ scheduling_error
   For when a step's ``complete()`` or ``requires()`` method fails with an
   exception, or when the limit number of steps is reached.
 unhandled_exception
-  For internal Luigi errors.  Defaults to 4, since this type of error
+  For internal Trun errors.  Defaults to 4, since this type of error
   probably will not recover over time.
 
 If you customize return codes, prefer to set them in range 128 to 255 to avoid
 conflicts. Return codes in range 0 to 127 are reserved for possible future use
-by Luigi contributors.
+by Trun contributors.
 
 [scalding]
 ----------
@@ -810,7 +810,7 @@ retry_delay
   again. Defaults to 900 (15 minutes).
 
 state_path
-  Path in which to store the Luigi scheduler's state. When the scheduler
+  Path in which to store the Trun scheduler's state. When the scheduler
   is shut down, its state is stored in this path. The scheduler must be
   shut down cleanly for this to work, usually with a kill command. If
   the kill command includes the -9 flag, the scheduler will not be able
@@ -819,13 +819,13 @@ state_path
   jobs and other state from when the scheduler last shut down.
 
   Sometimes this path must be deleted when restarting the scheduler
-  after upgrading Luigi, as old state files can become incompatible
+  after upgrading Trun, as old state files can become incompatible
   with the new scheduler. When this happens, all workers should be
   restarted after the scheduler both to become compatible with the
   updated code and to reschedule the jobs that the scheduler has now
   forgotten about.
 
-  This defaults to /var/lib/luigi-server/state.pickle
+  This defaults to /var/lib/trun-server/state.pickle
 
 worker_disconnect_delay
   Number of seconds to wait after a worker has stopped pinging the
@@ -842,14 +842,14 @@ send_messages
   Defaults to true.
 
 metrics_collector
-  Optional setting allowing Luigi to use a contribution to collect metrics
+  Optional setting allowing Trun to use a contribution to collect metrics
   about the pipeline to a third-party. By default this uses the default metric
   collector that acts as a shell and does nothing. The currently available
   options are "datadog", "prometheus" and "custom". If it's custom the
   'metrics_custom_import' needs to be set.
 
 metrics_custom_import
-  Optional setting allowing Luigi to import a custom subclass of MetricsCollector
+  Optional setting allowing Trun to import a custom subclass of MetricsCollector
   at runtime. The string should be formatted like "module.sub_module.ClassName".
 
 
@@ -898,11 +898,11 @@ username
 [spark]
 -------
 
-Parameters controlling the default execution of :py:class:`~luigi.contrib.spark.SparkSubmitStep` and :py:class:`~luigi.contrib.spark.PySparkStep`:
+Parameters controlling the default execution of :py:class:`~trun.contrib.spark.SparkSubmitStep` and :py:class:`~trun.contrib.spark.PySparkStep`:
 
 .. deprecated:: 1.1.1
-   :py:class:`~luigi.contrib.spark.SparkJob`, :py:class:`~luigi.contrib.spark.Spark1xJob` and :py:class:`~luigi.contrib.spark.PySpark1xJob`
-    are deprecated. Please use :py:class:`~luigi.contrib.spark.SparkSubmitStep` or :py:class:`~luigi.contrib.spark.PySparkStep`.
+   :py:class:`~trun.contrib.spark.SparkJob`, :py:class:`~trun.contrib.spark.Spark1xJob` and :py:class:`~trun.contrib.spark.PySpark1xJob`
+    are deprecated. Please use :py:class:`~trun.contrib.spark.SparkSubmitStep` or :py:class:`~trun.contrib.spark.PySparkStep`.
 
 spark_submit
   Command to run in order to submit spark jobs. Default: ``"spark-submit"``
@@ -1033,7 +1033,7 @@ app_key
   sections.
 default_tags
   Optional settings that adds the tag to all the metrics and events sent to
-  Datadog. Default value is "application:luigi".
+  Datadog. Default value is "application:trun".
 environment
   Allows you to tweak multiple environment to differentiate between production,
   staging or development metrics within Datadog. Default value is "development".
@@ -1043,28 +1043,28 @@ statsd_port
   The port on the host that allows connection to the statsd host. Defaults value is 8125.
 metric_namespace
   Optional prefix to add to the beginning of every metric sent to Datadog.
-  Default value is "luigi".
+  Default value is "trun".
 
 Per Step Retry-Policy
 ---------------------
 
-Luigi also supports defining ``retry_policy`` per step.
+Trun also supports defining ``retry_policy`` per step.
 
 .. code-block:: python
 
-    class GenerateWordsFromHdfs(luigi.Step):
+    class GenerateWordsFromHdfs(trun.Step):
 
        retry_count = 2
 
         ...
 
-    class GenerateWordsFromRDBM(luigi.Step):
+    class GenerateWordsFromRDBM(trun.Step):
 
        retry_count = 5
 
         ...
 
-    class CountLetters(luigi.Step):
+    class CountLetters(trun.Step):
 
         def requires(self):
             return [GenerateWordsFromHdfs()]
@@ -1074,9 +1074,9 @@ Luigi also supports defining ``retry_policy`` per step.
 
         ...
 
-If none of retry-policy fields is defined per step, the field value will be **default** value which is defined in luigi config file.
+If none of retry-policy fields is defined per step, the field value will be **default** value which is defined in trun config file.
 
-To make luigi sticks to the given retry-policy, be sure you run luigi worker with ``keep_alive`` config. Please check ``keep_alive`` config in :ref:`worker-config` section.
+To make trun sticks to the given retry-policy, be sure you run trun worker with ``keep_alive`` config. Please check ``keep_alive`` config in :ref:`worker-config` section.
 
 Retry-Policy Fields
 -------------------

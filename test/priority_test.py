@@ -17,14 +17,14 @@
 
 from helpers import unittest
 
-import luigi
-import luigi.notifications
+import trun
+import trun.notifications
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class PrioStep(luigi.Step):
-    prio = luigi.Parameter()
+class PrioStep(trun.Step):
+    prio = trun.Parameter()
     run_counter = 0
 
     @property
@@ -47,11 +47,11 @@ class PriorityTest(unittest.TestCase):
 
     def test_priority(self):
         p, q, r = PrioStep(1), PrioStep(2), PrioStep(3)
-        luigi.build([p, q, r], local_scheduler=True)
+        trun.build([p, q, r], local_scheduler=True)
         self.assertTrue(r.t < q.t < p.t)
 
     def test_priority_w_dep(self):
         x, y, z = PrioStep(25), PrioStep(15), PrioStep(5)
         a, b, c = PrioStep(24), PrioStep(14), PrioStep(4)
-        luigi.build([a, b, c, x, y, z], local_scheduler=True)
+        trun.build([a, b, c, x, y, z], local_scheduler=True)
         self.assertTrue(z.t < y.t < x.t < c.t < b.t < a.t)

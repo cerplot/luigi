@@ -21,9 +21,9 @@ import sys
 import tempfile
 from helpers import unittest
 
-import luigi.contrib.hive
+import trun.contrib.hive
 import mock
-from luigi import LocalTarget
+from trun import LocalTarget
 
 import pytest
 
@@ -38,28 +38,28 @@ class HiveTest(unittest.TestCase):
         return 'statement{}'.format(self.count)
 
     def setUp(self):
-        self.run_hive_cmd_saved = luigi.contrib.hive.run_hive
-        luigi.contrib.hive.run_hive = self.mock_hive_cmd
+        self.run_hive_cmd_saved = trun.contrib.hive.run_hive
+        trun.contrib.hive.run_hive = self.mock_hive_cmd
 
     def tearDown(self):
-        luigi.contrib.hive.run_hive = self.run_hive_cmd_saved
+        trun.contrib.hive.run_hive = self.run_hive_cmd_saved
 
     def test_run_hive_command(self):
         pre_count = self.count
-        res = luigi.contrib.hive.run_hive_cmd("foo")
+        res = trun.contrib.hive.run_hive_cmd("foo")
         self.assertEqual(["-e", "foo"], self.last_hive_cmd)
         self.assertEqual("statement{0}".format(pre_count + 1), res)
 
     def test_run_hive_script_not_exists(self):
         def test():
-            luigi.contrib.hive.run_hive_script("/tmp/some-non-existant-file______")
+            trun.contrib.hive.run_hive_script("/tmp/some-non-existant-file______")
 
         self.assertRaises(RuntimeError, test)
 
     def test_run_hive_script_exists(self):
         with tempfile.NamedTemporaryFile(delete=True) as f:
             pre_count = self.count
-            res = luigi.contrib.hive.run_hive_script(f.name)
+            res = trun.contrib.hive.run_hive_script(f.name)
             self.assertEqual(["-f", f.name], self.last_hive_cmd)
             self.assertEqual("statement{0}".format(pre_count + 1), res)
 
@@ -71,7 +71,7 @@ class HiveTest(unittest.TestCase):
             def output(self):
                 return LocalTarget(os.path.join(dirname, "foo"))
 
-        runner = luigi.contrib.hive.HiveQueryRunner()
+        runner = trun.contrib.hive.HiveQueryRunner()
         runner.prepare_outputs(FooHiveStep())
         self.assertTrue(os.path.exists(dirname))
 
@@ -82,11 +82,11 @@ class HiveCommandClientTest(unittest.TestCase):
     Hopefully there are no significant differences in the expected output"""
 
     def setUp(self):
-        self.client = luigi.contrib.hive.HiveCommandClient()
-        self.apacheclient = luigi.contrib.hive.ApacheHiveCommandClient()
-        self.metastoreclient = luigi.contrib.hive.MetastoreClient()
+        self.client = trun.contrib.hive.HiveCommandClient()
+        self.apacheclient = trun.contrib.hive.ApacheHiveCommandClient()
+        self.metastoreclient = trun.contrib.hive.MetastoreClient()
 
-    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    @mock.patch("trun.contrib.hive.run_hive_cmd")
     def test_default_table_location(self, run_command):
         run_command.return_value = "Protect Mode:       	None                	 \n" \
                                    "Retention:          	0                   	 \n" \
@@ -96,7 +96,7 @@ class HiveCommandClientTest(unittest.TestCase):
         returned = self.client.table_location("mytable")
         self.assertEqual('hdfs://localhost:9000/user/hive/warehouse/mytable', returned)
 
-    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    @mock.patch("trun.contrib.hive.run_hive_cmd")
     def test_table_exists(self, run_command):
         run_command.return_value = "OK"
         returned = self.client.table_exists("mytable")
@@ -123,7 +123,7 @@ class HiveCommandClientTest(unittest.TestCase):
         returned = self.client.table_exists("mytable", partition={'a': 'b'})
         self.assertFalse(returned)
 
-    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    @mock.patch("trun.contrib.hive.run_hive_cmd")
     def test_table_schema(self, run_command):
         run_command.return_value = "FAILED: SemanticException [Error 10001]: blah does not exist\nSome other stuff"
         returned = self.client.table_schema("mytable")
@@ -160,7 +160,7 @@ class HiveCommandClientTest(unittest.TestCase):
         returned = self.client.partition_spec({'a': 'b', 'c': 'd'})
         self.assertEqual("`a`='b',`c`='d'", returned)
 
-    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    @mock.patch("trun.contrib.hive.run_hive_cmd")
     def test_apacheclient_table_exists(self, run_command):
         run_command.return_value = "OK"
         returned = self.apacheclient.table_exists("mytable")
@@ -187,7 +187,7 @@ class HiveCommandClientTest(unittest.TestCase):
         returned = self.apacheclient.table_exists("mytable", partition={'a': 'b'})
         self.assertFalse(returned)
 
-    @mock.patch("luigi.contrib.hive.run_hive_cmd")
+    @mock.patch("trun.contrib.hive.run_hive_cmd")
     def test_apacheclient_table_schema(self, run_command):
         run_command.return_value = "FAILED: SemanticException [Error 10001]: Table not found mytable\nSome other stuff"
         returned = self.apacheclient.table_schema("mytable")
@@ -220,7 +220,7 @@ class HiveCommandClientTest(unittest.TestCase):
         returned = self.apacheclient.table_schema("mytable")
         self.assertEqual(expected, returned)
 
-    @mock.patch("luigi.contrib.hive.HiveThriftContext")
+    @mock.patch("trun.contrib.hive.HiveThriftContext")
     def test_metastoreclient_partition_existence_regardless_of_order(self, thrift_context):
         thrift_context.return_value = thrift_context
         client_mock = mock.Mock(name="clientmock")
@@ -236,34 +236,34 @@ class HiveCommandClientTest(unittest.TestCase):
 
     def test_metastore_partition_spec_has_the_same_order(self):
         partition_spec = OrderedDict([("p1", "a"), ("p2", "b")])
-        spec_string = luigi.contrib.hive.MetastoreClient().partition_spec(partition_spec)
+        spec_string = trun.contrib.hive.MetastoreClient().partition_spec(partition_spec)
         self.assertEqual(spec_string, "p1=a/p2=b")
 
         partition_spec = OrderedDict([("p2", "b"), ("p1", "a")])
-        spec_string = luigi.contrib.hive.MetastoreClient().partition_spec(partition_spec)
+        spec_string = trun.contrib.hive.MetastoreClient().partition_spec(partition_spec)
         self.assertEqual(spec_string, "p1=a/p2=b")
 
-    @mock.patch("luigi.configuration")
+    @mock.patch("trun.configuration")
     def test_client_def(self, hive_syntax):
         hive_syntax.get_config.return_value.get.return_value = "cdh4"
-        client = luigi.contrib.hive.get_default_client()
-        self.assertEqual(luigi.contrib.hive.HiveCommandClient, type(client))
+        client = trun.contrib.hive.get_default_client()
+        self.assertEqual(trun.contrib.hive.HiveCommandClient, type(client))
 
         hive_syntax.get_config.return_value.get.return_value = "cdh3"
-        client = luigi.contrib.hive.get_default_client()
-        self.assertEqual(luigi.contrib.hive.HiveCommandClient, type(client))
+        client = trun.contrib.hive.get_default_client()
+        self.assertEqual(trun.contrib.hive.HiveCommandClient, type(client))
 
         hive_syntax.get_config.return_value.get.return_value = "apache"
-        client = luigi.contrib.hive.get_default_client()
-        self.assertEqual(luigi.contrib.hive.ApacheHiveCommandClient, type(client))
+        client = trun.contrib.hive.get_default_client()
+        self.assertEqual(trun.contrib.hive.ApacheHiveCommandClient, type(client))
 
         hive_syntax.get_config.return_value.get.return_value = "metastore"
-        client = luigi.contrib.hive.get_default_client()
-        self.assertEqual(luigi.contrib.hive.MetastoreClient, type(client))
+        client = trun.contrib.hive.get_default_client()
+        self.assertEqual(trun.contrib.hive.MetastoreClient, type(client))
 
         hive_syntax.get_config.return_value.get.return_value = "warehouse"
-        client = luigi.contrib.hive.get_default_client()
-        self.assertEqual(luigi.contrib.hive.WarehouseHiveClient, type(client))
+        client = trun.contrib.hive.get_default_client()
+        self.assertEqual(trun.contrib.hive.WarehouseHiveClient, type(client))
 
     @mock.patch('subprocess.Popen')
     def test_run_hive_command(self, popen):
@@ -277,14 +277,14 @@ class HiveCommandClientTest(unittest.TestCase):
         preturn.communicate = comm
         popen.return_value = preturn
 
-        returned = luigi.contrib.hive.run_hive(["blah", "blah"])
+        returned = trun.contrib.hive.run_hive(["blah", "blah"])
         self.assertEqual("some return stuff", returned)
 
         preturn.returncode = 17
-        self.assertRaises(luigi.contrib.hive.HiveCommandError, luigi.contrib.hive.run_hive, ["blah", "blah"])
+        self.assertRaises(trun.contrib.hive.HiveCommandError, trun.contrib.hive.run_hive, ["blah", "blah"])
 
         comm.return_value = b'', 'some stderr stuff'
-        returned = luigi.contrib.hive.run_hive(["blah", "blah"], False)
+        returned = trun.contrib.hive.run_hive(["blah", "blah"], False)
         self.assertEqual("", returned)
 
 
@@ -300,7 +300,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
             '.tmp/'
         ]
 
-        warehouse_hive_client = luigi.contrib.hive.WarehouseHiveClient(
+        warehouse_hive_client = trun.contrib.hive.WarehouseHiveClient(
             hdfs_client=hdfs_client,
             warehouse_location='/apps/hive/warehouse'
         )
@@ -316,7 +316,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
         assert exists
         hdfs_client.exists.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/a=1/b=2')
 
-    @mock.patch("luigi.configuration")
+    @mock.patch("trun.configuration")
     def test_table_exists_without_partition_spec_files_actually_exist(self, warehouse_location):
         # arrange
         warehouse_location.get_config.return_value.get.return_value = '/apps/hive/warehouse'
@@ -329,7 +329,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
             '.tmp/'
         ]
 
-        warehouse_hive_client = luigi.contrib.hive.WarehouseHiveClient(
+        warehouse_hive_client = trun.contrib.hive.WarehouseHiveClient(
             hdfs_client=hdfs_client,
         )
 
@@ -344,7 +344,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
         hdfs_client.exists.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/')
         hdfs_client.listdir.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/')
 
-    @mock.patch("luigi.configuration")
+    @mock.patch("trun.configuration")
     def test_table_exists_only_tmp_files_exist(self, ignored_file_masks):
         # arrange
         ignored_file_masks.get_config.return_value.get.return_value = r"(\.tmp.*)"
@@ -354,7 +354,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
             '.tmp/'
         ]
 
-        warehouse_hive_client = luigi.contrib.hive.WarehouseHiveClient(
+        warehouse_hive_client = trun.contrib.hive.WarehouseHiveClient(
             hdfs_client=hdfs_client,
             warehouse_location='/apps/hive/warehouse'
         )
@@ -371,7 +371,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
         hdfs_client.exists.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/a=1')
         hdfs_client.listdir.assert_called_once_with('/apps/hive/warehouse/some_db.db/table_name/a=1')
 
-    @mock.patch("luigi.configuration")
+    @mock.patch("trun.configuration")
     def test_table_exists_ambiguous_partition(self, ignored_file_masks):
         # arrange
         ignored_file_masks.get_config.return_value.get.return_value = r"(\.tmp.*)"
@@ -380,7 +380,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
         hdfs_client.listdir.return_value = [
             '.tmp/'
         ]
-        warehouse_hive_client = luigi.contrib.hive.WarehouseHiveClient(
+        warehouse_hive_client = trun.contrib.hive.WarehouseHiveClient(
             hdfs_client=hdfs_client,
             warehouse_location='/apps/hive/warehouse'
         )
@@ -402,8 +402,8 @@ class WarehouseHiveClientTest(unittest.TestCase):
             self.assertRaises(ValueError, _call_exists)
 
 
-class MyHiveStep(luigi.contrib.hive.HiveQueryStep):
-    param = luigi.Parameter()
+class MyHiveStep(trun.contrib.hive.HiveQueryStep):
+    param = trun.Parameter()
 
     def query(self):
         return 'banana banana %s' % self.param
@@ -413,9 +413,9 @@ class MyHiveStep(luigi.contrib.hive.HiveQueryStep):
 class TestHiveStep(unittest.TestCase):
     step_class = MyHiveStep
 
-    @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
+    @mock.patch('trun.contrib.hadoop.run_and_track_hadoop_job')
     def test_run(self, run_and_track_hadoop_job):
-        success = luigi.run([self.step_class.__name__, '--param', 'foo', '--local-scheduler', '--no-lock'])
+        success = trun.run([self.step_class.__name__, '--param', 'foo', '--local-scheduler', '--no-lock'])
         self.assertTrue(success)
         self.assertEqual('hive', run_and_track_hadoop_job.call_args[0][0][0])
 
@@ -435,7 +435,7 @@ class TestHiveStepArgs(TestHiveStep):
     def test_arglist(self):
         step = self.step_class(param='foo')
         f_name = 'my_file'
-        runner = luigi.contrib.hive.HiveQueryRunner()
+        runner = trun.contrib.hive.HiveQueryRunner()
         arglist = runner.get_arglist(f_name, step)
 
         f_idx = arglist.index('-f')
@@ -457,13 +457,13 @@ class TestHiveTarget(unittest.TestCase):
 
     def test_hive_table_target(self):
         client = mock.Mock()
-        target = luigi.contrib.hive.HiveTableTarget(database='db', table='foo', client=client)
+        target = trun.contrib.hive.HiveTableTarget(database='db', table='foo', client=client)
         target.exists()
         client.table_exists.assert_called_with('foo', 'db', None)
 
     def test_hive_partition_target(self):
         client = mock.Mock()
-        target = luigi.contrib.hive.HivePartitionTarget(database='db', table='foo', partition='bar', client=client)
+        target = trun.contrib.hive.HivePartitionTarget(database='db', table='foo', partition='bar', client=client)
         target.exists()
         client.table_exists.assert_called_with('foo', 'db', 'bar')
 
@@ -471,7 +471,7 @@ class TestHiveTarget(unittest.TestCase):
 class ExternalHiveStepTest(unittest.TestCase):
     def test_table(self):
         # arrange
-        class _Step(luigi.contrib.hive.ExternalHiveStep):
+        class _Step(trun.contrib.hive.ExternalHiveStep):
             database = 'schema1'
             table = 'table1'
 
@@ -479,14 +479,14 @@ class ExternalHiveStepTest(unittest.TestCase):
         output = _Step().output()
 
         # assert
-        assert isinstance(output, luigi.contrib.hive.HivePartitionTarget)
+        assert isinstance(output, trun.contrib.hive.HivePartitionTarget)
         assert output.database == 'schema1'
         assert output.table == 'table1'
         assert output.partition == {}
 
     def test_partition_exists(self):
         # arrange
-        class _Step(luigi.contrib.hive.ExternalHiveStep):
+        class _Step(trun.contrib.hive.ExternalHiveStep):
             database = 'schema2'
             table = 'table2'
             partition = {'a': 1}
@@ -495,7 +495,7 @@ class ExternalHiveStepTest(unittest.TestCase):
         output = _Step().output()
 
         # assert
-        assert isinstance(output, luigi.contrib.hive.HivePartitionTarget)
+        assert isinstance(output, trun.contrib.hive.HivePartitionTarget)
         assert output.database == 'schema2'
         assert output.table == 'table2'
         assert output.partition == {'a': 1}

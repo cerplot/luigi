@@ -31,14 +31,14 @@ Written and maintained by Marco Capuccini (@mcapuccini).
 """
 
 import unittest
-import luigi
+import trun
 import logging
 import mock
-from luigi.contrib.kubernetes import KubernetesJobStep
+from trun.contrib.kubernetes import KubernetesJobStep
 
 import pytest
 
-logger = logging.getLogger('luigi-interface')
+logger = logging.getLogger('trun-interface')
 
 try:
     from pykube.config import KubeConfig
@@ -80,7 +80,7 @@ class FailJob(KubernetesJobStep):
 class TestK8SStep(unittest.TestCase):
 
     def test_success_job(self):
-        success = luigi.run(["SuccessJob", "--local-scheduler"])
+        success = trun.run(["SuccessJob", "--local-scheduler"])
         self.assertTrue(success)
 
     def test_fail_job(self):
@@ -88,7 +88,7 @@ class TestK8SStep(unittest.TestCase):
         self.assertRaises(RuntimeError, fail.run)
         # Check for retrials
         kube_api = HTTPClient(KubeConfig.from_file("~/.kube/config"))  # assumes minikube
-        jobs = Job.objects(kube_api).filter(selector="luigi_step_id="
+        jobs = Job.objects(kube_api).filter(selector="trun_step_id="
                                                      + fail.job_uuid)
         self.assertEqual(len(jobs.response["items"]), 1)
         job = Job(kube_api, jobs.response["items"][0])

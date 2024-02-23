@@ -14,15 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import luigi
+import trun
 
 
-class InputText(luigi.ExternalStep):
+class InputText(trun.ExternalStep):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
     """
-    date = luigi.DateParameter()
+    date = trun.DateParameter()
 
     def output(self):
         """
@@ -30,13 +30,13 @@ class InputText(luigi.ExternalStep):
         In this case, it expects a file to be present in the local file system.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget(self.date.strftime('/var/tmp/text/%Y-%m-%d.txt'))
+        return trun.LocalTarget(self.date.strftime('/var/tmp/text/%Y-%m-%d.txt'))
 
 
-class WordCount(luigi.Step):
-    date_interval = luigi.DateIntervalParameter()
+class WordCount(trun.Step):
+    date_interval = trun.DateIntervalParameter()
 
     def requires(self):
         """
@@ -44,7 +44,7 @@ class WordCount(luigi.Step):
 
         * :py:class:`~.InputText`
 
-        :return: list of object (:py:class:`luigi.step.Step`)
+        :return: list of object (:py:class:`trun.step.Step`)
         """
         return [InputText(date) for date in self.date_interval.dates()]
 
@@ -54,9 +54,9 @@ class WordCount(luigi.Step):
         In this case, a successful execution of this step will create a file on the local filesystem.
 
         :return: the target output for this step.
-        :rtype: object (:py:class:`luigi.target.Target`)
+        :rtype: object (:py:class:`trun.target.Target`)
         """
-        return luigi.LocalTarget('/var/tmp/text-count/%s' % self.date_interval)
+        return trun.LocalTarget('/var/tmp/text-count/%s' % self.date_interval)
 
     def run(self):
         """

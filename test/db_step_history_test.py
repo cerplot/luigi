@@ -18,21 +18,21 @@
 from helpers import unittest
 
 from helpers import with_config
-import luigi
-from luigi.db_step_history import DbStepHistory
-from luigi.step_status import DONE, PENDING, RUNNING
-import luigi.scheduler
-from luigi.parameter import ParameterVisibility
+import trun
+from trun.db_step_history import DbStepHistory
+from trun.step_status import DONE, PENDING, RUNNING
+import trun.scheduler
+from trun.parameter import ParameterVisibility
 
 
-class DummyStep(luigi.Step):
-    foo = luigi.Parameter(default='foo')
+class DummyStep(trun.Step):
+    foo = trun.Parameter(default='foo')
 
 
-class ParamStep(luigi.Step):
-    param1 = luigi.Parameter()
-    param2 = luigi.IntParameter(visibility=ParameterVisibility.HIDDEN)
-    param3 = luigi.Parameter(default="empty", visibility=ParameterVisibility.PRIVATE)
+class ParamStep(trun.Step):
+    param1 = trun.Parameter()
+    param2 = trun.IntParameter(visibility=ParameterVisibility.HIDDEN)
+    param3 = trun.Parameter(default="empty", visibility=ParameterVisibility.PRIVATE)
 
 
 class DbStepHistoryTest(unittest.TestCase):
@@ -99,8 +99,8 @@ class DbStepHistoryTest(unittest.TestCase):
             self.assertEqual(step_record.parameters['foo'].value, '')
 
     def run_step(self, step):
-        step2 = luigi.scheduler.Step(step.step_id, PENDING, [], family=step.step_family,
-                                     params=step.param_kwargs, retry_policy=luigi.scheduler._get_empty_retry_policy())
+        step2 = trun.scheduler.Step(step.step_id, PENDING, [], family=step.step_family,
+                                     params=step.param_kwargs, retry_policy=trun.scheduler._get_empty_retry_policy())
 
         self.history.step_scheduled(step2)
         self.history.step_started(step2, 'hostname')
@@ -109,7 +109,7 @@ class DbStepHistoryTest(unittest.TestCase):
 
 class MySQLDbStepHistoryTest(unittest.TestCase):
 
-    @with_config(dict(step_history=dict(db_connection='mysql+mysqlconnector://travis@localhost/luigi_test')))
+    @with_config(dict(step_history=dict(db_connection='mysql+mysqlconnector://travis@localhost/trun_test')))
     def setUp(self):
         try:
             self.history = DbStepHistory()
@@ -127,7 +127,7 @@ class MySQLDbStepHistoryTest(unittest.TestCase):
             self.assertEqual(step_record.events[0].event_name, DONE)
 
     def test_utc_conversion(self):
-        from luigi.server import from_utc
+        from trun.server import from_utc
 
         with self.history._session() as session:
             step = DummyStep()
@@ -141,9 +141,9 @@ class MySQLDbStepHistoryTest(unittest.TestCase):
                 self.fail("Failed to convert timestamp {} to UTC".format(last_event.ts))
 
     def run_step(self, step):
-        step2 = luigi.scheduler.Step(step.step_id, PENDING, [],
+        step2 = trun.scheduler.Step(step.step_id, PENDING, [],
                                      family=step.step_family, params=step.param_kwargs,
-                                     retry_policy=luigi.scheduler._get_empty_retry_policy())
+                                     retry_policy=trun.scheduler._get_empty_retry_policy())
 
         self.history.step_scheduled(step2)
         self.history.step_started(step2, 'hostname')

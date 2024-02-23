@@ -15,13 +15,13 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase, temporary_unloaded_module
-import luigi
-from luigi.worker import Worker
+from helpers import TrunTestCase, temporary_unloaded_module
+import trun
+from trun.worker import Worker
 import multiprocessing
 
 
-class ContextManagedStepProcessTest(LuigiTestCase):
+class ContextManagedStepProcessTest(TrunTestCase):
 
     def _test_context_manager(self, force_multiprocessing):
         CONTEXT_MANAGER_MODULE = b'''
@@ -37,7 +37,7 @@ class MyContextManager:
         self.step.exit_event.set()
 '''
 
-        class DummyEventRecordingStep(luigi.Step):
+        class DummyEventRecordingStep(trun.Step):
             def __init__(self, *args, **kwargs):
                 self.enter_event = multiprocessing.Event()
                 self.exit_event = multiprocessing.Event()

@@ -20,8 +20,8 @@ from mock import Mock
 import re
 import random
 
-import luigi.target
-import luigi.format
+import trun.target
+import trun.format
 
 
 class TestException(Exception):
@@ -32,12 +32,12 @@ class TargetTest(unittest.TestCase):
 
     def test_cannot_instantiate(self):
         def instantiate_target():
-            luigi.target.Target()
+            trun.target.Target()
 
         self.assertRaises(TypeError, instantiate_target)
 
     def test_abstract_subclass(self):
-        class ExistsLessTarget(luigi.target.Target):
+        class ExistsLessTarget(trun.target.Target):
             pass
 
         def instantiate_target():
@@ -46,7 +46,7 @@ class TargetTest(unittest.TestCase):
         self.assertRaises(TypeError, instantiate_target)
 
     def test_instantiate_subclass(self):
-        class GoodTarget(luigi.target.Target):
+        class GoodTarget(trun.target.Target):
 
             def exists(self):
                 return True
@@ -149,7 +149,7 @@ class FileSystemTargetTestMixin:
         self.assertFalse(t.exists())
 
     def test_text(self):
-        t = self.create_target(luigi.format.UTF8)
+        t = self.create_target(trun.format.UTF8)
         a = u'我éçф'
         with t.open('w') as f:
             f.write(a)
@@ -158,7 +158,7 @@ class FileSystemTargetTestMixin:
         self.assertEqual(a, b)
 
     def test_del_with_Text(self):
-        t = self.create_target(luigi.format.UTF8)
+        t = self.create_target(trun.format.UTF8)
         p = t.open('w')
         print(u'test', file=p)
         tp = getattr(p, 'tmp_path', '')
@@ -168,7 +168,7 @@ class FileSystemTargetTestMixin:
         self.assertFalse(t.exists())
 
     def test_format_injection(self):
-        class CustomFormat(luigi.format.Format):
+        class CustomFormat(trun.format.Format):
 
             def pipe_reader(self, input_pipe):
                 input_pipe.foo = "custom read property"
@@ -185,9 +185,9 @@ class FileSystemTargetTestMixin:
         with t.open("r") as f:
             self.assertEqual(f.foo, "custom read property")
 
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/73693470')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/73693470')
     def test_binary_write(self):
-        t = self.create_target(luigi.format.Nop)
+        t = self.create_target(trun.format.Nop)
         with t.open('w') as f:
             f.write(b'a\xf2\xf3\r\nfd')
 
@@ -223,7 +223,7 @@ class FileSystemTargetTestMixin:
         self.assertEqual(c, ['a\n', 'b\n', 'c\n'])
 
     def test_gzip(self):
-        t = self.create_target(luigi.format.Gzip)
+        t = self.create_target(trun.format.Gzip)
         p = t.open('w')
         test_data = b'test'
         p.write(test_data)
@@ -234,7 +234,7 @@ class FileSystemTargetTestMixin:
         self.assertTrue(t.exists())
 
     def test_gzip_works_and_cleans_up(self):
-        t = self.create_target(luigi.format.Gzip)
+        t = self.create_target(trun.format.Gzip)
 
         test_data = b'123testing'
         with t.open('w') as f:
@@ -268,7 +268,7 @@ class FileSystemTargetTestMixin:
         self.assertTrue(t.exists())
         fs.rename_dont_move(t.path, other_path)
         self.assertFalse(t.exists())
-        self.assertRaises(luigi.target.FileAlreadyExists,
+        self.assertRaises(trun.target.FileAlreadyExists,
                           lambda: fs.rename_dont_move(t.path, other_path))
 
 
@@ -277,7 +277,7 @@ class TemporaryPathTest(unittest.TestCase):
         super(TemporaryPathTest, self).setUp()
         self.fs = Mock()
 
-        class MyFileSystemTarget(luigi.target.FileSystemTarget):
+        class MyFileSystemTarget(trun.target.FileSystemTarget):
             open = None  # Must be implemented due to abc stuff
             fs = self.fs
 
@@ -314,16 +314,16 @@ class TemporaryPathTest(unittest.TestCase):
         target_noslash = self.target_cls('/tmp/dir')
 
         with target_slash.temporary_path() as tmp_path:
-            assert re.match(r'/tmp/dir-luigi-tmp-\d{10}/', tmp_path)
+            assert re.match(r'/tmp/dir-trun-tmp-\d{10}/', tmp_path)
         self.fs.rename_dont_move.assert_called_once_with(tmp_path, target_slash.path)
 
         with target_noslash.temporary_path() as tmp_path:
-            assert re.match(r'/tmp/dir-luigi-tmp-\d{10}', tmp_path)
+            assert re.match(r'/tmp/dir-trun-tmp-\d{10}', tmp_path)
         self.fs.rename_dont_move.assert_called_with(tmp_path, target_noslash.path)
 
     def test_windowsish_dir(self):
         target = self.target_cls(r'''C:\my\folder''' + "\\")
-        pattern = r'''C:\\my\\folder-luigi-tmp-\d{10}''' + r"\\"
+        pattern = r'''C:\\my\\folder-trun-tmp-\d{10}''' + r"\\"
 
         with target.temporary_path() as tmp_path:
             assert re.match(pattern, tmp_path)
@@ -333,7 +333,7 @@ class TemporaryPathTest(unittest.TestCase):
         target = self.target_cls(r'''hdfs:///user/arash/myfile.uids''')
 
         with target.temporary_path() as tmp_path:
-            assert re.match(r'''hdfs:///user/arash/myfile.uids-luigi-tmp-\d{10}''', tmp_path)
+            assert re.match(r'''hdfs:///user/arash/myfile.uids-trun-tmp-\d{10}''', tmp_path)
         self.fs.rename_dont_move.assert_called_once_with(tmp_path, target.path)
 
     def test_creates_dir_for_file(self):

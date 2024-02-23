@@ -5,7 +5,7 @@ This is a very simplified case of something we do at Spotify a lot.
 All user actions are logged to Google Cloud Storage (previously HDFS) where
 we run a bunch of processing jobs to transform the data. The processing code itself is implemented
 in a scalable data processing framework, such as Scio, Scalding, or Spark, but the jobs
-are orchestrated with Luigi.
+are orchestrated with Trun.
 At some point we might end up with
 a smaller data set that we can bulk ingest into Cassandra, Postgres, or
 other storage suitable for serving or exploration.
@@ -14,18 +14,18 @@ For the purpose of this exercise, we want to aggregate all streams,
 find the top 10 artists and then put the results into Postgres.
 
 This example is also available in
-`examples/top_artists.py <https://github.com/spotify/luigi/blob/master/examples/top_artists.py>`_.
+`examples/top_artists.py <https://github.com/spotify/trun/blob/master/examples/top_artists.py>`_.
 
 Step 1 - Aggregate Artist Streams
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code:: python
 
-    class AggregateArtists(luigi.Step):
-        date_interval = luigi.DateIntervalParameter()
+    class AggregateArtists(trun.Step):
+        date_interval = trun.DateIntervalParameter()
 
         def output(self):
-            return luigi.LocalTarget("data/artist_streams_%s.tsv" % self.date_interval)
+            return trun.LocalTarget("data/artist_streams_%s.tsv" % self.date_interval)
 
         def requires(self):
             return [Streams(date) for date in self.date_interval]
@@ -44,28 +44,28 @@ Step 1 - Aggregate Artist Streams
                     print(artist, count, file=out_file)
 
 Note that this is just a portion of the file ``examples/top_artists.py``.
-In particular, ``Streams`` is defined as a :class:`~luigi.step.Step`,
+In particular, ``Streams`` is defined as a :class:`~trun.step.Step`,
 acting as a dependency for ``AggregateArtists``.
-In addition, ``luigi.run()`` is called if the script is executed directly,
+In addition, ``trun.run()`` is called if the script is executed directly,
 allowing it to be run from the command line.
 
 There are several pieces of this snippet that deserve more explanation.
 
--  Any :class:`~luigi.step.Step` may be customized by instantiating one
-   or more :class:`~luigi.parameter.Parameter` objects on the class level.
--  The :func:`~luigi.step.Step.output` method tells Luigi where the result
+-  Any :class:`~trun.step.Step` may be customized by instantiating one
+   or more :class:`~trun.parameter.Parameter` objects on the class level.
+-  The :func:`~trun.step.Step.output` method tells Trun where the result
    of running the step will end up. The path can be some function of the
    parameters.
--  The :func:`~luigi.step.Step.requires` steps specifies other steps that
+-  The :func:`~trun.step.Step.requires` steps specifies other steps that
    we need to perform this step. In this case it's an external dump named
    *Streams* which takes the date as the argument.
--  For plain Steps, the :func:`~luigi.step.Step.run` method implements the
+-  For plain Steps, the :func:`~trun.step.Step.run` method implements the
    step. This could be anything, including calling subprocesses, performing
    long running number crunching, etc. For some subclasses of
-   :class:`~luigi.step.Step` you don't have to implement the ``run``
-   method. For instance, for the :class:`~luigi.contrib.hadoop.JobStep`
+   :class:`~trun.step.Step` you don't have to implement the ``run``
+   method. For instance, for the :class:`~trun.contrib.hadoop.JobStep`
    subclass you implement a *mapper* and *reducer* instead.
--  :class:`~luigi.LocalTarget` is a built in class that makes it
+-  :class:`~trun.LocalTarget` is a built in class that makes it
    easy to read/write from/to the local filesystem. It also makes all file operations
    atomic, which is nice in case your script crashes for any reason.
 
@@ -77,60 +77,60 @@ Try running this using eg.
 .. code-block:: console
 
     $ cd examples
-    $ luigi --module top_artists AggregateArtists --local-scheduler --date-interval 2012-06
+    $ trun --module top_artists AggregateArtists --local-scheduler --date-interval 2012-06
 
 Note that  *top_artists* needs to be in your PYTHONPATH, or else this can produce an error (*ImportError: No module named top_artists*). Add the current working directory to the command PYTHONPATH with:
 
 .. code-block:: console
 
-    $ PYTHONPATH='.' luigi --module top_artists AggregateArtists --local-scheduler --date-interval 2012-06
+    $ PYTHONPATH='.' trun --module top_artists AggregateArtists --local-scheduler --date-interval 2012-06
 
 You can also try to view the manual using ``--help`` which will give you an
 overview of the options.
 
 Running the command again will do nothing because the output file is
 already created.
-In that sense, any step in Luigi is *idempotent*
+In that sense, any step in Trun is *idempotent*
 because running it many times gives the same outcome as running it once.
 Note that unlike Makefile, the output will not be recreated when any of
 the input files is modified.
 You need to delete the output file
 manually.
 
-The ``--local-scheduler`` flag tells Luigi not to connect to a scheduler
+The ``--local-scheduler`` flag tells Trun not to connect to a scheduler
 server. This is not recommended for other purpose than just testing
 things.
 
 Step 1b - Aggregate artists with Spark
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-While Luigi can process data inline, it is normally used to orchestrate external programs that
+While Trun can process data inline, it is normally used to orchestrate external programs that
 perform the actual processing. In this example, we will demonstrate how top artists instead can be
-read from HDFS and calculated with Spark, orchestrated by Luigi.
+read from HDFS and calculated with Spark, orchestrated by Trun.
 
 .. code:: python
 
-    class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
-        date_interval = luigi.DateIntervalParameter()
+    class AggregateArtistsSpark(trun.contrib.spark.SparkSubmitStep):
+        date_interval = trun.DateIntervalParameter()
 
         app = 'top_artists_spark.py'
         master = 'local[*]'
 
         def output(self):
-            return luigi.contrib.hdfs.HdfsTarget("data/artist_streams_%s.tsv" % self.date_interval)
+            return trun.contrib.hdfs.HdfsTarget("data/artist_streams_%s.tsv" % self.date_interval)
 
         def requires(self):
             return [StreamsHdfs(date) for date in self.date_interval]
 
         def app_options(self):
-            # :func:`~luigi.step.Step.input` returns the targets produced by the steps in
-            # `~luigi.step.Step.requires`.
+            # :func:`~trun.step.Step.input` returns the targets produced by the steps in
+            # `~trun.step.Step.requires`.
             return [','.join([p.path for p in self.input()]),
                     self.output().path]
 
 
-:class:`luigi.contrib.hadoop.SparkSubmitStep` doesn't require you to implement a
-:func:`~luigi.step.Step.run` method. Instead, you specify the command line parameters to send
+:class:`trun.contrib.hadoop.SparkSubmitStep` doesn't require you to implement a
+:func:`~trun.step.Step.run` method. Instead, you specify the command line parameters to send
 to ``spark-submit``, as well as any other configuration specific to Spark.
 
 Python code for the Spark job is found below.
@@ -164,10 +164,10 @@ Python code for the Spark job is found below.
         sys.exit(main(sys.argv))
 
 
-In a typical deployment scenario, the Luigi orchestration definition above as well as the
+In a typical deployment scenario, the Trun orchestration definition above as well as the
 Pyspark processing code would be packaged into a deployment package, such as a container image. The
 processing code does not have to be implemented in Python, any program can be packaged in the
-image and run from Luigi.
+image and run from Trun.
 
 
 Step 2 – Find the Top Artists
@@ -183,9 +183,9 @@ we choose to do this not as a Hadoop job, but just as a plain old for-loop in Py
 
 .. code:: python
 
-    class Top10Artists(luigi.Step):
-        date_interval = luigi.DateIntervalParameter()
-        use_hadoop = luigi.BoolParameter()
+    class Top10Artists(trun.Step):
+        date_interval = trun.DateIntervalParameter()
+        use_hadoop = trun.BoolParameter()
 
         def requires(self):
             if self.use_hadoop:
@@ -194,7 +194,7 @@ we choose to do this not as a Hadoop job, but just as a plain old for-loop in Py
                 return AggregateArtists(self.date_interval)
 
         def output(self):
-            return luigi.LocalTarget("data/top_artists_%s.tsv" % self.date_interval)
+            return trun.LocalTarget("data/top_artists_%s.tsv" % self.date_interval)
 
         def run(self):
             top_10 = nlargest(10, self._input_iterator())
@@ -215,7 +215,7 @@ the step will run before *Top10Artists*.
 
 .. code-block:: console
 
-    $ luigi --module examples.top_artists Top10Artists --local-scheduler --date-interval 2012-07
+    $ trun --module examples.top_artists Top10Artists --local-scheduler --date-interval 2012-07
 
 This will run both steps.
 
@@ -229,13 +229,13 @@ you can reuse for a lot of different steps.
 
 .. code:: python
 
-    class ArtistToplistToDatabase(luigi.contrib.postgres.CopyToTable):
-        date_interval = luigi.DateIntervalParameter()
-        use_hadoop = luigi.BoolParameter()
+    class ArtistToplistToDatabase(trun.contrib.postgres.CopyToTable):
+        date_interval = trun.DateIntervalParameter()
+        use_hadoop = trun.BoolParameter()
 
         host = "localhost"
         database = "toplists"
-        user = "luigi"
+        user = "trun"
         password = "abc123"  # ;)
         table = "top10"
 
@@ -254,7 +254,7 @@ building all its upstream dependencies.
 Using the Central Planner
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``--local-scheduler`` flag tells Luigi not to connect to a central scheduler.
+The ``--local-scheduler`` flag tells Trun not to connect to a central scheduler.
 This is recommended in order to get started and or for development purposes.
 At the point where you start putting things in production
 we strongly recommend running the central scheduler server.
@@ -269,7 +269,7 @@ If you run
 
 .. code-block:: console
 
-    $ luigid
+    $ trund
 
 in the background and then run your step without the ``--local-scheduler`` flag,
 then your script will now schedule through a centralized server.

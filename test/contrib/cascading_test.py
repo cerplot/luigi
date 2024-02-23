@@ -19,8 +19,8 @@ from helpers import unittest
 
 import pytest
 
-import luigi.target
-from luigi.contrib.target import CascadingClient
+import trun.target
+from trun.contrib.target import CascadingClient
 
 
 @pytest.mark.contrib
@@ -35,7 +35,7 @@ class CascadingClientTest(unittest.TestCase):
                 elif pos_arg < 20:
                     return kw_arg
                 elif kw_arg == 'raise_fae':
-                    raise luigi.target.FileAlreadyExists('oh noes!')
+                    raise trun.target.FileAlreadyExists('oh noes!')
                 else:
                     raise Exception()
 
@@ -70,7 +70,7 @@ class CascadingClientTest(unittest.TestCase):
         self.assertRaises(AttributeError, lambda: self.client.mkdir())
 
     def test_FileAlreadyExists_propagation(self):
-        self.assertRaises(luigi.target.FileAlreadyExists,
+        self.assertRaises(trun.target.FileAlreadyExists,
                           lambda: self.client.exists(25, kw_arg='raise_fae'))
 
     def test_method_names_kwarg(self):

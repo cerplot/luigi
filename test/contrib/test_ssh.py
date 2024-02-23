@@ -25,8 +25,8 @@ import subprocess
 from helpers import unittest
 import target_test
 
-from luigi.contrib.ssh import RemoteContext, RemoteFileSystem, RemoteTarget, RemoteCalledProcessError
-from luigi.target import MissingParentDirectory, FileAlreadyExists
+from trun.contrib.ssh import RemoteContext, RemoteFileSystem, RemoteTarget, RemoteCalledProcessError
+from trun.target import MissingParentDirectory, FileAlreadyExists
 
 import pytest
 
@@ -78,8 +78,8 @@ class TestRemoteContext(unittest.TestCase):
 
         Assumes the running user can ssh to working_ssh_host
         """
-        output = self.context.check_output(["echo", "-n", "luigi"])
-        self.assertEqual(output, b"luigi")
+        output = self.context.check_output(["echo", "-n", "trun"])
+        self.assertEqual(output, b"trun")
 
     def test_tunnel(self):
         print("Setting up remote listener...")
@@ -118,7 +118,7 @@ class TestRemoteTarget(unittest.TestCase):
 
     def setUp(self):
         self.ctx = RemoteContext(working_ssh_host)
-        self.filepath = "/tmp/luigi_remote_test.dat"
+        self.filepath = "/tmp/trun_remote_test.dat"
         self.target = RemoteTarget(
             self.filepath,
             working_ssh_host,
@@ -165,7 +165,7 @@ class TestRemoteTarget(unittest.TestCase):
 class TestRemoteFilesystem(unittest.TestCase):
     def setUp(self):
         self.fs = RemoteFileSystem(working_ssh_host)
-        self.root = '/tmp/luigi-remote-test'
+        self.root = '/tmp/trun-remote-test'
         self.directory = self.root + '/dir'
         self.filepath = self.directory + '/file'
         self.target = RemoteTarget(
@@ -206,7 +206,7 @@ class TestGetAttrRecursion(unittest.TestCase):
 
 @pytest.mark.contrib
 class TestRemoteTargetAtomicity(unittest.TestCase, target_test.FileSystemTargetTestMixin):
-    path = '/tmp/luigi_remote_atomic_test.txt'
+    path = '/tmp/trun_remote_atomic_test.txt'
     ctx = RemoteContext(working_ssh_host)
 
     def create_target(self, format=None):
@@ -227,7 +227,7 @@ class TestRemoteTargetAtomicity(unittest.TestCase, target_test.FileSystemTargetT
 
     def setUp(self):
         self.ctx.check_output(["rm", "-rf", self.path])
-        self.local_file = '/tmp/local_luigi_remote_atomic_test.txt'
+        self.local_file = '/tmp/local_trun_remote_atomic_test.txt'
         if os.path.exists(self.local_file):
             os.remove(self.local_file)
 
@@ -257,8 +257,8 @@ class TestRemoteTargetAtomicity(unittest.TestCase, target_test.FileSystemTargetT
 
 
 class TestRemoteTargetCreateDirectories(TestRemoteTargetAtomicity):
-    path = '/tmp/%s/xyz/luigi_remote_atomic_test.txt' % random.randint(0, 999999999)
+    path = '/tmp/%s/xyz/trun_remote_atomic_test.txt' % random.randint(0, 999999999)
 
 
 class TestRemoteTargetRelative(TestRemoteTargetAtomicity):
-    path = 'luigi_remote_atomic_test.txt'
+    path = 'trun_remote_atomic_test.txt'

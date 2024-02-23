@@ -15,17 +15,17 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
-import luigi
-import luigi.scheduler
-import luigi.step_history
-import luigi.worker
+import trun
+import trun.scheduler
+import trun.step_history
+import trun.worker
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class SimpleStepHistory(luigi.step_history.StepHistory):
+class SimpleStepHistory(trun.step_history.StepHistory):
 
     def __init__(self):
         self.actions = []
@@ -40,13 +40,13 @@ class SimpleStepHistory(luigi.step_history.StepHistory):
         self.actions.append(('started', step.id))
 
 
-class StepHistoryTest(LuigiTestCase):
+class StepHistoryTest(TrunTestCase):
 
     def test_run(self):
         th = SimpleStepHistory()
-        sch = luigi.scheduler.Scheduler(step_history_impl=th)
-        with luigi.worker.Worker(scheduler=sch) as w:
-            class MyStep(luigi.Step):
+        sch = trun.scheduler.Scheduler(step_history_impl=th)
+        with trun.worker.Worker(scheduler=sch) as w:
+            class MyStep(trun.Step):
                 pass
 
             step = MyStep()

@@ -31,14 +31,14 @@ import unittest
 import logging
 from mock import patch
 
-import luigi
-from luigi.contrib.lsf import LSFJobStep
+import trun
+from trun.contrib.lsf import LSFJobStep
 
 import pytest
 
 DEFAULT_HOME = ''
 
-LOGGER = logging.getLogger('luigi-interface')
+LOGGER = logging.getLogger('trun-interface')
 
 
 # BJOBS_OUTPUT = """JOBID   USER    STAT  QUEUE      FROM_HOST   EXEC_HOST   JOB_NAME   SUBMIT_TIME
@@ -59,7 +59,7 @@ class TestJobStep(LSFJobStep):
 
     '''Simple SGE job: write a test file to NSF shared drive and waits a minute'''
 
-    i = luigi.Parameter()
+    i = trun.Parameter()
 
     def work(self):
         LOGGER.info('Running test job...')
@@ -67,7 +67,7 @@ class TestJobStep(LSFJobStep):
             f.write('this is a test\n')
 
     def output(self):
-        return luigi.LocalTarget(os.path.join(DEFAULT_HOME, 'test_lsf_file_' + str(self.i)))
+        return trun.LocalTarget(os.path.join(DEFAULT_HOME, 'test_lsf_file_' + str(self.i)))
 
 
 @pytest.mark.contrib
@@ -81,7 +81,7 @@ class TestSGEJob(unittest.TestCase):
         if on_lsf_master():
             outfile = os.path.join(DEFAULT_HOME, 'testfile_1')
             steps = [TestJobStep(i=str(i), n_cpu_flag=1) for i in range(3)]
-            luigi.build(steps, local_scheduler=True, workers=3)
+            trun.build(steps, local_scheduler=True, workers=3)
             self.assertTrue(os.path.exists(outfile))
 
     @patch('subprocess.Popen')
@@ -92,7 +92,7 @@ class TestSGEJob(unittest.TestCase):
             ''
         ]
         step = TestJobStep(i=str(1), n_cpu_flag=1, shared_tmp_dir='/tmp')
-        luigi.build([step], local_scheduler=True)
+        trun.build([step], local_scheduler=True)
         self.assertEqual(mock_open.call_count, 0)
 
     def tearDown(self):

@@ -45,7 +45,7 @@ jobs:
       - name: Setup MySQL DB
         run: |
           sudo /etc/init.d/mysql start
-          mysql -e 'create database IF NOT EXISTS luigi_test;' -uroot -proot || true
+          mysql -e 'create database IF NOT EXISTS trun_test;' -uroot -proot || true
           mysql -e 'create user 'travis'@'localhost';' -uroot -proot || true
           mysql -e 'grant all privileges ON *.* TO 'travis'@'localhost';' -uroot -proot || true
       - name: Build

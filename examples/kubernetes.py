@@ -28,9 +28,9 @@ hostname, and NOT to an IP address.
 You can run this code example like this:
 
     .. code:: console
-        $ luigi --module examples.kubernetes_job PerlPi --local-scheduler
+        $ trun --module examples.kubernetes_job PerlPi --local-scheduler
 
-Running this code will create a pi-luigi-uuid kubernetes job within the cluster
+Running this code will create a pi-trun-uuid kubernetes job within the cluster
 pointed to by the default context in "~/.kube/config".
 
 If running within a kubernetes cluster, set auth_method = "service-account" to
@@ -38,8 +38,8 @@ access the local cluster.
 """
 
 # import os
-# import luigi
-from luigi.contrib.kubernetes import KubernetesJobStep
+# import trun
+from trun.contrib.kubernetes import KubernetesJobStep
 
 
 class PerlPi(KubernetesJobStep):
@@ -62,4 +62,4 @@ class PerlPi(KubernetesJobStep):
     #
     # def output(self):
     #     target = os.path.join("/tmp", "PerlPi")
-    #     return luigi.LocalTarget(target)
+    #     return trun.LocalTarget(target)

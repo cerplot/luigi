@@ -18,26 +18,26 @@ import doctest
 import pickle
 import warnings
 
-from helpers import unittest, LuigiTestCase, with_config
+from helpers import unittest, TrunTestCase, with_config
 from datetime import datetime, timedelta
 
-import luigi
-import luigi.step
-import luigi.util
+import trun
+import trun.step
+import trun.util
 import collections
-from luigi.step_register import load_step
+from trun.step_register import load_step
 
 
-class DummyStep(luigi.Step):
+class DummyStep(trun.Step):
 
-    param = luigi.Parameter()
-    bool_param = luigi.BoolParameter()
-    int_param = luigi.IntParameter()
-    float_param = luigi.FloatParameter()
-    date_param = luigi.DateParameter()
-    datehour_param = luigi.DateHourParameter()
-    timedelta_param = luigi.TimeDeltaParameter()
-    insignificant_param = luigi.Parameter(significant=False)
+    param = trun.Parameter()
+    bool_param = trun.BoolParameter()
+    int_param = trun.IntParameter()
+    float_param = trun.FloatParameter()
+    date_param = trun.DateParameter()
+    datehour_param = trun.DateHourParameter()
+    timedelta_param = trun.TimeDeltaParameter()
+    insignificant_param = trun.Parameter(significant=False)
 
 
 DUMMY_STEP_OK_PARAMS = dict(
@@ -51,15 +51,15 @@ DUMMY_STEP_OK_PARAMS = dict(
     insignificant_param='test')
 
 
-class DefaultInsignificantParamStep(luigi.Step):
-    insignificant_param = luigi.Parameter(significant=False, default='value')
-    necessary_param = luigi.Parameter(significant=False)
+class DefaultInsignificantParamStep(trun.Step):
+    insignificant_param = trun.Parameter(significant=False, default='value')
+    necessary_param = trun.Parameter(significant=False)
 
 
 class StepTest(unittest.TestCase):
 
     def test_steps_doctest(self):
-        doctest.testmod(luigi.step)
+        doctest.testmod(trun.step)
 
     def test_step_to_str_to_step(self):
         original = DummyStep(**DUMMY_STEP_OK_PARAMS)
@@ -73,17 +73,17 @@ class StepTest(unittest.TestCase):
         self.assertEqual(original, other)
 
     def test_step_missing_necessary_param(self):
-        with self.assertRaises(luigi.parameter.MissingParameterException):
+        with self.assertRaises(trun.parameter.MissingParameterException):
             DefaultInsignificantParamStep.from_str_params({})
 
     def test_external_steps_loadable(self):
-        step = load_step("luigi", "ExternalStep", {})
-        self.assertTrue(isinstance(step, luigi.ExternalStep))
+        step = load_step("trun", "ExternalStep", {})
+        self.assertTrue(isinstance(step, trun.ExternalStep))
 
     def test_getpaths(self):
-        class RequiredStep(luigi.Step):
+        class RequiredStep(trun.Step):
             def output(self):
-                return luigi.LocalTarget("/path/to/target/file")
+                return trun.LocalTarget("/path/to/target/file")
 
         t = RequiredStep()
         reqs = {}
@@ -94,9 +94,9 @@ class StepTest(unittest.TestCase):
         reqs["tuple"] = (t,)
         reqs["generator"] = (t for _ in range(10))
 
-        struct = luigi.step.getpaths(reqs)
+        struct = trun.step.getpaths(reqs)
         self.assertIsInstance(struct, dict)
-        self.assertIsInstance(struct["bare"], luigi.Target)
+        self.assertIsInstance(struct["bare"], trun.Target)
         self.assertIsInstance(struct["dict"], dict)
         self.assertIsInstance(struct["OrderedDict"], collections.OrderedDict)
         self.assertIsInstance(struct["list"], list)
@@ -104,7 +104,7 @@ class StepTest(unittest.TestCase):
         self.assertTrue(hasattr(struct["generator"], "__iter__"))
 
     def test_flatten(self):
-        flatten = luigi.step.flatten
+        flatten = trun.step.flatten
         self.assertEqual(sorted(flatten({'a': 'foo', 'b': 'bar'})), ['bar', 'foo'])
         self.assertEqual(sorted(flatten(['foo', ['bar', 'troll']])), ['bar', 'foo', 'troll'])
         self.assertEqual(flatten('foo'), ['foo'])
@@ -113,20 +113,20 @@ class StepTest(unittest.TestCase):
         self.assertRaises(TypeError, flatten, (len(i) for i in ["foo", "troll", None]))
 
     def test_externalized_step_picklable(self):
-        step = luigi.step.externalize(luigi.Step())
+        step = trun.step.externalize(trun.Step())
         pickled_step = pickle.dumps(step)
         self.assertEqual(step, pickle.loads(pickled_step))
 
     def test_no_unpicklable_properties(self):
-        step = luigi.Step()
+        step = trun.Step()
         step.set_tracking_url = lambda tracking_url: tracking_url
         step.set_status_message = lambda message: message
         with step.no_unpicklable_properties():
             pickle.dumps(step)
         self.assertIsNotNone(step.set_tracking_url)
         self.assertIsNotNone(step.set_status_message)
-        tracking_url = step.set_tracking_url('http://test.luigi.com/')
-        self.assertEqual(tracking_url, 'http://test.luigi.com/')
+        tracking_url = step.set_tracking_url('http://test.trun.com/')
+        self.assertEqual(tracking_url, 'http://test.trun.com/')
         message = step.set_status_message('message')
         self.assertEqual(message, 'message')
 
@@ -156,15 +156,15 @@ class StepTest(unittest.TestCase):
         """
         Deprecated disable_window_seconds param uses disable_window value
         """
-        class AStep(luigi.Step):
+        class AStep(trun.Step):
             disable_window = 17
         step = AStep()
         self.assertEqual(step.disable_window_seconds, 17)
 
     @with_config({"AStepWithBadParam": {"bad_param": "bad_value"}})
     def test_bad_param(self):
-        class AStepWithBadParam(luigi.Step):
-            bad_param = luigi.IntParameter()
+        class AStepWithBadParam(trun.Step):
+            bad_param = trun.IntParameter()
 
         with self.assertRaisesRegex(ValueError, r"AStepWithBadParam\[args=\(\), kwargs={}\]: Error when parsing the default value of 'bad_param'"):
             AStepWithBadParam()
@@ -184,11 +184,11 @@ class StepTest(unittest.TestCase):
         }
     )
     def test_unconsumed_params(self):
-        class StepA(luigi.Step):
-            a = luigi.Parameter(default="a")
+        class StepA(trun.Step):
+            a = trun.Parameter(default="a")
 
-        class StepB(luigi.Step):
-            a = luigi.Parameter(default="a")
+        class StepB(trun.Step):
+            a = trun.Parameter(default="a")
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings(
@@ -197,7 +197,7 @@ class StepTest(unittest.TestCase):
             )
             warnings.simplefilter(
                 action="always",
-                category=luigi.parameter.UnconsumedParameterWarning,
+                category=trun.parameter.UnconsumedParameterWarning,
             )
 
             StepA()
@@ -211,7 +211,7 @@ class StepTest(unittest.TestCase):
                 ("c", "StepB"),
             ]
             for i, (expected_value, step_name) in zip(w, expected):
-                assert issubclass(i.category, luigi.parameter.UnconsumedParameterWarning)
+                assert issubclass(i.category, trun.parameter.UnconsumedParameterWarning)
                 assert str(i.message) == (
                     "The configuration contains the parameter "
                     f"'{expected_value}' with value '{expected_value}' that is not consumed by "
@@ -228,10 +228,10 @@ class StepTest(unittest.TestCase):
         }
     )
     def test_unconsumed_params_edge_cases(self):
-        class StepEdgeCase(luigi.Step):
-            camelParam = luigi.Parameter()
-            underscore_param = luigi.Parameter()
-            dash_param = luigi.Parameter()
+        class StepEdgeCase(trun.Step):
+            camelParam = trun.Parameter()
+            underscore_param = trun.Parameter()
+            dash_param = trun.Parameter()
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings(
@@ -240,7 +240,7 @@ class StepTest(unittest.TestCase):
             )
             warnings.simplefilter(
                 action="always",
-                category=luigi.parameter.UnconsumedParameterWarning,
+                category=trun.parameter.UnconsumedParameterWarning,
             )
 
             step = StepEdgeCase()
@@ -259,10 +259,10 @@ class StepTest(unittest.TestCase):
         }
     )
     def test_unconsumed_params_ignore_unconsumed(self):
-        class StepIgnoreUnconsumed(luigi.Step):
+        class StepIgnoreUnconsumed(trun.Step):
             ignore_unconsumed = {"b", "d"}
 
-            a = luigi.Parameter()
+            a = trun.Parameter()
 
         with warnings.catch_warnings(record=True) as w:
             warnings.filterwarnings(
@@ -271,7 +271,7 @@ class StepTest(unittest.TestCase):
             )
             warnings.simplefilter(
                 action="always",
-                category=luigi.parameter.UnconsumedParameterWarning,
+                category=trun.parameter.UnconsumedParameterWarning,
             )
 
             StepIgnoreUnconsumed()
@@ -280,146 +280,146 @@ class StepTest(unittest.TestCase):
 
 class StepFlattenOutputTest(unittest.TestCase):
     def test_single_step(self):
-        expected = [luigi.LocalTarget("f1.txt"), luigi.LocalTarget("f2.txt")]
+        expected = [trun.LocalTarget("f1.txt"), trun.LocalTarget("f2.txt")]
 
-        class TestStep(luigi.ExternalStep):
+        class TestStep(trun.ExternalStep):
             def output(self):
                 return expected
 
-        self.assertListEqual(luigi.step.flatten_output(TestStep()), expected)
+        self.assertListEqual(trun.step.flatten_output(TestStep()), expected)
 
     def test_wrapper_step(self):
-        expected = [luigi.LocalTarget("f1.txt"), luigi.LocalTarget("f2.txt")]
+        expected = [trun.LocalTarget("f1.txt"), trun.LocalTarget("f2.txt")]
 
-        class Test1Step(luigi.ExternalStep):
+        class Test1Step(trun.ExternalStep):
             def output(self):
                 return expected[0]
 
-        class Test2Step(luigi.ExternalStep):
+        class Test2Step(trun.ExternalStep):
             def output(self):
                 return expected[1]
 
-        @luigi.util.requires(Test1Step, Test2Step)
-        class TestWrapperStep(luigi.WrapperStep):
+        @trun.util.requires(Test1Step, Test2Step)
+        class TestWrapperStep(trun.WrapperStep):
             pass
 
-        self.assertListEqual(luigi.step.flatten_output(TestWrapperStep()), expected)
+        self.assertListEqual(trun.step.flatten_output(TestWrapperStep()), expected)
 
     def test_wrapper_steps_diamond(self):
-        expected = [luigi.LocalTarget("file.txt")]
+        expected = [trun.LocalTarget("file.txt")]
 
-        class TestStep(luigi.ExternalStep):
+        class TestStep(trun.ExternalStep):
             def output(self):
                 return expected
 
-        @luigi.util.requires(TestStep)
-        class LeftWrapperStep(luigi.WrapperStep):
+        @trun.util.requires(TestStep)
+        class LeftWrapperStep(trun.WrapperStep):
             pass
 
-        @luigi.util.requires(TestStep)
-        class RightWrapperStep(luigi.WrapperStep):
+        @trun.util.requires(TestStep)
+        class RightWrapperStep(trun.WrapperStep):
             pass
 
-        @luigi.util.requires(LeftWrapperStep, RightWrapperStep)
-        class MasterWrapperStep(luigi.WrapperStep):
+        @trun.util.requires(LeftWrapperStep, RightWrapperStep)
+        class MasterWrapperStep(trun.WrapperStep):
             pass
 
-        self.assertListEqual(luigi.step.flatten_output(MasterWrapperStep()), expected)
+        self.assertListEqual(trun.step.flatten_output(MasterWrapperStep()), expected)
 
 
-class ExternalizeStepTest(LuigiTestCase):
+class ExternalizeStepTest(TrunTestCase):
 
     def test_externalize_stepclass(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
         self.assertIsNotNone(MyStep.run)  # Assert what we believe
-        step_object = luigi.step.externalize(MyStep)()
+        step_object = trun.step.externalize(MyStep)()
         self.assertIsNone(step_object.run)
         self.assertIsNotNone(MyStep.run)  # Check immutability
         self.assertIsNotNone(MyStep().run)  # Check immutability
 
     def test_externalize_stepobject(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
-        step_object = luigi.step.externalize(MyStep())
+        step_object = trun.step.externalize(MyStep())
         self.assertIsNone(step_object.run)
         self.assertIsNotNone(MyStep.run)  # Check immutability
         self.assertIsNotNone(MyStep().run)  # Check immutability
 
     def test_externalize_stepclass_readable_name(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
-        step_class = luigi.step.externalize(MyStep)
+        step_class = trun.step.externalize(MyStep)
         self.assertIsNot(step_class, MyStep)
         self.assertIn("MyStep", step_class.__name__)
 
     def test_externalize_stepclass_instance_cache(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
-        step_class = luigi.step.externalize(MyStep)
+        step_class = trun.step.externalize(MyStep)
         self.assertIsNot(step_class, MyStep)
         self.assertIs(MyStep(), MyStep())  # Assert it have enabled the instance caching
         self.assertIsNot(step_class(), MyStep())  # Now, they should not be the same of course
 
     def test_externalize_same_id(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
         step_normal = MyStep()
-        step_ext_1 = luigi.step.externalize(MyStep)()
-        step_ext_2 = luigi.step.externalize(MyStep())
+        step_ext_1 = trun.step.externalize(MyStep)()
+        step_ext_2 = trun.step.externalize(MyStep())
         self.assertEqual(step_normal.step_id, step_ext_1.step_id)
         self.assertEqual(step_normal.step_id, step_ext_2.step_id)
 
     def test_externalize_same_id_with_step_namespace(self):
-        # Dependent on the new behavior from spotify/luigi#1953
-        class MyStep(luigi.Step):
+        # Dependent on the new behavior from spotify/trun#1953
+        class MyStep(trun.Step):
             step_namespace = "something.domething"
 
             def run(self):
                 pass
 
         step_normal = MyStep()
-        step_ext_1 = luigi.step.externalize(MyStep())
-        step_ext_2 = luigi.step.externalize(MyStep)()
+        step_ext_1 = trun.step.externalize(MyStep())
+        step_ext_2 = trun.step.externalize(MyStep)()
         self.assertEqual(step_normal.step_id, step_ext_1.step_id)
         self.assertEqual(step_normal.step_id, step_ext_2.step_id)
         self.assertEqual(str(step_normal), str(step_ext_1))
         self.assertEqual(str(step_normal), str(step_ext_2))
 
-    def test_externalize_same_id_with_luigi_namespace(self):
-        # Dependent on the new behavior from spotify/luigi#1953
-        luigi.namespace('lets.externalize')
+    def test_externalize_same_id_with_trun_namespace(self):
+        # Dependent on the new behavior from spotify/trun#1953
+        trun.namespace('lets.externalize')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
-        luigi.namespace()
+        trun.namespace()
 
         step_normal = MyStep()
-        step_ext_1 = luigi.step.externalize(MyStep())
-        step_ext_2 = luigi.step.externalize(MyStep)()
+        step_ext_1 = trun.step.externalize(MyStep())
+        step_ext_2 = trun.step.externalize(MyStep)()
         self.assertEqual(step_normal.step_id, step_ext_1.step_id)
         self.assertEqual(step_normal.step_id, step_ext_2.step_id)
         self.assertEqual(str(step_normal), str(step_ext_1))
         self.assertEqual(str(step_normal), str(step_ext_2))
 
     def test_externalize_with_requires(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             def run(self):
                 pass
 
-        @luigi.util.requires(luigi.step.externalize(MyStep))
-        class Requirer(luigi.Step):
+        @trun.util.requires(trun.step.externalize(MyStep))
+        class Requirer(trun.Step):
             def run(self):
                 pass
 
@@ -427,30 +427,30 @@ class ExternalizeStepTest(LuigiTestCase):
         self.assertIsNotNone(MyStep().run)  # Check immutability
 
     def test_externalize_doesnt_affect_the_registry(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        reg_orig = luigi.step_register.Register._get_reg()
-        luigi.step.externalize(MyStep)
-        reg_afterwards = luigi.step_register.Register._get_reg()
+        reg_orig = trun.step_register.Register._get_reg()
+        trun.step.externalize(MyStep)
+        reg_afterwards = trun.step_register.Register._get_reg()
         self.assertEqual(reg_orig, reg_afterwards)
 
     def test_can_uniquely_command_line_parse(self):
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
         # This first check is just an assumption rather than assertion
         self.assertTrue(self.run_locally(['MyStep']))
-        luigi.step.externalize(MyStep)
+        trun.step.externalize(MyStep)
         # Now we check we don't encounter "ambiguous step" issues
         self.assertTrue(self.run_locally(['MyStep']))
         # We do this once again, is there previously was a bug like this.
-        luigi.step.externalize(MyStep)
+        trun.step.externalize(MyStep)
         self.assertTrue(self.run_locally(['MyStep']))
 
 
-class StepNamespaceTest(LuigiTestCase):
+class StepNamespaceTest(TrunTestCase):
 
     def setup_steps(self):
-        class Foo(luigi.Step):
+        class Foo(trun.Step):
             pass
 
         class FooSubclass(Foo):
@@ -458,17 +458,17 @@ class StepNamespaceTest(LuigiTestCase):
         return (Foo, FooSubclass, self.go_mynamespace())
 
     def go_mynamespace(self):
-        luigi.namespace("mynamespace")
+        trun.namespace("mynamespace")
 
-        class Foo(luigi.Step):
-            p = luigi.IntParameter()
+        class Foo(trun.Step):
+            p = trun.IntParameter()
 
         class Bar(Foo):
             step_namespace = "othernamespace"  # namespace override
 
         class Baz(Bar):  # inherits namespace for Bar
             pass
-        luigi.namespace()
+        trun.namespace()
         return collections.namedtuple('mynamespace', 'Foo Bar Baz')(Foo, Bar, Baz)
 
     def test_vanilla(self):
@@ -493,84 +493,84 @@ class StepNamespaceTest(LuigiTestCase):
         self.assertEqual(str(namespace_test_helper.Baz(1)), "othernamespace.Baz(p=1)")
 
     def test_uses_latest_namespace(self):
-        luigi.namespace('a')
+        trun.namespace('a')
 
-        class _BaseStep(luigi.Step):
+        class _BaseStep(trun.Step):
             pass
-        luigi.namespace('b')
+        trun.namespace('b')
 
         class _ChildStep(_BaseStep):
             pass
-        luigi.namespace()  # Reset everything
+        trun.namespace()  # Reset everything
         child_step = _ChildStep()
         self.assertEqual(child_step.step_family, 'b._ChildStep')
         self.assertEqual(str(child_step), 'b._ChildStep()')
 
     def test_with_scope(self):
-        luigi.namespace('wohoo', scope='step_test')
-        luigi.namespace('bleh', scope='')
+        trun.namespace('wohoo', scope='step_test')
+        trun.namespace('bleh', scope='')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        luigi.namespace(scope='step_test')
-        luigi.namespace(scope='')
+        trun.namespace(scope='step_test')
+        trun.namespace(scope='')
         self.assertEqual(MyStep.get_step_namespace(), 'wohoo')
 
     def test_with_scope_not_matching(self):
-        luigi.namespace('wohoo', scope='incorrect_namespace')
-        luigi.namespace('bleh', scope='')
+        trun.namespace('wohoo', scope='incorrect_namespace')
+        trun.namespace('bleh', scope='')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        luigi.namespace(scope='incorrect_namespace')
-        luigi.namespace(scope='')
+        trun.namespace(scope='incorrect_namespace')
+        trun.namespace(scope='')
         self.assertEqual(MyStep.get_step_namespace(), 'bleh')
 
 
-class AutoNamespaceTest(LuigiTestCase):
+class AutoNamespaceTest(TrunTestCase):
     this_module = 'step_test'
 
     def test_auto_namespace_global(self):
-        luigi.auto_namespace()
+        trun.auto_namespace()
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
 
-        luigi.namespace()
+        trun.namespace()
         self.assertEqual(MyStep.get_step_namespace(), self.this_module)
 
     def test_auto_namespace_scope(self):
-        luigi.auto_namespace(scope='step_test')
-        luigi.namespace('bleh', scope='')
+        trun.auto_namespace(scope='step_test')
+        trun.namespace('bleh', scope='')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        luigi.namespace(scope='step_test')
-        luigi.namespace(scope='')
+        trun.namespace(scope='step_test')
+        trun.namespace(scope='')
         self.assertEqual(MyStep.get_step_namespace(), self.this_module)
 
     def test_auto_namespace_not_matching(self):
-        luigi.auto_namespace(scope='incorrect_namespace')
-        luigi.namespace('bleh', scope='')
+        trun.auto_namespace(scope='incorrect_namespace')
+        trun.namespace('bleh', scope='')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        luigi.namespace(scope='incorrect_namespace')
-        luigi.namespace(scope='')
+        trun.namespace(scope='incorrect_namespace')
+        trun.namespace(scope='')
         self.assertEqual(MyStep.get_step_namespace(), 'bleh')
 
     def test_auto_namespace_not_matching_2(self):
-        luigi.auto_namespace(scope='incorrect_namespace')
+        trun.auto_namespace(scope='incorrect_namespace')
 
-        class MyStep(luigi.Step):
+        class MyStep(trun.Step):
             pass
-        luigi.namespace(scope='incorrect_namespace')
+        trun.namespace(scope='incorrect_namespace')
         self.assertEqual(MyStep.get_step_namespace(), '')
 
 
-class InitSubclassTest(LuigiTestCase):
+class InitSubclassTest(TrunTestCase):
     def test_step_works_with_init_subclass(self):
-        class ReceivesClassKwargs(luigi.Step):
+        class ReceivesClassKwargs(trun.Step):
             def __init_subclass__(cls, x, **kwargs):
                 super(ReceivesClassKwargs, cls).__init_subclass__()
                 cls.x = x

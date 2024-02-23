@@ -14,29 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
-import luigi
-from luigi.step_register import (Register,
+import trun
+from trun.step_register import (Register,
                                  StepClassNotFoundException,
                                  StepClassAmbigiousException,
                                  )
 
 
-class StepRegisterTest(LuigiTestCase):
+class StepRegisterTest(TrunTestCase):
 
     def test_externalize_stepclass(self):
         with self.assertRaises(StepClassNotFoundException):
             Register.get_step_cls('scooby.Doo')
 
-        class Step1(luigi.Step):
+        class Step1(trun.Step):
             @classmethod
             def get_step_family(cls):
                 return "scooby.Doo"
 
         self.assertEqual(Step1, Register.get_step_cls('scooby.Doo'))
 
-        class Step2(luigi.Step):
+        class Step2(trun.Step):
             @classmethod
             def get_step_family(cls):
                 return "scooby.Doo"
@@ -44,7 +44,7 @@ class StepRegisterTest(LuigiTestCase):
         with self.assertRaises(StepClassAmbigiousException):
             Register.get_step_cls('scooby.Doo')
 
-        class Step3(luigi.Step):
+        class Step3(trun.Step):
             @classmethod
             def get_step_family(cls):
                 return "scooby.Doo"

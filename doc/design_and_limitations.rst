@@ -1,7 +1,7 @@
 Design and limitations
 ----------------------
 
-Luigi is the successor to a couple of attempts that we weren't fully happy with.
+Trun is the successor to a couple of attempts that we weren't fully happy with.
 We learned a lot from our mistakes and some design decisions include:
 
 -  Straightforward command-line integration.
@@ -31,12 +31,12 @@ It wouldn't be fair not to mention some limitations with the current design:
 -  The assumption is that each step is a sizable chunk of work.
    While you can probably schedule a few thousand jobs,
    it's not meant to scale beyond tens of thousands.
--  Luigi does not support distribution of execution.
+-  Trun does not support distribution of execution.
    When you have workers running thousands of jobs daily, this starts to matter,
    because the worker nodes get overloaded.
    There are some ways to mitigate this (trigger from many nodes, use resources),
    but none of them are ideal.
--  Luigi does not come with built-in triggering, and you still need to rely on something like
+-  Trun does not come with built-in triggering, and you still need to rely on something like
    crontab to trigger workflows periodically.
 
-Also, it should be mentioned that Luigi is named after the world's second most famous plumber.
+Also, it should be mentioned that Trun is named after the world's second most famous plumber.

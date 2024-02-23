@@ -17,15 +17,15 @@
 
 from helpers import unittest
 
-import luigi
-import luigi.notifications
+import trun
+import trun.notifications
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class LinearSum(luigi.Step):
-    lo = luigi.IntParameter()
-    hi = luigi.IntParameter()
+class LinearSum(trun.Step):
+    lo = trun.IntParameter()
+    hi = trun.IntParameter()
 
     def requires(self):
         if self.hi > self.lo:
@@ -46,7 +46,7 @@ class LinearSum(luigi.Step):
 
 
 class PowerSum(LinearSum):
-    p = luigi.IntParameter()
+    p = trun.IntParameter()
 
     def f(self, x):
         return x ** self.p
@@ -61,12 +61,12 @@ class CloneTest(unittest.TestCase):
 
     def test_recursion(self):
         t = LinearSum(lo=42, hi=45)
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
         self.assertEqual(t.s, 42 + 43 + 44)
 
     def test_inheritance(self):
         t = PowerSum(lo=42, hi=45, p=2)
-        luigi.build([t], local_scheduler=True)
+        trun.build([t], local_scheduler=True)
         self.assertEqual(t.s, 42 ** 2 + 43 ** 2 + 44 ** 2)
 
     def test_inheritance_from_non_parameter(self):
@@ -74,7 +74,7 @@ class CloneTest(unittest.TestCase):
         Cloning can pull non-source-parameters from source to target parameter.
         """
 
-        class SubStep(luigi.Step):
+        class SubStep(trun.Step):
             lo = 1
 
             @property

@@ -16,9 +16,9 @@
 #
 
 from helpers import unittest
-from luigi import Step
-from luigi import Parameter
-from luigi.step import MixinNaiveBulkComplete
+from trun import Step
+from trun import Parameter
+from trun.step import MixinNaiveBulkComplete
 
 COMPLETE_STEPS = ["A", "B", "C"]
 

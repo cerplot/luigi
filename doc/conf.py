@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Luigi documentation build configuration file, created by
+# Trun documentation build configuration file, created by
 # sphinx-quickstart on Sat Feb  8 00:56:43 2014.
 #
 # This file is execfile()d with the current directory set to its
@@ -21,8 +21,8 @@ from pkg_resources import get_distribution
 
 
 try:
-    import luigi
-    import luigi.parameter
+    import trun
+    import trun.parameter
 
     def parameter_repr(self):
         """
@@ -31,12 +31,12 @@ try:
         """
         significance = 'Insignificant ' if not self.significant else ''
         class_name = self.__class__.__name__
-        has_default = self._default != luigi.parameter._no_value
+        has_default = self._default != trun.parameter._no_value
         default = ' (defaults to {})'.format(self._default) if has_default else ''
         description = (': ' + self.description if self.description else '')
         return significance + class_name + default + description
 
-    luigi.parameter.Parameter.__repr__ = parameter_repr
+    trun.parameter.Parameter.__repr__ = parameter_repr
 
     def assertIn(needle, haystack):
         """
@@ -45,10 +45,10 @@ try:
         assert needle in haystack
 
     # TODO: find a better place to put this!
-    assertIn('IntParameter', repr(luigi.IntParameter()))
-    assertIn('defaults to 37', repr(luigi.IntParameter(default=37)))
-    assertIn('hi mom', repr(luigi.IntParameter(description='hi mom')))
-    assertIn('Insignificant BoolParameter', repr(luigi.BoolParameter(significant=False)))
+    assertIn('IntParameter', repr(trun.IntParameter()))
+    assertIn('defaults to 37', repr(trun.IntParameter(default=37)))
+    assertIn('hi mom', repr(trun.IntParameter(description='hi mom')))
+    assertIn('Insignificant BoolParameter', repr(trun.BoolParameter(significant=False)))
 except ImportError:
     pass
 
@@ -70,7 +70,7 @@ sphinx.environment.BuildEnvironment.warn_node = _warn_node
 if os.environ.get('READTHEDOCS', None) == 'True':
     # Run sphinx-apidoc automatically in readthedocs
     # Taken from this: https://lists.torproject.org/pipermail/tor-commits/2012-September/046695.html
-    os.system('sphinx-apidoc -o api -T ../luigi --separate')
+    os.system('sphinx-apidoc -o api -T ../trun --separate')
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -107,15 +107,15 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Luigi'
-authors = u"The Luigi Authors"
+project = u'Trun'
+authors = u"The Trun Authors"
 copyright = u"2011-{}, {}".format(datetime.datetime.now().year, authors)
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-__version__ = get_distribution('luigi').version  # assume luigi is already installed
+__version__ = get_distribution('trun').version  # assume trun is already installed
 # The short X.Y version.
 version = ".".join(__version__.split(".")[0:2])
 # The full version, including alpha/beta/rc tags.
@@ -198,7 +198,7 @@ if not on_rtd:  # only import and set the theme if we're building docs locally
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'luigi.png'
+html_logo = 'trun.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -257,7 +257,7 @@ html_logo = 'luigi.png'
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Luigidoc'
+htmlhelp_basename = 'Trundoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -277,7 +277,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'Luigi.tex', u'Luigi Documentation',
+    ('index', 'Trun.tex', u'Trun Documentation',
      authors, 'manual'),
 ]
 
@@ -307,7 +307,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'luigi', u'Luigi Documentation',
+    ('index', 'trun', u'Trun Documentation',
      [authors], 1)
 ]
 
@@ -321,8 +321,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'Luigi', u'Luigi Documentation',
-     authors, 'Luigi', 'One line description of project.',
+    ('index', 'Trun', u'Trun Documentation',
+     authors, 'Trun', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -340,5 +340,5 @@ texinfo_documents = [
 
 # Some regression introduced
 # https://github.com/sphinx-doc/sphinx/issues/2330
-# https://github.com/spotify/luigi/pull/1555
+# https://github.com/spotify/trun/pull/1555
 highlight_language = "python"

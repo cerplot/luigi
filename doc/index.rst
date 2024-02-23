@@ -1,4 +1,4 @@
-.. Luigi documentation master file, created by
+.. Trun documentation master file, created by
    sphinx-quickstart on Sat Feb  8 00:56:43 2014.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
@@ -15,10 +15,10 @@ Table of Contents
    workflows.rst
    steps.rst
    parameters.rst
-   running_luigi.rst
+   running_trun.rst
    central_scheduler.rst
    execution_model.rst
-   luigi_patterns.rst
+   trun_patterns.rst
    configuration.rst
    logging.rst
    design_and_limitations.rst
@@ -29,10 +29,10 @@ API Reference
 .. autosummary::
    :toctree: api
 
-   luigi
-   luigi.contrib
-   luigi.tools
-   luigi.local_target
+   trun
+   trun.contrib
+   trun.tools
+   trun.local_target
 
 
 Indices and tables

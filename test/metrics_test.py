@@ -1,9 +1,9 @@
 import unittest
 
-import luigi.metrics as metrics
+import trun.metrics as metrics
 
-from luigi.contrib.datadog_metric import DatadogMetricsCollector
-from luigi.contrib.prometheus_metric import PrometheusMetricsCollector
+from trun.contrib.datadog_metric import DatadogMetricsCollector
+from trun.contrib.prometheus_metric import PrometheusMetricsCollector
 
 
 class TestMetricsCollectors(unittest.TestCase):

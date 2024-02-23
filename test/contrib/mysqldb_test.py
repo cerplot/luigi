@@ -1,8 +1,8 @@
-from luigi.tools.range import RangeDaily
+from trun.tools.range import RangeDaily
 
 import mock
 
-import luigi.contrib.mysqldb
+import trun.contrib.mysqldb
 
 import datetime
 from helpers import unittest
@@ -33,8 +33,8 @@ class MockMysqlCursor(mock.Mock):
         return self.fetchone_result
 
 
-class DummyMysqlImporter(luigi.contrib.mysqldb.CopyToTable):
-    date = luigi.DateParameter()
+class DummyMysqlImporter(trun.contrib.mysqldb.CopyToTable):
+    date = trun.DateParameter()
 
     host = 'dummy_host'
     database = 'dummy_database'
@@ -74,11 +74,11 @@ class DailyCopyToTableTest(unittest.TestCase):
 
 @pytest.mark.mysql
 class TestCopyToTableWithMetaColumns(unittest.TestCase):
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.rows", return_value=['row1', 'row2'])
-    @mock.patch("luigi.contrib.mysqldb.MySqlTarget")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
+    @mock.patch("trun.contrib.mysqldb.CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.rows", return_value=['row1', 'row2'])
+    @mock.patch("trun.contrib.mysqldb.MySqlTarget")
     @mock.patch('mysql.connector.connect')
     def test_copy_with_metadata_columns_enabled(self,
                                                 mock_connect,
@@ -99,11 +99,11 @@ class TestCopyToTableWithMetaColumns(unittest.TestCase):
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
 
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable._add_metadata_columns")
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.post_copy_metacolumns")
-    @mock.patch("luigi.contrib.mysqldb.CopyToTable.rows", return_value=['row1', 'row2'])
-    @mock.patch("luigi.contrib.mysqldb.MySqlTarget")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=False)
+    @mock.patch("trun.contrib.mysqldb.CopyToTable._add_metadata_columns")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.post_copy_metacolumns")
+    @mock.patch("trun.contrib.mysqldb.CopyToTable.rows", return_value=['row1', 'row2'])
+    @mock.patch("trun.contrib.mysqldb.MySqlTarget")
     @mock.patch('mysql.connector.connect')
     def test_copy_with_metadata_columns_disabled(self,
                                                  mock_connect,

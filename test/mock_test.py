@@ -17,8 +17,8 @@
 
 from helpers import unittest
 
-from luigi.mock import MockTarget, MockFileSystem
-from luigi.format import Nop
+from trun.mock import MockTarget, MockFileSystem
+from trun.format import Nop
 
 
 class MockFileTest(unittest.TestCase):

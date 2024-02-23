@@ -16,8 +16,8 @@
 #
 
 from helpers import unittest
-import luigi
-from luigi.contrib.simulate import RunAnywayTarget
+import trun
+from trun.contrib.simulate import RunAnywayTarget
 
 from multiprocessing import Process
 import os
@@ -25,12 +25,12 @@ import tempfile
 
 
 def temp_dir():
-    return os.path.join(tempfile.gettempdir(), 'luigi-simulate')
+    return os.path.join(tempfile.gettempdir(), 'trun-simulate')
 
 
 def is_writable():
     d = temp_dir()
-    fn = os.path.join(d, 'luigi-simulate-write-test')
+    fn = os.path.join(d, 'trun-simulate-write-test')
     exists = True
     try:
         try:
@@ -45,14 +45,14 @@ def is_writable():
     return unittest.skipIf(not exists, 'Can\'t write to temporary directory')
 
 
-class StepA(luigi.Step):
-    i = luigi.IntParameter(default=0)
+class StepA(trun.Step):
+    i = trun.IntParameter(default=0)
 
     def output(self):
         return RunAnywayTarget(self)
 
     def run(self):
-        fn = os.path.join(temp_dir(), 'luigi-simulate-test.tmp')
+        fn = os.path.join(temp_dir(), 'trun-simulate-test.tmp')
         try:
             os.makedirs(os.path.dirname(fn))
         except OSError:
@@ -79,7 +79,7 @@ class StepD(StepA):
         return [StepB(), StepC(), StepA(i=20)]
 
 
-class StepWrap(luigi.WrapperStep):
+class StepWrap(trun.WrapperStep):
     def requires(self):
         return [StepA(), StepD()]
 
@@ -96,9 +96,9 @@ class RunAnywayTargetTest(unittest.TestCase):
     def test_output(self):
         reset()
 
-        fn = os.path.join(temp_dir(), 'luigi-simulate-test.tmp')
+        fn = os.path.join(temp_dir(), 'trun-simulate-test.tmp')
 
-        luigi.build([StepWrap()], local_scheduler=True)
+        trun.build([StepWrap()], local_scheduler=True)
         with open(fn, 'r') as f:
             data = f.read().strip().split('\n')
 

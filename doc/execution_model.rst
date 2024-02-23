@@ -1,13 +1,13 @@
 Execution Model
 ---------------
 
-Luigi has a quite simple model for execution and triggering.
+Trun has a quite simple model for execution and triggering.
 
 Workers and step execution
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The most important aspect is that *no execution is transferred*.
-When you run a Luigi workflow,
+When you run a Trun workflow,
 the worker schedules all steps, and
 also executes the steps within the process.
 
@@ -18,17 +18,17 @@ The benefit of this scheme is that
 it's super easy to debug since all execution takes place in the process.
 It also makes deployment a non-event.
 During development,
-you typically run the Luigi workflow from the command line,
+you typically run the Trun workflow from the command line,
 whereas when you deploy it,
 you can trigger it using crontab or any other scheduler.
 
-The downside is that Luigi doesn't give you scalability for free.
+The downside is that Trun doesn't give you scalability for free.
 In practice this is not a problem until you start running thousands of steps.
 
-Isn't the point of Luigi to automate and schedule these workflows?
+Isn't the point of Trun to automate and schedule these workflows?
 To some extent.
-Luigi helps you *encode the dependencies* of steps and build up chains.
-Furthermore, Luigi's scheduler makes sure that there's a centralized view of the dependency graph and
+Trun helps you *encode the dependencies* of steps and build up chains.
+Furthermore, Trun's scheduler makes sure that there's a centralized view of the dependency graph and
 that the same job will not be executed by multiple workers simultaneously.
 
 Scheduler
@@ -39,23 +39,23 @@ central scheduler has permitted it. Since the number of steps is usually very
 small (in comparison with the petabytes of data one step is processing), we
 can afford the convenience of a simple centralised server.
 
-.. figure:: https://tarrasch.github.io/luigid-basics-jun-2015/img/50.gif
+.. figure:: https://tarrasch.github.io/trund-basics-jun-2015/img/50.gif
    :alt: Scheduling gif
 
 The gif is from `this presentation
-<https://tarrasch.github.io/luigid-basics-jun-2015/>`__, which is about the
+<https://tarrasch.github.io/trund-basics-jun-2015/>`__, which is about the
 client and server interaction.
 
 Triggering steps
 ~~~~~~~~~~~~~~~~
 
-Luigi does not include its own triggering, so you have to rely on an external scheduler
+Trun does not include its own triggering, so you have to rely on an external scheduler
 such as crontab to actually trigger the workflows.
 
-In practice, it's not a big hurdle because Luigi avoids all the mess typically caused by it.
+In practice, it's not a big hurdle because Trun avoids all the mess typically caused by it.
 Scheduling a complex workflow is fairly trivial using eg. crontab.
 
-In the future, Luigi might implement its own triggering.
+In the future, Trun might implement its own triggering.
 The dependency on crontab (or any external triggering mechanism) is a bit awkward and it would be nice to avoid.
 
 Trigger example
@@ -70,18 +70,18 @@ If it has, it will run the full dependency graph.
 
     # my_steps.py
 
-    class DataDump(luigi.ExternalStep):
-        date = luigi.DateParameter()
-        def output(self): return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('/var/log/dump/%Y-%m-%d.txt'))
+    class DataDump(trun.ExternalStep):
+        date = trun.DateParameter()
+        def output(self): return trun.contrib.hdfs.HdfsTarget(self.date.strftime('/var/log/dump/%Y-%m-%d.txt'))
 
-    class AggregationStep(luigi.Step):
-        date = luigi.DateParameter()
-        window = luigi.IntParameter()
+    class AggregationStep(trun.Step):
+        date = trun.DateParameter()
+        window = trun.IntParameter()
         def requires(self): return [DataDump(self.date - datetime.timedelta(i)) for i in xrange(self.window)]
         def run(self): run_some_cool_stuff(self.input())
-        def output(self): return luigi.contrib.hdfs.HdfsTarget('/aggregated-%s-%d' % (self.date, self.window))
+        def output(self): return trun.contrib.hdfs.HdfsTarget('/aggregated-%s-%d' % (self.date, self.window))
 
-    class RunAll(luigi.Step):
+    class RunAll(trun.Step):
         ''' Dummy step that triggers execution of a other steps'''
         def requires(self):
             for window in [3, 7, 14]:
@@ -92,7 +92,7 @@ In your cronline you would then have something like
 
 .. code:: console
 
-    30 0 * * * my-user luigi RunAll --module my_steps
+    30 0 * * * my-user trun RunAll --module my_steps
 
 
 You can trigger this as much as you want from crontab, and

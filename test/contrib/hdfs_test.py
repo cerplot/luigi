@@ -19,23 +19,23 @@ import re
 import random
 import pickle
 
-import luigi
-import luigi.format
-from luigi.contrib import hdfs
-import luigi.contrib.hdfs.clients
+import trun
+import trun.format
+from trun.contrib import hdfs
+import trun.contrib.hdfs.clients
 
 from target_test import FileSystemTargetTestMixin
 
 
-class ComplexOldFormat(luigi.format.Format):
+class ComplexOldFormat(trun.format.Format):
     """Should take unicode but output bytes
     """
 
     def hdfs_writer(self, output_pipe):
-        return self.pipe_writer(luigi.contrib.hdfs.Plain.hdfs_writer(output_pipe))
+        return self.pipe_writer(trun.contrib.hdfs.Plain.hdfs_writer(output_pipe))
 
     def pipe_writer(self, output_pipe):
-        return luigi.format.UTF8.pipe_writer(output_pipe)
+        return trun.format.UTF8.pipe_writer(output_pipe)
 
     def pipe_reader(self, output_pipe):
         return output_pipe
@@ -99,7 +99,7 @@ class HdfsTargetTestMixin(FileSystemTargetTestMixin):
         gc.collect()
         self.assertFalse(self.fs.exists(path))
 
-    def test_luigi_tmp(self):
+    def test_trun_tmp(self):
         target = hdfs.HdfsTarget(is_tmp=True)
         self.assertFalse(target.exists())
         with target.open('w'):
@@ -200,23 +200,23 @@ class HdfsTargetTestMixin(FileSystemTargetTestMixin):
         res8 = hdfs.tmppath(path8, include_unix_username=False)
         res9 = hdfs.tmppath(path9, include_unix_username=False)
 
-        # Then: I should get correct results relative to Luigi temporary directory
-        self.assertRegexpMatches(res1, "^/tmp/dir1/dir2/file-luigitemp-\\d+")
+        # Then: I should get correct results relative to Trun temporary directory
+        self.assertRegexpMatches(res1, "^/tmp/dir1/dir2/file-truntemp-\\d+")
         # it would be better to see hdfs:///path instead of hdfs:/path, but single slash also works well
-        self.assertRegexpMatches(res2, "^hdfs:/tmp/dir1/dir2/file-luigitemp-\\d+")
-        self.assertRegexpMatches(res3, "^hdfs://somehost/tmp/dir1/dir2/file-luigitemp-\\d+")
-        self.assertRegexpMatches(res4, "^file:///tmp/dir1/dir2/file-luigitemp-\\d+")
-        self.assertRegexpMatches(res5, "^/tmp/dir/file-luigitemp-\\d+")
+        self.assertRegexpMatches(res2, "^hdfs:/tmp/dir1/dir2/file-truntemp-\\d+")
+        self.assertRegexpMatches(res3, "^hdfs://somehost/tmp/dir1/dir2/file-truntemp-\\d+")
+        self.assertRegexpMatches(res4, "^file:///tmp/dir1/dir2/file-truntemp-\\d+")
+        self.assertRegexpMatches(res5, "^/tmp/dir/file-truntemp-\\d+")
         # known issue with duplicated "tmp" if schema is present
-        self.assertRegexpMatches(res6, "^file:///tmp/tmp/dir/file-luigitemp-\\d+")
+        self.assertRegexpMatches(res6, "^file:///tmp/tmp/dir/file-truntemp-\\d+")
         # known issue with duplicated "tmp" if schema is present
-        self.assertRegexpMatches(res7, "^hdfs://somehost/tmp/tmp/dir/file-luigitemp-\\d+")
-        self.assertRegexpMatches(res8, "^/tmp/luigitemp-\\d+")
+        self.assertRegexpMatches(res7, "^hdfs://somehost/tmp/tmp/dir/file-truntemp-\\d+")
+        self.assertRegexpMatches(res8, "^/tmp/truntemp-\\d+")
         self.assertRegexpMatches(res9, "/tmp/tmpdir/file")
 
     def test_tmppath_username(self):
         self.assertRegexpMatches(hdfs.tmppath('/path/to/stuff', include_unix_username=True),
-                                 "^/tmp/[a-z0-9_]+/path/to/stuff-luigitemp-\\d+")
+                                 "^/tmp/[a-z0-9_]+/path/to/stuff-truntemp-\\d+")
 
     def test_pickle(self):
         t = hdfs.HdfsTarget("/tmp/dir")
@@ -247,7 +247,7 @@ class _MiscOperationsMixin:
 
     def get_target(self):
         fn = '/tmp/foo-%09d' % random.randint(0, 999999999)
-        t = luigi.contrib.hdfs.HdfsTarget(fn)
+        t = trun.contrib.hdfs.HdfsTarget(fn)
         with t.open('w') as f:
             f.write('test')
         return t

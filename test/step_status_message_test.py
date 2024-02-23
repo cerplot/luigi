@@ -15,22 +15,22 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
-import luigi
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.scheduler
+import trun.worker
 
-luigi.notifications.DEBUG = True
+trun.notifications.DEBUG = True
 
 
-class StepStatusMessageTest(LuigiTestCase):
+class StepStatusMessageTest(TrunTestCase):
 
     def test_run(self):
         message = "test message"
-        sch = luigi.scheduler.Scheduler()
-        with luigi.worker.Worker(scheduler=sch) as w:
-            class MyStep(luigi.Step):
+        sch = trun.scheduler.Scheduler()
+        with trun.worker.Worker(scheduler=sch) as w:
+            class MyStep(trun.Step):
                 def run(self):
                     self.set_status_message(message)
 

@@ -15,14 +15,14 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase, RunOnceStep
+from helpers import TrunTestCase, RunOnceStep
 
-import luigi
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.scheduler
+import trun.worker
 
 
-FORWARDED_ATTRIBUTES = set(luigi.worker.StepProcess.forward_reporter_attributes.values())
+FORWARDED_ATTRIBUTES = set(trun.worker.StepProcess.forward_reporter_attributes.values())
 
 
 class NonYieldingStep(RunOnceStep):
@@ -64,11 +64,11 @@ class YieldingStep(NonYieldingStep):
         RunOnceStep.run(self)
 
 
-class StepForwardedAttributesTest(LuigiTestCase):
+class StepForwardedAttributesTest(TrunTestCase):
 
     def run_step(self, step):
-        sch = luigi.scheduler.Scheduler()
-        with luigi.worker.Worker(scheduler=sch) as w:
+        sch = trun.scheduler.Scheduler()
+        with trun.worker.Worker(scheduler=sch) as w:
             w.add(step)
             w.run()
         return step

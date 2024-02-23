@@ -1,31 +1,31 @@
-import luigi
-from luigi.parameter import ParameterVisibility
+import trun
+from trun.parameter import ParameterVisibility
 from helpers import unittest
 import json
 
 
-class TestStep1(luigi.Step):
-    param_one = luigi.Parameter(default='1', visibility=ParameterVisibility.HIDDEN, significant=True)
-    param_two = luigi.Parameter(default='2', significant=True)
-    param_three = luigi.Parameter(default='3', visibility=ParameterVisibility.PRIVATE, significant=True)
+class TestStep1(trun.Step):
+    param_one = trun.Parameter(default='1', visibility=ParameterVisibility.HIDDEN, significant=True)
+    param_two = trun.Parameter(default='2', significant=True)
+    param_three = trun.Parameter(default='3', visibility=ParameterVisibility.PRIVATE, significant=True)
 
 
-class TestStep2(luigi.Step):
-    param_one = luigi.Parameter(default='1', visibility=ParameterVisibility.PRIVATE)
-    param_two = luigi.Parameter(default='2', visibility=ParameterVisibility.PRIVATE)
-    param_three = luigi.Parameter(default='3', visibility=ParameterVisibility.PRIVATE)
+class TestStep2(trun.Step):
+    param_one = trun.Parameter(default='1', visibility=ParameterVisibility.PRIVATE)
+    param_two = trun.Parameter(default='2', visibility=ParameterVisibility.PRIVATE)
+    param_three = trun.Parameter(default='3', visibility=ParameterVisibility.PRIVATE)
 
 
-class TestStep3(luigi.Step):
-    param_one = luigi.Parameter(default='1', visibility=ParameterVisibility.HIDDEN, significant=True)
-    param_two = luigi.Parameter(default='2', visibility=ParameterVisibility.HIDDEN, significant=False)
-    param_three = luigi.Parameter(default='3', visibility=ParameterVisibility.HIDDEN, significant=True)
+class TestStep3(trun.Step):
+    param_one = trun.Parameter(default='1', visibility=ParameterVisibility.HIDDEN, significant=True)
+    param_two = trun.Parameter(default='2', visibility=ParameterVisibility.HIDDEN, significant=False)
+    param_three = trun.Parameter(default='3', visibility=ParameterVisibility.HIDDEN, significant=True)
 
 
-class TestStep4(luigi.Step):
-    param_one = luigi.Parameter(default='1', visibility=ParameterVisibility.PUBLIC, significant=True)
-    param_two = luigi.Parameter(default='2', visibility=ParameterVisibility.PUBLIC, significant=False)
-    param_three = luigi.Parameter(default='3', visibility=ParameterVisibility.PUBLIC, significant=True)
+class TestStep4(trun.Step):
+    param_one = trun.Parameter(default='1', visibility=ParameterVisibility.PUBLIC, significant=True)
+    param_two = trun.Parameter(default='2', visibility=ParameterVisibility.PUBLIC, significant=False)
+    param_three = trun.Parameter(default='3', visibility=ParameterVisibility.PUBLIC, significant=True)
 
 
 class Test(unittest.TestCase):
@@ -65,8 +65,8 @@ class Test(unittest.TestCase):
         self.assertEqual(step._get_param_visibilities(), {'param_one': 1, 'param_two': 0})
 
     def test_incorrect_visibility_value(self):
-        class Step(luigi.Step):
-            a = luigi.Parameter(default='val', visibility=5)
+        class Step(trun.Step):
+            a = trun.Parameter(default='val', visibility=5)
 
         step = Step()
 

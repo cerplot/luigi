@@ -14,25 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from luigi.configuration import LuigiTomlParser, get_config, add_config_path
+from trun.configuration import TrunTomlParser, get_config, add_config_path
 
 
-from helpers import LuigiTestCase
+from helpers import TrunTestCase
 
 
-class TomlConfigParserTest(LuigiTestCase):
+class TomlConfigParserTest(TrunTestCase):
     @classmethod
     def setUpClass(cls):
-        add_config_path('test/testconfig/luigi.toml')
-        add_config_path('test/testconfig/luigi_local.toml')
+        add_config_path('test/testconfig/trun.toml')
+        add_config_path('test/testconfig/trun_local.toml')
 
     def setUp(self):
-        LuigiTomlParser._instance = None
+        TrunTomlParser._instance = None
         super(TomlConfigParserTest, self).setUp()
 
     def test_get_config(self):
         config = get_config('toml')
-        self.assertIsInstance(config, LuigiTomlParser)
+        self.assertIsInstance(config, TrunTomlParser)
 
     def test_file_reading(self):
         config = get_config('toml')
@@ -71,17 +71,17 @@ class TomlConfigParserTest(LuigiTestCase):
         self.assertFalse(config.has_option('nope', 'client'))
 
 
-class HelpersTest(LuigiTestCase):
+class HelpersTest(TrunTestCase):
     def test_add_without_install(self):
-        enabled = LuigiTomlParser.enabled
-        LuigiTomlParser.enabled = False
+        enabled = TrunTomlParser.enabled
+        TrunTomlParser.enabled = False
         with self.assertRaises(ImportError):
-            add_config_path('test/testconfig/luigi.toml')
-        LuigiTomlParser.enabled = enabled
+            add_config_path('test/testconfig/trun.toml')
+        TrunTomlParser.enabled = enabled
 
     def test_get_without_install(self):
-        enabled = LuigiTomlParser.enabled
-        LuigiTomlParser.enabled = False
+        enabled = TrunTomlParser.enabled
+        TrunTomlParser.enabled = False
         with self.assertRaises(ImportError):
             get_config('toml')
-        LuigiTomlParser.enabled = enabled
+        TrunTomlParser.enabled = enabled

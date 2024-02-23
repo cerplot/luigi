@@ -20,10 +20,10 @@ try:
 except ImportError:
     import mock
 
-import luigi.rpc
-from luigi.scheduler import Scheduler
+import trun.rpc
+from trun.scheduler import Scheduler
 import scheduler_api_test
-import luigi.server
+import trun.server
 from server_test import ServerTestBase
 import socket
 from multiprocessing import Process, Queue
@@ -33,7 +33,7 @@ class RemoteSchedulerTest(unittest.TestCase):
     def testUrlArgumentVariations(self):
         for url in ['http://zorg.com', 'http://zorg.com/']:
             for suffix in ['api/123', '/api/123']:
-                s = luigi.rpc.RemoteScheduler(url, 42)
+                s = trun.rpc.RemoteScheduler(url, 42)
                 with mock.patch.object(s, '_fetcher') as fetcher:
                     s._fetch(suffix, '{}')
                     fetcher.fetch.assert_called_once_with('http://zorg.com/api/123', '{}', 42)
@@ -41,13 +41,13 @@ class RemoteSchedulerTest(unittest.TestCase):
     def testUrlArgumentVariationsNotRoot(self):
         for url in ['http://zorg.com/subpath', 'http://zorg.com/subpath/']:
             for suffix in ['api/123', '/api/123']:
-                s = luigi.rpc.RemoteScheduler(url, 42)
+                s = trun.rpc.RemoteScheduler(url, 42)
                 with mock.patch.object(s, '_fetcher') as fetcher:
                     s._fetch(suffix, '{}')
                     fetcher.fetch.assert_called_once_with('http://zorg.com/subpath/api/123', '{}', 42)
 
     def get_work(self, fetcher_side_effect):
-        scheduler = luigi.rpc.RemoteScheduler('http://zorg.com', 42)
+        scheduler = trun.rpc.RemoteScheduler('http://zorg.com', 42)
         scheduler._rpc_retry_wait = 1  # shorten wait time to speed up tests
 
         with mock.patch.object(scheduler, '_fetcher') as fetcher:
@@ -69,9 +69,9 @@ class RemoteSchedulerTest(unittest.TestCase):
         """
 
         fetch_results = [socket.timeout, socket.timeout, socket.timeout]
-        self.assertRaises(luigi.rpc.RPCError, self.get_work, fetch_results)
+        self.assertRaises(trun.rpc.RPCError, self.get_work, fetch_results)
 
-    @mock.patch('luigi.rpc.logger')
+    @mock.patch('trun.rpc.logger')
     def test_log_rpc_retries_enabled(self, mock_logger):
         """
         Tests that each retry of an RPC method is logged
@@ -89,7 +89,7 @@ class RemoteSchedulerTest(unittest.TestCase):
         ], mock_logger.mock_calls)
 
     @with_config({'core': {'rpc-log-retries': 'false'}})
-    @mock.patch('luigi.rpc.logger')
+    @mock.patch('trun.rpc.logger')
     def test_log_rpc_retries_disabled(self, mock_logger):
         """
         Tests that retries of an RPC method are not logged
@@ -99,7 +99,7 @@ class RemoteSchedulerTest(unittest.TestCase):
         try:
             self.get_work(fetch_results)
             self.fail("get_work should have thrown RPCError")
-        except luigi.rpc.RPCError as e:
+        except trun.rpc.RPCError as e:
             self.assertTrue(isinstance(e.sub_exception, socket.gaierror))
         self.assertEqual([], mock_logger.mock_calls)
 
@@ -117,7 +117,7 @@ class RemoteSchedulerTest(unittest.TestCase):
         """
 
         fetch_results = ['{"response": null}'] * 3 + ['{"response": {}}']
-        self.assertRaises(luigi.rpc.RPCError, self.get_work, fetch_results)
+        self.assertRaises(trun.rpc.RPCError, self.get_work, fetch_results)
 
 
 class RPCTest(scheduler_api_test.SchedulerApiTest, ServerTestBase):
@@ -125,11 +125,11 @@ class RPCTest(scheduler_api_test.SchedulerApiTest, ServerTestBase):
     def get_app(self):
         conf = self.get_scheduler_config()
         sch = Scheduler(**conf)
-        return luigi.server.app(sch)
+        return trun.server.app(sch)
 
     def setUp(self):
         super(RPCTest, self).setUp()
-        self.sch = luigi.rpc.RemoteScheduler(self.get_url(''))
+        self.sch = trun.rpc.RemoteScheduler(self.get_url(''))
         self.sch._wait = lambda: None
 
     # disable test that doesn't work with remote scheduler
@@ -154,7 +154,7 @@ class RPCTest(scheduler_api_test.SchedulerApiTest, ServerTestBase):
 
 class RequestsFetcherTest(ServerTestBase):
     def test_fork_changes_session(self):
-        fetcher = luigi.rpc.RequestsFetcher()
+        fetcher = trun.rpc.RequestsFetcher()
         session = fetcher.session
 
         q = Queue()
@@ -174,7 +174,7 @@ class RequestsFetcherTest(ServerTestBase):
 class URLLibFetcherTest(ServerTestBase):
 
     def test_url_with_basic_auth(self):
-        fetcher = luigi.rpc.URLLibFetcher()
+        fetcher = trun.rpc.URLLibFetcher()
 
         # without password
         req = fetcher._create_request('http://user@localhost')
@@ -195,14 +195,14 @@ class URLLibFetcherTest(ServerTestBase):
         self.assertEqual(req.get_full_url(), 'http://localhost')
 
     def test_url_without_basic_auth(self):
-        fetcher = luigi.rpc.URLLibFetcher()
+        fetcher = trun.rpc.URLLibFetcher()
         req = fetcher._create_request('http://localhost')
 
         self.assertFalse(req.has_header('Authorization'))
         self.assertEqual(req.get_full_url(), 'http://localhost')
 
     def test_body_encoding(self):
-        fetcher = luigi.rpc.URLLibFetcher()
+        fetcher = trun.rpc.URLLibFetcher()
 
         # with body
         req = fetcher._create_request('http://localhost', body={'foo': 'bar baz/test'})

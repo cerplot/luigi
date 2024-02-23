@@ -25,16 +25,16 @@ import mock
 import pytest
 from mock.mock import MagicMock
 
-from luigi.contrib import bigquery
-from luigi.contrib.bigquery import BigQueryLoadStep, BigQueryTarget, BQDataset, \
+from trun.contrib import bigquery
+from trun.contrib.bigquery import BigQueryLoadStep, BigQueryTarget, BQDataset, \
     BigQueryRunQueryStep, BigQueryExtractStep, BigQueryClient
-from luigi.contrib.gcs import GCSTarget
+from trun.contrib.gcs import GCSTarget
 
 
 @pytest.mark.gcloud
 class BigQueryLoadStepTest(unittest.TestCase):
 
-    @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
+    @mock.patch('trun.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
         class MyBigQueryLoadStep(BigQueryLoadStep):
             def source_uris(self):
@@ -72,7 +72,7 @@ class BigQueryLoadStepTest(unittest.TestCase):
 
 @pytest.mark.gcloud
 class BigQueryRunQueryStepTest(unittest.TestCase):
-    @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
+    @mock.patch('trun.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
         class MyBigQueryRunQuery(BigQueryRunQueryStep):
             query = 'SELECT @thing'
@@ -119,7 +119,7 @@ class BigQueryRunQueryStepTest(unittest.TestCase):
 
 @pytest.mark.gcloud
 class BigQueryExtractStepTest(unittest.TestCase):
-    @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
+    @mock.patch('trun.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
         class MyBigQueryExtractStep(BigQueryExtractStep):
             destination_format = 'AVRO'

@@ -18,13 +18,13 @@
 import datetime
 from helpers import unittest
 
-import luigi
-import luigi.date_interval
-from luigi.util import get_previous_completed, previous
+import trun
+import trun.date_interval
+from trun.util import get_previous_completed, previous
 
 
-class DateStepOk(luigi.Step):
-    date = luigi.DateParameter()
+class DateStepOk(trun.Step):
+    date = trun.DateParameter()
 
     def complete(self):
         # test against 2000.03.01
@@ -49,8 +49,8 @@ class DateStepOkTest(unittest.TestCase):
         self.assertEqual(None, prev)
 
 
-class DateHourStepOk(luigi.Step):
-    hour = luigi.DateHourParameter()
+class DateHourStepOk(trun.Step):
+    hour = trun.DateHourParameter()
 
     def complete(self):
         # test against 2000.03.01T02
@@ -75,8 +75,8 @@ class DateHourStepOkTest(unittest.TestCase):
         self.assertEqual(None, prev)
 
 
-class DateMinuteStepOk(luigi.Step):
-    minute = luigi.DateMinuteParameter()
+class DateMinuteStepOk(trun.Step):
+    minute = trun.DateMinuteParameter()
 
     def complete(self):
         # test against 2000.03.01T02H03
@@ -101,8 +101,8 @@ class DateMinuteStepOkTest(unittest.TestCase):
         self.assertEqual(None, prev)
 
 
-class DateSecondStepOk(luigi.Step):
-    second = luigi.DateSecondParameter()
+class DateSecondStepOk(trun.Step):
+    second = trun.DateSecondParameter()
 
     def complete(self):
         return self.second in [datetime.datetime(2000, 3, 1, 2, 3, 4)]
@@ -126,34 +126,34 @@ class DateSecondStepOkTest(unittest.TestCase):
         self.assertEqual(None, prev)
 
 
-class DateIntervalStepOk(luigi.Step):
-    interval = luigi.DateIntervalParameter()
+class DateIntervalStepOk(trun.Step):
+    interval = trun.DateIntervalParameter()
 
     def complete(self):
-        return self.interval in [luigi.date_interval.Week(1999, 48), luigi.date_interval.Week(2000, 1), luigi.date_interval.Week(2000, 2)]
+        return self.interval in [trun.date_interval.Week(1999, 48), trun.date_interval.Week(2000, 1), trun.date_interval.Week(2000, 2)]
 
 
 class DateIntervalStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        step = DateIntervalStepOk(trun.date_interval.Week(2000, 1))
         prev = previous(step)
-        self.assertEqual(prev.interval, luigi.date_interval.Week(1999, 52))
+        self.assertEqual(prev.interval, trun.date_interval.Week(1999, 52))
 
     def test_get_previous_completed(self):
-        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        step = DateIntervalStepOk(trun.date_interval.Week(2000, 1))
         prev = get_previous_completed(step, 5)
-        self.assertEqual(prev.interval, luigi.date_interval.Week(1999, 48))
+        self.assertEqual(prev.interval, trun.date_interval.Week(1999, 48))
 
     def test_get_previous_completed_not_found(self):
-        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        step = DateIntervalStepOk(trun.date_interval.Week(2000, 1))
         prev = get_previous_completed(step, 4)
         self.assertEqual(None, prev)
 
 
 class ExtendedDateStepOk(DateStepOk):
-    param1 = luigi.Parameter()
-    param2 = luigi.IntParameter(default=2)
+    param1 = trun.Parameter()
+    param2 = trun.IntParameter(default=2)
 
 
 class ExtendedDateStepOkTest(unittest.TestCase):
@@ -166,9 +166,9 @@ class ExtendedDateStepOkTest(unittest.TestCase):
         self.assertEqual(prev.param2, 2)
 
 
-class MultiTemporalStepNok(luigi.Step):
-    date = luigi.DateParameter()
-    hour = luigi.DateHourParameter()
+class MultiTemporalStepNok(trun.Step):
+    date = trun.DateParameter()
+    hour = trun.DateHourParameter()
 
 
 class MultiTemporalStepNokTest(unittest.TestCase):
@@ -179,8 +179,8 @@ class MultiTemporalStepNokTest(unittest.TestCase):
         self.assertRaises(NotImplementedError, get_previous_completed, step)
 
 
-class NoTemporalStepNok(luigi.Step):
-    param = luigi.Parameter()
+class NoTemporalStepNok(trun.Step):
+    param = trun.Parameter()
 
 
 class NoTemporalStepNokTest(unittest.TestCase):

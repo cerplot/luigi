@@ -25,9 +25,9 @@ from botocore.exceptions import ClientError
 from mock import patch
 
 from helpers import skipOnTravisAndGithubActions, unittest, with_config
-from luigi.contrib.s3 import (DeprecatedBotoClientException, FileNotFoundException,
+from trun.contrib.s3 import (DeprecatedBotoClientException, FileNotFoundException,
                               InvalidDeleteException, S3Client, S3Target)
-from luigi.target import MissingParentDirectory
+from trun.target import MissingParentDirectory
 from moto import mock_s3, mock_sts
 from target_test import FileSystemTargetTestMixin
 
@@ -564,7 +564,7 @@ class TestS3Client(unittest.TestCase):
         self._run_copy_response_test(response, expected_num=0, expected_size=0)
 
     @mock_s3
-    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/145895385')
+    @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/trun/jobs/145895385')
     def test_copy_dir(self):
         """
         Test copying 20 files from one folder to another

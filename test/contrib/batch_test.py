@@ -17,7 +17,7 @@
 
 from helpers import unittest
 
-import luigi.contrib.batch as batch
+import trun.contrib.batch as batch
 from helpers import skipOnTravisAndGithubActions
 
 import pytest

@@ -16,9 +16,9 @@
 #
 
 import json
-import luigi
-from luigi.contrib import beam_dataflow, bigquery, gcs
-from luigi import local_target
+import trun
+from trun.contrib import beam_dataflow, bigquery, gcs
+from trun import local_target
 import mock
 from mock import MagicMock, patch
 import unittest
@@ -45,9 +45,9 @@ class TestDataflowParamKeys(beam_dataflow.DataflowParamKeys):
     labels = "labels"
 
 
-class TestRequires(luigi.ExternalStep):
+class TestRequires(trun.ExternalStep):
     def output(self):
-        return luigi.LocalTarget(path='some-input-dir')
+        return trun.LocalTarget(path='some-input-dir')
 
 
 class SimpleTestStep(beam_dataflow.BeamDataflowJobStep):
@@ -60,7 +60,7 @@ class SimpleTestStep(beam_dataflow.BeamDataflowJobStep):
         return local_target.LocalTarget(path='some-output.txt')
 
     def dataflow_executable(self):
-        return ['java', 'com.spotify.luigi.SomeJobClass']
+        return ['java', 'com.spotify.trun.SomeJobClass']
 
 
 class FullTestStep(beam_dataflow.BeamDataflowJobStep):
@@ -89,13 +89,13 @@ class FullTestStep(beam_dataflow.BeamDataflowJobStep):
         return TestRequires()
 
     def output(self):
-        return {'output': luigi.LocalTarget(path='some-output.txt')}
+        return {'output': trun.LocalTarget(path='some-output.txt')}
 
     def args(self):
         return ['--extraArg=present']
 
     def dataflow_executable(self):
-        return ['java', 'com.spotify.luigi.SomeJobClass']
+        return ['java', 'com.spotify.trun.SomeJobClass']
 
 
 class FilePatternsTestStep(beam_dataflow.BeamDataflowJobStep):
@@ -111,10 +111,10 @@ class FilePatternsTestStep(beam_dataflow.BeamDataflowJobStep):
         return {'input2': '*.some-ext'}
 
     def output(self):
-        return {'output': luigi.LocalTarget(path='some-output.txt')}
+        return {'output': trun.LocalTarget(path='some-output.txt')}
 
     def dataflow_executable(self):
-        return ['java', 'com.spotify.luigi.SomeJobClass']
+        return ['java', 'com.spotify.trun.SomeJobClass']
 
 
 class DummyCmdLineTestStep(beam_dataflow.BeamDataflowJobStep):
@@ -141,7 +141,7 @@ class BeamDataflowTest(unittest.TestCase):
 
         expected = [
             'java',
-            'com.spotify.luigi.SomeJobClass',
+            'com.spotify.trun.SomeJobClass',
             '--runner=DirectRunner',
             '--input=some-input-dir/part-*',
             '--output=some-output.txt'
@@ -155,7 +155,7 @@ class BeamDataflowTest(unittest.TestCase):
 
         expected = [
             'java',
-            'com.spotify.luigi.SomeJobClass',
+            'com.spotify.trun.SomeJobClass',
             '--runner=DirectRunner',
             '--project=some-project',
             '--zone=europe-west1-c',
@@ -196,10 +196,10 @@ class BeamDataflowTest(unittest.TestCase):
 
     def test_dataflow_input_arg_formatting(self):
         class TestStepListOfTargetsInput(SimpleTestStep):
-            class TestRequiresListOfTargets(luigi.ExternalStep):
+            class TestRequiresListOfTargets(trun.ExternalStep):
                 def output(self):
-                    return [luigi.LocalTarget(path='some-input-1'),
-                            luigi.LocalTarget(path='some-input-2')]
+                    return [trun.LocalTarget(path='some-input-1'),
+                            trun.LocalTarget(path='some-input-2')]
 
             def requires(self):
                 return self.TestRequiresListOfTargets()
@@ -209,10 +209,10 @@ class BeamDataflowTest(unittest.TestCase):
                          ['--input=some-input-1/part-*,some-input-2/part-*'])
 
         class TestStepListOfTuplesInput(SimpleTestStep):
-            class TestRequiresListOfTuples(luigi.ExternalStep):
+            class TestRequiresListOfTuples(trun.ExternalStep):
                 def output(self):
-                    return [('input1', luigi.LocalTarget(path='some-input-1')),
-                            ('input2', luigi.LocalTarget(path='some-input-2'))]
+                    return [('input1', trun.LocalTarget(path='some-input-1')),
+                            ('input2', trun.LocalTarget(path='some-input-2'))]
 
             def requires(self):
                 return self.TestRequiresListOfTuples()
@@ -223,10 +223,10 @@ class BeamDataflowTest(unittest.TestCase):
                           '--input2=some-input-2/part-*'])
 
         class TestStepDictInput(SimpleTestStep):
-            class TestRequiresDict(luigi.ExternalStep):
+            class TestRequiresDict(trun.ExternalStep):
                 def output(self):
-                    return {'input1': luigi.LocalTarget(path='some-input-1'),
-                            'input2': luigi.LocalTarget(path='some-input-2')}
+                    return {'input1': trun.LocalTarget(path='some-input-1'),
+                            'input2': trun.LocalTarget(path='some-input-2')}
 
             def requires(self):
                 return self.TestRequiresDict()
@@ -237,9 +237,9 @@ class BeamDataflowTest(unittest.TestCase):
                           '--input2=some-input-2/part-*'])
 
         class TestStepTupleInput(SimpleTestStep):
-            class TestRequiresTuple(luigi.ExternalStep):
+            class TestRequiresTuple(trun.ExternalStep):
                 def output(self):
-                    return 'some-key', luigi.LocalTarget(path='some-input')
+                    return 'some-key', trun.LocalTarget(path='some-input')
 
             def requires(self):
                 return self.TestRequiresTuple()
@@ -249,11 +249,11 @@ class BeamDataflowTest(unittest.TestCase):
                          ['--some-key=some-input/part-*'])
 
     def test_step_output_arg_completion(self):
-        class TestCompleteTarget(luigi.Target):
+        class TestCompleteTarget(trun.Target):
             def exists(self):
                 return True
 
-        class TestIncompleteTarget(luigi.Target):
+        class TestIncompleteTarget(trun.Target):
             def exists(self):
                 return False
 
@@ -343,8 +343,8 @@ class BeamDataflowTest(unittest.TestCase):
         step.on_successful_run.assert_called_once_with()
         step.on_successful_output_validation.assert_not_called()
 
-    @patch('luigi.contrib.beam_dataflow.subprocess.Popen.wait', return_value=1)
-    @patch('luigi.contrib.beam_dataflow.os._exit', side_effect=OSError)
+    @patch('trun.contrib.beam_dataflow.subprocess.Popen.wait', return_value=1)
+    @patch('trun.contrib.beam_dataflow.os._exit', side_effect=OSError)
     def test_dataflow_failed_run_callbacks(self, popen, os_exit):
         step = DummyCmdLineTestStep()
 

@@ -19,9 +19,9 @@ import os
 from helpers import unittest
 import pytest
 
-import luigi
-import luigi.notifications
-from luigi.contrib import postgres
+import trun
+import trun.notifications
+from trun.contrib import postgres
 
 """
 Typical use cases that should be tested:
@@ -91,7 +91,7 @@ class MetricBase(CopyToTestDB):
 
 
 class Metric1(MetricBase):
-    param = luigi.Parameter()
+    param = trun.Parameter()
 
     def rows(self):
         yield 'metric1', 1
@@ -100,7 +100,7 @@ class Metric1(MetricBase):
 
 
 class Metric2(MetricBase):
-    param = luigi.Parameter()
+    param = trun.Parameter()
 
     def rows(self):
         yield 'metric2', 1
@@ -126,8 +126,8 @@ class TestPostgresImportStep(unittest.TestCase):
         cursor.execute('DROP TABLE IF EXISTS {table}'.format(table=step.table))
         cursor.execute('DROP TABLE IF EXISTS {marker_table}'.format(marker_table=postgres.PostgresTarget.marker_table))
 
-        luigi.build([step], local_scheduler=True)
-        luigi.build([step], local_scheduler=True)  # try to schedule twice
+        trun.build([step], local_scheduler=True)
+        trun.build([step], local_scheduler=True)  # try to schedule twice
 
         cursor.execute("""SELECT test_text, test_int, test_float
                           FROM test_table
@@ -149,7 +149,7 @@ class TestPostgresImportStep(unittest.TestCase):
         conn.autocommit = True
         conn.cursor().execute('DROP TABLE IF EXISTS {table}'.format(table=metrics.table))
         conn.cursor().execute('DROP TABLE IF EXISTS {marker_table}'.format(marker_table=postgres.PostgresTarget.marker_table))
-        luigi.build([Metric1(20), Metric1(21), Metric2("foo")], local_scheduler=True)
+        trun.build([Metric1(20), Metric1(21), Metric2("foo")], local_scheduler=True)
 
         cursor = conn.cursor()
         cursor.execute('select count(*) from {table}'.format(table=metrics.table))
@@ -168,8 +168,8 @@ class TestPostgresImportStep(unittest.TestCase):
         conn.cursor().execute('DROP TABLE IF EXISTS {table}'.format(table=clearer.table))
         conn.cursor().execute('DROP TABLE IF EXISTS {marker_table}'.format(marker_table=postgres.PostgresTarget.marker_table))
 
-        luigi.build([Metric1(0), Metric1(1)], local_scheduler=True)
-        luigi.build([clearer], local_scheduler=True)
+        trun.build([Metric1(0), Metric1(1)], local_scheduler=True)
+        trun.build([clearer], local_scheduler=True)
         cursor = conn.cursor()
         cursor.execute('select count(*) from {table}'.format(table=clearer.table))
         self.assertEqual(tuple(cursor), ((3,),))

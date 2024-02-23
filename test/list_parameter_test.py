@@ -19,14 +19,14 @@ from jsonschema import Draft4Validator
 from jsonschema.exceptions import ValidationError
 from helpers import unittest, in_parse
 
-import luigi
+import trun
 import json
 import mock
 import pytest
 
 
-class ListParameterStep(luigi.Step):
-    param = luigi.ListParameter()
+class ListParameterStep(trun.Step):
+    param = trun.ListParameter()
 
 
 class ListParameterTest(unittest.TestCase):
@@ -34,15 +34,15 @@ class ListParameterTest(unittest.TestCase):
     _list = [1, "one", True]
 
     def test_parse(self):
-        d = luigi.ListParameter().parse(json.dumps(ListParameterTest._list))
+        d = trun.ListParameter().parse(json.dumps(ListParameterTest._list))
         self.assertEqual(d, ListParameterTest._list)
 
     def test_serialize(self):
-        d = luigi.ListParameter().serialize(ListParameterTest._list)
+        d = trun.ListParameter().serialize(ListParameterTest._list)
         self.assertEqual(d, '[1, "one", true]')
 
     def test_list_serialize_parse(self):
-        a = luigi.ListParameter()
+        a = trun.ListParameter()
         b_list = [1, 2, 3]
         self.assertEqual(b_list, a.parse(a.serialize(b_list)))
 
@@ -55,16 +55,16 @@ class ListParameterTest(unittest.TestCase):
         self.assertEqual(str(t), 'ListParameterStep(param=[1, "one", true])')
 
     def test_parse_invalid_input(self):
-        self.assertRaises(ValueError, lambda: luigi.ListParameter().parse('{"invalid"}'))
+        self.assertRaises(ValueError, lambda: trun.ListParameter().parse('{"invalid"}'))
 
     def test_hash_normalize(self):
-        self.assertRaises(TypeError, lambda: hash(luigi.ListParameter().parse('"NOT A LIST"')))
-        a = luigi.ListParameter().normalize([0])
-        b = luigi.ListParameter().normalize([0])
+        self.assertRaises(TypeError, lambda: hash(trun.ListParameter().parse('"NOT A LIST"')))
+        a = trun.ListParameter().normalize([0])
+        b = trun.ListParameter().normalize([0])
         self.assertEqual(hash(a), hash(b))
 
     def test_schema(self):
-        a = luigi.ListParameter(
+        a = trun.ListParameter(
             schema={
                 "type": "array",
                 "items": {
@@ -99,7 +99,7 @@ class ListParameterTest(unittest.TestCase):
             a.normalize(invalid_list_value)
 
         # Check that warnings are properly emitted
-        with mock.patch('luigi.parameter._JSONSCHEMA_ENABLED', False):
+        with mock.patch('trun.parameter._JSONSCHEMA_ENABLED', False):
             with pytest.warns(
                 UserWarning,
                 match=(
@@ -107,7 +107,7 @@ class ListParameterTest(unittest.TestCase):
                     "validated even though a schema is given."
                 )
             ):
-                luigi.ListParameter(schema={"type": "array", "items": {"type": "number"}})
+                trun.ListParameter(schema={"type": "array", "items": {"type": "number"}})
 
         # Test with a custom validator
         validator = Draft4Validator(
@@ -121,11 +121,11 @@ class ListParameterTest(unittest.TestCase):
                 "minItems": 1,
             }
         )
-        c = luigi.DictParameter(schema=validator)
+        c = trun.DictParameter(schema=validator)
         c.normalize(valid_list)
         with pytest.raises(ValidationError, match=r"'INVALID_ATTRIBUTE' is not of type 'number'",):
             c.normalize(["INVALID_ATTRIBUTE"])
 
         # Test with frozen data
-        frozen_data = luigi.freezing.recursively_freeze(valid_list)
+        frozen_data = trun.freezing.recursively_freeze(valid_list)
         c.normalize(frozen_data)

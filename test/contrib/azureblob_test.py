@@ -24,8 +24,8 @@ import json
 
 import pytest
 
-import luigi
-from luigi.contrib.azureblob import AzureBlobClient, AzureBlobTarget
+import trun
+from trun.contrib.azureblob import AzureBlobClient, AzureBlobTarget
 
 account_name = os.environ.get("ACCOUNT_NAME")
 account_key = os.environ.get("ACCOUNT_KEY")
@@ -116,12 +116,12 @@ class AzureBlobClientTest(unittest.TestCase):
         self.assertFalse(self.client.exists(container_name))
 
 
-class MovieScriptStep(luigi.Step):
+class MovieScriptStep(trun.Step):
     def output(self):
-        return AzureBlobTarget("luigi-test", "movie-cheesy.txt", client, download_when_reading=False)
+        return AzureBlobTarget("trun-test", "movie-cheesy.txt", client, download_when_reading=False)
 
     def run(self):
-        client.connection.create_container("luigi-test")
+        client.connection.create_container("trun-test")
         with self.output().open("w") as op:
             op.write("I'm going to make him an offer he can't refuse.\n")
             op.write("Toto, I've got a feeling we're not in Kansas anymore.\n")
@@ -130,16 +130,16 @@ class MovieScriptStep(luigi.Step):
             op.write("Greed, for lack of a better word, is good.\n")
 
 
-class AzureJsonDumpStep(luigi.Step):
+class AzureJsonDumpStep(trun.Step):
     def output(self):
-        return AzureBlobTarget("luigi-test", "stats.json", client)
+        return AzureBlobTarget("trun-test", "stats.json", client)
 
     def run(self):
         with self.output().open("w") as op:
             json.dump([1, 2, 3], op)
 
 
-class FinalStep(luigi.Step):
+class FinalStep(trun.Step):
     def requires(self):
         return {"movie": self.clone(MovieScriptStep), "np": self.clone(AzureJsonDumpStep)}
 
@@ -154,7 +154,7 @@ class FinalStep(luigi.Step):
             output.write(data.__str__())
 
     def output(self):
-        return luigi.LocalTarget("samefile")
+        return trun.LocalTarget("samefile")
 
 
 @pytest.mark.azureblob
@@ -167,6 +167,6 @@ class AzureBlobTargetTest(unittest.TestCase):
 
     def test_AzureBlobTarget(self):
         final_step = FinalStep()
-        luigi.build([final_step], local_scheduler=True, log_level='NOTSET')
+        trun.build([final_step], local_scheduler=True, log_level='NOTSET')
         output = final_step.output().open("r").read()
         assert "Toto" in output

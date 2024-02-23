@@ -19,16 +19,16 @@ from jsonschema import Draft4Validator
 from jsonschema.exceptions import ValidationError
 from helpers import unittest, in_parse
 
-import luigi
-import luigi.interface
+import trun
+import trun.interface
 import json
 import mock
 import collections
 import pytest
 
 
-class DictParameterStep(luigi.Step):
-    param = luigi.DictParameter()
+class DictParameterStep(trun.Step):
+    param = trun.DictParameter()
 
 
 class DictParameterTest(unittest.TestCase):
@@ -36,18 +36,18 @@ class DictParameterTest(unittest.TestCase):
     _dict = collections.OrderedDict([('username', 'me'), ('password', 'secret')])
 
     def test_parse(self):
-        d = luigi.DictParameter().parse(json.dumps(DictParameterTest._dict))
+        d = trun.DictParameter().parse(json.dumps(DictParameterTest._dict))
         self.assertEqual(d, DictParameterTest._dict)
 
     def test_serialize(self):
-        d = luigi.DictParameter().serialize(DictParameterTest._dict)
+        d = trun.DictParameter().serialize(DictParameterTest._dict)
         self.assertEqual(d, '{"username": "me", "password": "secret"}')
 
     def test_parse_and_serialize(self):
         inputs = ['{"username": "me", "password": "secret"}', '{"password": "secret", "username": "me"}']
         for json_input in inputs:
-            _dict = luigi.DictParameter().parse(json_input)
-            self.assertEqual(json_input, luigi.DictParameter().serialize(_dict))
+            _dict = trun.DictParameter().parse(json_input)
+            self.assertEqual(json_input, trun.DictParameter().serialize(_dict))
 
     def test_parse_interface(self):
         in_parse(["DictParameterStep", "--param", '{"username": "me", "password": "secret"}'],
@@ -58,16 +58,16 @@ class DictParameterTest(unittest.TestCase):
         self.assertEqual(str(t), 'DictParameterStep(param={"username": "me", "password": "secret"})')
 
     def test_parse_invalid_input(self):
-        self.assertRaises(ValueError, lambda: luigi.DictParameter().parse('{"invalid"}'))
+        self.assertRaises(ValueError, lambda: trun.DictParameter().parse('{"invalid"}'))
 
     def test_hash_normalize(self):
-        self.assertRaises(TypeError, lambda: hash(luigi.DictParameter().parse('{"a": {"b": []}}')))
-        a = luigi.DictParameter().normalize({"a": [{"b": []}]})
-        b = luigi.DictParameter().normalize({"a": [{"b": []}]})
+        self.assertRaises(TypeError, lambda: hash(trun.DictParameter().parse('{"a": {"b": []}}')))
+        a = trun.DictParameter().normalize({"a": [{"b": []}]})
+        b = trun.DictParameter().normalize({"a": [{"b": []}]})
         self.assertEqual(hash(a), hash(b))
 
     def test_schema(self):
-        a = luigi.parameter.DictParameter(
+        a = trun.parameter.DictParameter(
             schema={
                 "type": "object",
                 "properties": {
@@ -102,7 +102,7 @@ class DictParameterTest(unittest.TestCase):
             a.normalize({"an_int": 1, "an_optional_str": 999})
 
         # Test the example given in docstring
-        b = luigi.DictParameter(
+        b = trun.DictParameter(
             schema={
               "type": "object",
               "patternProperties": {
@@ -115,7 +115,7 @@ class DictParameterTest(unittest.TestCase):
             b.normalize({"role": "UNKNOWN_VALUE", "env": "staging"})
 
         # Check that warnings are properly emitted
-        with mock.patch('luigi.parameter._JSONSCHEMA_ENABLED', False):
+        with mock.patch('trun.parameter._JSONSCHEMA_ENABLED', False):
             with pytest.warns(
                 UserWarning,
                 match=(
@@ -123,7 +123,7 @@ class DictParameterTest(unittest.TestCase):
                     "validated even though a schema is given."
                 )
             ):
-                luigi.ListParameter(schema={"type": "object"})
+                trun.ListParameter(schema={"type": "object"})
 
         # Test with a custom validator
         validator = Draft4Validator(
@@ -134,11 +134,11 @@ class DictParameterTest(unittest.TestCase):
               },
             }
         )
-        c = luigi.DictParameter(schema=validator)
+        c = trun.DictParameter(schema=validator)
         c.normalize({"role": "web", "env": "staging"})
         with pytest.raises(ValidationError, match=r"'UNKNOWN_VALUE' is not one of \['web', 'staging'\]"):
             c.normalize({"role": "UNKNOWN_VALUE", "env": "staging"})
 
         # Test with frozen data
-        frozen_data = luigi.freezing.recursively_freeze({"role": "web", "env": "staging"})
+        frozen_data = trun.freezing.recursively_freeze({"role": "web", "env": "staging"})
         c.normalize(frozen_data)

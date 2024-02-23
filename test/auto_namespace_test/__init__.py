@@ -1,3 +1,3 @@
-import luigi
+import trun
 
-luigi.auto_namespace(scope=__name__)
+trun.auto_namespace(scope=__name__)

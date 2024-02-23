@@ -17,7 +17,7 @@
 
 
 """
-Tests for Docker container wrapper for Luigi.
+Tests for Docker container wrapper for Trun.
 
 
 Requires:
@@ -31,13 +31,13 @@ import tempfile
 from helpers import unittest
 from tempfile import NamedTemporaryFile
 
-import luigi
+import trun
 import logging
-from luigi.contrib.docker_runner import DockerStep
+from trun.contrib.docker_runner import DockerStep
 
 import pytest
 
-logger = logging.getLogger('luigi-interface')
+logger = logging.getLogger('trun-interface')
 
 try:
     import docker
@@ -74,9 +74,9 @@ class FailJobContainer(DockerStep):
 class WriteToTmpDir(DockerStep):
     image = "busybox"
     name = "WriteToTmpDir"
-    container_tmp_dir = '/tmp/luigi-test'
-    command = 'test -d  /tmp/luigi-test'
-    # command = 'test -d $LUIGI_TMP_DIR'# && echo ok >$LUIGI_TMP_DIR/test'
+    container_tmp_dir = '/tmp/trun-test'
+    command = 'test -d  /tmp/trun-test'
+    # command = 'test -d $TRUN_TMP_DIR'# && echo ok >$TRUN_TMP_DIR/test'
 
 
 class MountLocalFileAsVolume(DockerStep):
@@ -88,7 +88,7 @@ class MountLocalFileAsVolume(DockerStep):
 
 
 class MountLocalFileAsVolumeWithParam(DockerStep):
-    dummyopt = luigi.Parameter()
+    dummyopt = trun.Parameter()
     image = "busybox"
     name = "MountLocalFileAsVolumeWithParam"
     binds = [local_file.name + ':/tmp/local_file_test']
@@ -96,7 +96,7 @@ class MountLocalFileAsVolumeWithParam(DockerStep):
 
 
 class MountLocalFileAsVolumeWithParamRedefProperties(DockerStep):
-    dummyopt = luigi.Parameter()
+    dummyopt = trun.Parameter()
     image = "busybox"
     name = "MountLocalFileAsVolumeWithParamRedef"
 
@@ -112,7 +112,7 @@ class MountLocalFileAsVolumeWithParamRedefProperties(DockerStep):
         return True
 
 
-class MultipleDockerStep(luigi.WrapperStep):
+class MultipleDockerStep(trun.WrapperStep):
     '''because the volumes property is defined as a list, spinning multiple
     containers led to conflict in the volume binds definition, with multiple
     host directories pointing to the same container directory'''
@@ -121,7 +121,7 @@ class MultipleDockerStep(luigi.WrapperStep):
                 for opt in ['one', 'two', 'three']]
 
 
-class MultipleDockerStepRedefProperties(luigi.WrapperStep):
+class MultipleDockerStepRedefProperties(trun.WrapperStep):
     def requires(self):
         return [MountLocalFileAsVolumeWithParamRedefProperties(dummyopt=opt)
                 for opt in ['one', 'two', 'three']]
@@ -135,7 +135,7 @@ class TestDockerStep(unittest.TestCase):
 
     def test_success_job(self):
         success = SuccessJob()
-        luigi.build([success], local_scheduler=True)
+        trun.build([success], local_scheduler=True)
         self.assertTrue(success)
 
     def test_temp_dir_creation(self):
@@ -156,10 +156,10 @@ class TestDockerStep(unittest.TestCase):
 
     def test_multiple_jobs(self):
         worked = MultipleDockerStep()
-        luigi.build([worked], local_scheduler=True)
+        trun.build([worked], local_scheduler=True)
         self.assertTrue(worked)
 
     def test_multiple_jobs2(self):
         worked = MultipleDockerStepRedefProperties()
-        luigi.build([worked], local_scheduler=True)
+        trun.build([worked], local_scheduler=True)
         self.assertTrue(worked)

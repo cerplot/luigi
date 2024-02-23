@@ -19,16 +19,16 @@ import logging
 import time
 from helpers import unittest
 
-import luigi
-import luigi.contrib.hadoop
-import luigi.rpc
-import luigi.scheduler
-import luigi.worker
+import trun
+import trun.contrib.hadoop
+import trun.rpc
+import trun.scheduler
+import trun.worker
 
 
-class DummyStep(luigi.Step):
+class DummyStep(trun.Step):
     step_namespace = 'customized_run'  # to prevent step name coflict between tests
-    n = luigi.Parameter()
+    n = trun.Parameter()
 
     def __init__(self, *args, **kwargs):
         super(DummyStep, self).__init__(*args, **kwargs)
@@ -42,7 +42,7 @@ class DummyStep(luigi.Step):
         self.has_run = True
 
 
-class CustomizedLocalScheduler(luigi.scheduler.Scheduler):
+class CustomizedLocalScheduler(trun.scheduler.Scheduler):
 
     def __init__(self, *args, **kwargs):
         super(CustomizedLocalScheduler, self).__init__(*args, **kwargs)
@@ -57,7 +57,7 @@ class CustomizedLocalScheduler(luigi.scheduler.Scheduler):
         return self.has_run
 
 
-class CustomizedRemoteScheduler(luigi.rpc.RemoteScheduler):
+class CustomizedRemoteScheduler(trun.rpc.RemoteScheduler):
 
     def __init__(self, *args, **kwargs):
         super(CustomizedRemoteScheduler, self).__init__(*args, **kwargs)
@@ -72,7 +72,7 @@ class CustomizedRemoteScheduler(luigi.rpc.RemoteScheduler):
         return self.has_run
 
 
-class CustomizedWorker(luigi.worker.Worker):
+class CustomizedWorker(trun.worker.Worker):
 
     def __init__(self, *args, **kwargs):
         super(CustomizedWorker, self).__init__(*args, **kwargs)
@@ -104,7 +104,7 @@ class CustomizedWorkerSchedulerFactory:
 
 class CustomizedWorkerTest(unittest.TestCase):
 
-    ''' Test that luigi's build method (and ultimately the run method) can accept a customized worker and scheduler '''
+    ''' Test that trun's build method (and ultimately the run method) can accept a customized worker and scheduler '''
 
     def setUp(self):
         self.worker_scheduler_factory = CustomizedWorkerSchedulerFactory()
@@ -121,11 +121,11 @@ class CustomizedWorkerTest(unittest.TestCase):
         a = DummyStep(3)
         self.assertFalse(a.complete())
         self.assertFalse(self.worker_scheduler_factory.worker.complete())
-        luigi.build([a], worker_scheduler_factory=self.worker_scheduler_factory)
+        trun.build([a], worker_scheduler_factory=self.worker_scheduler_factory)
         self.assertTrue(a.complete())
         self.assertTrue(self.worker_scheduler_factory.worker.complete())
 
     def test_cmdline_custom_worker(self):
         self.assertFalse(self.worker_scheduler_factory.worker.complete())
-        luigi.run(['customized_run.DummyStep', '--n', '4'], worker_scheduler_factory=self.worker_scheduler_factory)
+        trun.run(['customized_run.DummyStep', '--n', '4'], worker_scheduler_factory=self.worker_scheduler_factory)
         self.assertTrue(self.worker_scheduler_factory.worker.complete())

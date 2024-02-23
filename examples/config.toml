@@ -22,21 +22,21 @@ level = "DEBUG"
 class = "logging.StreamHandler"
 formatter = "simple"
 
-# luigi worker logging
-[logging.loggers.luigi-interface]
+# trun worker logging
+[logging.loggers.trun-interface]
 handlers = ["console"]
 level = "INFO"
 disabled = false
 propagate = false
 
-# luigid logging
-[logging.loggers.luigi]
+# trund logging
+[logging.loggers.trun]
 handlers = ["console"]
 level = "INFO"
 disabled = false
 propagate = false
 
-# luigid builded on tornado
+# trund builded on tornado
 [logging.loggers.tornado]
 handlers = ["console"]
 level = "INFO"

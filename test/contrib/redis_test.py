@@ -26,14 +26,14 @@ try:
 except ImportError:
     raise unittest.SkipTest('Unable to load redis module')
 
-from luigi.contrib.redis_store import RedisTarget
+from trun.contrib.redis_store import RedisTarget
 
 HOST = 'localhost'
 PORT = 6379
 DB = 15
 PASSWORD = None
 SOCKET_TIMEOUT = None
-MARKER_PREFIX = 'luigi_test'
+MARKER_PREFIX = 'trun_test'
 EXPIRE = 5
 
 
