@@ -28,8 +28,8 @@ import time
 import luigi
 
 
-class Foo(luigi.WrapperTask):
-    task_namespace = 'examples'
+class Foo(luigi.WrapperStep):
+    step_namespace = 'examples'
 
     def run(self):
         print("Running Foo")
@@ -39,8 +39,8 @@ class Foo(luigi.WrapperTask):
             yield Bar(i)
 
 
-class Bar(luigi.Task):
-    task_namespace = 'examples'
+class Bar(luigi.Step):
+    step_namespace = 'examples'
     num = luigi.IntParameter()
 
     def run(self):
@@ -49,9 +49,9 @@ class Bar(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
+        Returns the target output for this step.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         time.sleep(1)

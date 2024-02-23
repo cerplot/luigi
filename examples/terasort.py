@@ -41,7 +41,7 @@ DEFAULT_TERASORT_IN = '/tmp/terasort-in'
 DEFAULT_TERASORT_OUT = '/tmp/terasort-out'
 
 
-class TeraGen(luigi.contrib.hadoop_jar.HadoopJarJobTask):
+class TeraGen(luigi.contrib.hadoop_jar.HadoopJarJobStep):
     """
     Runs TeraGen, by default with 1TB of data (10B records)
     """
@@ -53,10 +53,10 @@ class TeraGen(luigi.contrib.hadoop_jar.HadoopJarJobTask):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget(self.terasort_in)
@@ -72,7 +72,7 @@ class TeraGen(luigi.contrib.hadoop_jar.HadoopJarJobTask):
         return [self.records, self.output()]
 
 
-class TeraSort(luigi.contrib.hadoop_jar.HadoopJarJobTask):
+class TeraSort(luigi.contrib.hadoop_jar.HadoopJarJobStep):
     """
     Runs TeraGent, by default using
     """
@@ -84,20 +84,20 @@ class TeraSort(luigi.contrib.hadoop_jar.HadoopJarJobTask):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.TeraGen`
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
         return TeraGen(terasort_in=self.terasort_in)
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget(self.terasort_out)

@@ -4,9 +4,9 @@ Luigi Patterns
 Code Reuse
 ~~~~~~~~~~
 
-One nice thing about Luigi is that it's super easy to depend on tasks defined in other repos.
+One nice thing about Luigi is that it's super easy to depend on steps defined in other repos.
 It's also trivial to have "forks" in the execution path,
-where the output of one task may become the input of many other tasks.
+where the output of one step may become the input of many other steps.
 
 Currently, no semantics for "intermediate" output is supported,
 meaning that all output will be persisted indefinitely.
@@ -16,17 +16,17 @@ The downside is that you will have a lot of intermediate results on your file sy
 A useful pattern is to put these files in a special directory and
 have some kind of periodical garbage collection clean it up.
 
-Triggering Many Tasks
+Triggering Many Steps
 ~~~~~~~~~~~~~~~~~~~~~
 
-A convenient pattern is to have a dummy Task at the end of several
+A convenient pattern is to have a dummy Step at the end of several
 dependency chains, so you can trigger a multitude of pipelines by
-specifying just one task in command line, similarly to how e.g. `make <http://www.gnu.org/software/make/>`_
+specifying just one step in command line, similarly to how e.g. `make <http://www.gnu.org/software/make/>`_
 works.
 
 .. code:: python
 
-    class AllReports(luigi.WrapperTask):
+    class AllReports(luigi.WrapperStep):
         date = luigi.DateParameter(default=datetime.date.today())
         def requires(self):
             yield SomeReport(self.date)
@@ -35,21 +35,21 @@ works.
             yield TPSReport(self.date)
             yield FooBarBazReport(self.date)
 
-This simple task will not do anything itself, but will invoke a bunch of
-other tasks. Per each invocation, Luigi will perform as many of the pending
+This simple step will not do anything itself, but will invoke a bunch of
+other steps. Per each invocation, Luigi will perform as many of the pending
 jobs as possible (those which have all their dependencies present).
 
-You'll need to use :class:`~luigi.task.WrapperTask` for this instead of the usual Task class, because this job will not produce any output of its own, and as such needs a way to indicate when it's complete. This class is used for tasks that only wrap other tasks and that by definition are done if all their requirements exist.
+You'll need to use :class:`~luigi.step.WrapperStep` for this instead of the usual Step class, because this job will not produce any output of its own, and as such needs a way to indicate when it's complete. This class is used for steps that only wrap other steps and that by definition are done if all their requirements exist.
 
-Triggering recurring tasks
+Triggering recurring steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A common requirement is to have a daily report (or something else)
-produced every night. Sometimes for various reasons tasks will keep
+produced every night. Sometimes for various reasons steps will keep
 crashing or lacking their required dependencies for more than a day
 though, which would lead to a missing deliverable for some date. Oops.
 
-To ensure that the above AllReports task is eventually completed for
+To ensure that the above AllReports step is eventually completed for
 every day (value of date parameter), one could e.g. add a loop in
 requires method to yield dependencies on the past few days preceding
 self.date. Then, so long as Luigi keeps being invoked, the backlog of
@@ -68,12 +68,12 @@ till current time though, but rather a maximum of 3 months ago by
 default - see :class:`~luigi.tools.range.RangeDailyBase` documentation for this and more knobs
 for tweaking behavior. See also Monitoring below.
 
-Efficiently triggering recurring tasks
+Efficiently triggering recurring steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 RangeDailyBase, described above, is named like that because a more
 efficient subclass exists, :class:`~luigi.tools.range.RangeDaily` (resp. :class:`~luigi.tools.range.RangeHourly`), tailored for
-hundreds of task classes scheduled concurrently with contiguousness
+hundreds of step classes scheduled concurrently with contiguousness
 requirements spanning years (which would incur redundant completeness
 checks and scheduler overload using the naive looping approach.) Usage:
 
@@ -82,15 +82,15 @@ checks and scheduler overload using the naive looping approach.) Usage:
 	luigi --module all_reports RangeDaily --of AllReports --start 2015-01-01
 
 It has the same knobs as RangeDailyBase, with some added requirements.
-Namely the task must implement an efficient bulk_complete method, or
+Namely the step must implement an efficient bulk_complete method, or
 must be writing output to file system Target with date parameter value
 consistently represented in the file path.
 
-Backfilling tasks
+Backfilling steps
 ~~~~~~~~~~~~~~~~~
 
 Also a common use case, sometimes you have tweaked existing recurring
-task code and you want to schedule recomputation of it over an interval
+step code and you want to schedule recomputation of it over an interval
 of dates for that or another reason. Most conveniently it is achieved
 with the above described range tools, just with both start (inclusive)
 and stop (exclusive) parameters specified:
@@ -102,21 +102,21 @@ and stop (exclusive) parameters specified:
 Propagating parameters with Range
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Some tasks you want to recur may include additional parameters which need to be configured.
+Some steps you want to recur may include additional parameters which need to be configured.
 The Range classes provide a parameter which accepts a :class:`~luigi.parameter.DictParameter`
 and passes any parameters onwards for this purpose.
 
 .. code-block:: console
 
-	luigi RangeDaily --of MyTask --start 2014-10-31 --of-params '{"my_string_param": "123", "my_int_param": 123}'
+	luigi RangeDaily --of MyStep --start 2014-10-31 --of-params '{"my_string_param": "123", "my_int_param": 123}'
 
-Alternatively, you can specify parameters at the task family level (as described :ref:`here <Parameter-class-level-parameters>`),
-however these will not appear in the task name for the upstream Range task which
-can have implications in how the scheduler and visualizer handle task instances.
+Alternatively, you can specify parameters at the step family level (as described :ref:`here <Parameter-class-level-parameters>`),
+however these will not appear in the step name for the upstream Range step which
+can have implications in how the scheduler and visualizer handle step instances.
 
 .. code-block:: console
 
-	luigi RangeDaily --of MyTask --start 2014-10-31 --MyTask-my-param 123
+	luigi RangeDaily --of MyStep --start 2014-10-31 --MyStep-my-param 123
 
 .. _batch_method:
 
@@ -127,13 +127,13 @@ Sometimes it'll be faster to run multiple jobs together as a single
 batch rather than running them each individually. When this is the case,
 you can mark some parameters with a batch_method in their constructor
 to tell the worker how to combine multiple values. One common way to do
-this is by simply running the maximum value. This is good for tasks that
+this is by simply running the maximum value. This is good for steps that
 overwrite older data when a newer one runs. You accomplish this by
 setting the batch_method to max, like so:
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
         date = luigi.DateParameter(batch_method=max)
 
 What's exciting about this is that if you send multiple As to the
@@ -143,7 +143,7 @@ scheduler, it can combine them and return one. So if
 ``A(date=2016-07-30)``. While this is running, the scheduler will show
 ``A(date=2016-07-28)``, ``A(date=2016-07-29)`` as batch running while
 ``A(date=2016-07-30)`` is running. When ``A(date=2016-07-30)`` is done
-running and becomes FAILED or DONE, the other two tasks will be updated
+running and becomes FAILED or DONE, the other two steps will be updated
 to the same status.
 
 If you want to limit how big a batch can get, simply set max_batch_size.
@@ -151,7 +151,7 @@ So if you have
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
         date = luigi.DateParameter(batch_method=max)
 
         max_batch_size = 10
@@ -167,21 +167,21 @@ be aggregated separately. So if you have a class like
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
         p1 = luigi.IntParameter(batch_method=max)
         p2 = luigi.IntParameter(batch_method=max)
         p3 = luigi.IntParameter()
 
-and you create tasks ``A(p1=1, p2=2, p3=0)``, ``A(p1=2, p2=3, p3=0)``,
+and you create steps ``A(p1=1, p2=2, p3=0)``, ``A(p1=2, p2=3, p3=0)``,
 ``A(p1=3, p2=4, p3=1)``, you'll get them batched as
 ``A(p1=2, p2=3, p3=0)`` and ``A(p1=3, p2=4, p3=1)``.
 
-Note that batched tasks do not take up :ref:`resources-config`, only the
-task that ends up running will use resources. The scheduler only checks
-that there are sufficient resources for each task individually before
+Note that batched steps do not take up :ref:`resources-config`, only the
+step that ends up running will use resources. The scheduler only checks
+that there are sufficient resources for each step individually before
 batching them all together.
 
-Tasks that regularly overwrite the same data source
+Steps that regularly overwrite the same data source
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you are overwriting of the same data source with every run, you'll
@@ -191,54 +191,54 @@ resource:
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
         date = luigi.DateParameter(batch_method=max)
 
         resources = {'overwrite_resource': 1}
 
-Now if you have multiple tasks such as ``A(date=2016-06-01)``,
+Now if you have multiple steps such as ``A(date=2016-06-01)``,
 ``A(date=2016-06-02)``, ``A(date=2016-06-03)``, the scheduler will just
 tell you to run the highest available one and mark the lower ones as
-batch_running. Using a unique resource will prevent multiple tasks from
+batch_running. Using a unique resource will prevent multiple steps from
 writing to the same location at the same time if a new one becomes
 available while others are running.
 
 Avoiding concurrent writes to a single file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Updating a single file from several tasks is almost always a bad idea, and you 
+Updating a single file from several steps is almost always a bad idea, and you 
 need to be very confident that no other good solution exists before doing this.
 If, however, you have no other option, then you will probably at least need to ensure that
-no two tasks try to write to the file _simultaneously_.  
+no two steps try to write to the file _simultaneously_.  
 
 By turning 'resources' into a Python property, it can return a value dependent on 
-the task parameters or other dynamic attributes:
+the step parameters or other dynamic attributes:
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
         ...
 
         @property
         def resources(self):
             return { self.important_file_name: 1 }
 
-Since, by default, resources have a usage limit of 1, no two instances of Task A 
+Since, by default, resources have a usage limit of 1, no two instances of Step A 
 will now run if they have the same `important_file_name` property.
 
-Decreasing resources of running tasks
+Decreasing resources of running steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 At scheduling time, the luigi scheduler needs to be aware of the maximum
-resource consumption a task might have once it runs. For some tasks, however,
+resource consumption a step might have once it runs. For some steps, however,
 it can be beneficial to decrease the amount of consumed resources between two
 steps within their run method (e.g. after some heavy computation). In this
-case, a different task waiting for that particular resource can already be
+case, a different step waiting for that particular resource can already be
 scheduled.
 
 .. code-block:: python
 
-    class A(luigi.Task):
+    class A(luigi.Step):
 
         # set maximum resources a priori
         resources = {"some_resource": 3}
@@ -253,13 +253,13 @@ scheduled.
             # continue with reduced resources
             ...
 
-Monitoring task pipelines
+Monitoring step pipelines
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Luigi comes with some existing ways in :py:mod:`luigi.notifications` to receive
-notifications whenever tasks crash. Email is the most common way.
+notifications whenever steps crash. Email is the most common way.
 
-The above mentioned range tools for recurring tasks not only implement
+The above mentioned range tools for recurring steps not only implement
 reliable scheduling for you, but also emit events which you can use to
 set up delay monitoring. That way you can implement alerts for when
 jobs are stuck for prolonged periods lacking input data or otherwise
@@ -274,7 +274,7 @@ A very common mistake done by luigi plumbers is to write data partially to the
 final destination, that is, not atomically. The problem arises because
 completion checks in luigi are exactly as naive as running
 :meth:`luigi.target.Target.exists`. And in many cases it just means to check if
-a folder exist on disk. During the time we have partially written data, a task
+a folder exist on disk. During the time we have partially written data, a step
 depending on that output would think its input is complete. This can have
 devestating effects, as in `the thanksgiving bug
 <http://tarrasch.github.io/luigi-budapest-bi-oct-2015/#/21>`__.
@@ -289,7 +289,7 @@ local disk and by running commands:
     $ big-slow-calculation > /outputs/final_output/foo.data
 
 As stated earlier, the problem is that only partial data exists for a duration,
-yet we consider the data to be :meth:`~luigi.task.Task.complete` because the
+yet we consider the data to be :meth:`~luigi.step.Step.complete` because the
 output folder already exists. Here is a robust version of this:
 
 .. code-block:: console
@@ -304,7 +304,7 @@ Indeed, the good way is not as trivial. It involves coming up with a unique
 directory name and a pretty complex ``mv`` line, the reason ``mv`` need all
 those is because we don't want ``mv`` to move a directory into a potentially
 existing directory. A directory could already exist in exceptional cases, for
-example when central locking fails and the same task would somehow run twice at
+example when central locking fails and the same step would somehow run twice at
 the same time. Lastly, in the exceptional case where the file was never moved,
 one might want to remove the temporary directory that never got used.
 
@@ -318,22 +318,22 @@ built-in solutions. In the case of you're dealing with a file system
 should ensure that the way you're writing your final output directory is
 atomic.
 
-Sending messages to tasks
+Sending messages to steps
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The central scheduler is able to send messages to particular tasks. When a running task accepts 
+The central scheduler is able to send messages to particular steps. When a running step accepts 
 messages, it can access a `multiprocessing.Queue <https://docs.python.org/3/library/multiprocessing.html#pipes-and-queues>`__
 object storing incoming messages. You can implement custom behavior to react and respond to
 messages:
 
 .. code-block:: python
 
-    class Example(luigi.Task):
+    class Example(luigi.Step):
 
-        # common task setup
+        # common step setup
         ...
 
-        # configure the task to accept all incoming messages
+        # configure the step to accept all incoming messages
         accepts_messages = True
 
         def run(self):
@@ -352,4 +352,4 @@ messages:
             ...
 
 Messages can be sent right from the scheduler UI which also displays responses (if any). Note that
-this feature is only available when the scheduler is configured to send messages (see the :ref:`scheduler-config` config), and the task is configured to accept them.
+this feature is only available when the scheduler is configured to send messages (see the :ref:`scheduler-config` config), and the step is configured to accept them.

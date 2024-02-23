@@ -81,13 +81,13 @@ class NumericalParameterTest(unittest.TestCase):
         self.assertRaises(luigi.parameter.ParameterException, lambda: luigi.NumericalParameter(var_type=int, min_value=-3))
 
     def test_hash_int(self):
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             args = luigi.parameter.NumericalParameter(var_type=int, min_value=-3, max_value=7)
         p = luigi.parameter.NumericalParameter(var_type=int, min_value=-3, max_value=7)
         self.assertEqual(hash(Foo(args=-3).args), hash(p.parse("-3")))
 
     def test_hash_float(self):
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             args = luigi.parameter.NumericalParameter(var_type=float, min_value=-3, max_value=7)
         p = luigi.parameter.NumericalParameter(var_type=float, min_value=-3, max_value=7)
         self.assertEqual(hash(Foo(args=-3.0).args), hash(p.parse("-3.0")))

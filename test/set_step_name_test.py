@@ -15,27 +15,30 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase
+from helpers import unittest
 
 import luigi
-import luigi.scheduler
-import luigi.worker
-
-luigi.notifications.DEBUG = True
 
 
-class TaskStatusMessageTest(LuigiTestCase):
+def create_class(cls_name):
+    class NewStep(luigi.WrapperStep):
+        pass
 
-    def test_run(self):
-        message = "test message"
-        sch = luigi.scheduler.Scheduler()
-        with luigi.worker.Worker(scheduler=sch) as w:
-            class MyTask(luigi.Task):
-                def run(self):
-                    self.set_status_message(message)
+    NewStep.__name__ = cls_name
 
-            task = MyTask()
-            w.add(task)
-            w.run()
+    return NewStep
 
-            self.assertEqual(sch.get_task_status_message(task.task_id)["statusMessage"], message)
+
+create_class('MyNewStep')
+
+
+class SetStepNameTest(unittest.TestCase):
+
+    ''' I accidentally introduced an issue in this commit:
+    https://github.com/spotify/luigi/commit/6330e9d0332e6152996292a39c42f752b9288c96
+
+    This causes steps not to get exposed if they change name later. Adding a unit test
+    to resolve the issue. '''
+
+    def test_set_step_name(self):
+        luigi.run(['--local-scheduler', '--no-lock', 'MyNewStep'])

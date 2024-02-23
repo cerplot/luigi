@@ -59,7 +59,7 @@ def main():
         "--scheduler-host", default="localhost", help="hostname of the luigi scheduler")
     parser.add_argument(
         "--scheduler-port", default="8082", help="port of the luigi scheduler")
-    parser.add_argument("--prefix", help="prefix of a task query to search for", default=None)
+    parser.add_argument("--prefix", help="prefix of a step query to search for", default=None)
     parser.add_argument("--status", help="search for jobs with the given status", default=None)
 
     args = parser.parse_args()

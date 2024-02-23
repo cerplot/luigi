@@ -21,14 +21,14 @@ be considered internal to luigi.
 
 import argparse
 from contextlib import contextmanager
-from luigi.task_register import Register
+from luigi.step_register import Register
 import sys
 
 
 class CmdlineParser:
     """
     Helper for parsing command line arguments and used as part of the
-    context when instantiating task objects.
+    context when instantiating step objects.
 
     Normal luigi users should just use :py:func:`luigi.run`.
     """
@@ -63,42 +63,42 @@ class CmdlineParser:
         known_args, _ = self._build_parser().parse_known_args(args=cmdline_args)
         self._attempt_load_module(known_args)
         # We have to parse again now. As the positionally first unrecognized
-        # argument (the task) could be different.
+        # argument (the step) could be different.
         known_args, _ = self._build_parser().parse_known_args(args=cmdline_args)
-        root_task = known_args.root_task
-        parser = self._build_parser(root_task=root_task,
+        root_step = known_args.root_step
+        parser = self._build_parser(root_step=root_step,
                                     help_all=known_args.core_help_all)
         self._possibly_exit_with_help(parser, known_args)
-        if not root_task:
-            raise SystemExit('No task specified')
+        if not root_step:
+            raise SystemExit('No step specified')
         else:
-            # Check that what we believe to be the task is correctly spelled
-            Register.get_task_cls(root_task)
+            # Check that what we believe to be the step is correctly spelled
+            Register.get_step_cls(root_step)
         known_args = parser.parse_args(args=cmdline_args)
         self.known_args = known_args  # Also publicly expose parsed arguments
 
     @staticmethod
-    def _build_parser(root_task=None, help_all=False):
+    def _build_parser(root_step=None, help_all=False):
         parser = argparse.ArgumentParser(add_help=False)
 
         # Unfortunately, we have to set it as optional to argparse, so we can
         # parse out stuff like `--module` before we call for `--help`.
-        parser.add_argument('root_task',
+        parser.add_argument('root_step',
                             nargs='?',
-                            help='Task family to run. Is not optional.',
-                            metavar='Required root task',
+                            help='Step family to run. Is not optional.',
+                            metavar='Required root step',
                             )
 
-        for task_name, is_without_section, param_name, param_obj in Register.get_all_params():
-            is_the_root_task = task_name == root_task
-            help = param_obj.description if any((is_the_root_task, help_all, param_obj.always_in_help)) else argparse.SUPPRESS
-            flag_name_underscores = param_name if is_without_section else task_name + '_' + param_name
+        for step_name, is_without_section, param_name, param_obj in Register.get_all_params():
+            is_the_root_step = step_name == root_step
+            help = param_obj.description if any((is_the_root_step, help_all, param_obj.always_in_help)) else argparse.SUPPRESS
+            flag_name_underscores = param_name if is_without_section else step_name + '_' + param_name
             global_flag_name = '--' + flag_name_underscores.replace('_', '-')
             parser.add_argument(global_flag_name,
                                 help=help,
-                                **param_obj._parser_kwargs(param_name, task_name)
+                                **param_obj._parser_kwargs(param_name, step_name)
                                 )
-            if is_the_root_task:
+            if is_the_root_step:
                 local_flag_name = '--' + param_name.replace('_', '-')
                 parser.add_argument(local_flag_name,
                                     help=help,
@@ -107,25 +107,25 @@ class CmdlineParser:
 
         return parser
 
-    def get_task_obj(self):
+    def get_step_obj(self):
         """
-        Get the task object
+        Get the step object
         """
-        return self._get_task_cls()(**self._get_task_kwargs())
+        return self._get_step_cls()(**self._get_step_kwargs())
 
-    def _get_task_cls(self):
+    def _get_step_cls(self):
         """
-        Get the task class
+        Get the step class
         """
-        return Register.get_task_cls(self.known_args.root_task)
+        return Register.get_step_cls(self.known_args.root_step)
 
-    def _get_task_kwargs(self):
+    def _get_step_kwargs(self):
         """
-        Get the local task arguments as a dictionary. The return value is in
+        Get the local step arguments as a dictionary. The return value is in
         the form ``dict(my_param='my_value', ...)``
         """
         res = {}
-        for (param_name, param_obj) in self._get_task_cls().get_params():
+        for (param_name, param_obj) in self._get_step_cls().get_params():
             attr = getattr(self.known_args, param_name)
             if attr:
                 res.update(((param_name, param_obj.parse(attr)),))

@@ -11,12 +11,12 @@
 {% block content %}
 	
   <div class="container">
-  {% if tasknames %}
-  <h3 style="margin-top: 20px;">[ Task History ]</h3>
+  {% if stepnames %}
+  <h3 style="margin-top: 20px;">[ Step History ]</h3>
   <ul class="nav nav-pills">
-  {% for item in tasknames %}
+  {% for item in stepnames %}
 	  <li class="active">
- 	  	<a style="margin: 3px;" href="/tasklist/{{ item }}">{{ item }}</a>
+ 	  	<a style="margin: 3px;" href="/steplist/{{ item }}">{{ item }}</a>
   	  </li>
   {% end %}
   </ul>

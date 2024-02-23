@@ -1,7 +1,7 @@
 # coding: utf-8
 
 """
-Workflow mgmgt + task scheduling + dependency resolution.
+Workflow mgmgt + step scheduling + dependency resolution.
 """
 
 __author__ = 'The Luigi Authors'

@@ -15,11 +15,11 @@
 # limitations under the License.
 #
 
-''' Supports sending emails when tasks fail.
+''' Supports sending emails when steps fail.
 
 This needs some more documentation.
 See :doc:`/configuration` for configuration options.
-In particular using the config `receiver` should set up Luigi so that it will send emails when tasks fail.
+In particular using the config `receiver` should set up Luigi so that it will send emails when steps fail.
 
 .. code-block:: ini
 
@@ -32,21 +32,21 @@ import socket
 import sys
 import textwrap
 
-import luigi.task
+import luigi.step
 import luigi.parameter
 
 logger = logging.getLogger("luigi-interface")
 DEFAULT_CLIENT_EMAIL = 'luigi-client@%s' % socket.gethostname()
 
 
-class TestNotificationsTask(luigi.task.Task):
+class TestNotificationsStep(luigi.step.Step):
     """
-    You may invoke this task to quickly check if you correctly have setup your
+    You may invoke this step to quickly check if you correctly have setup your
     notifications Configuration.  You can run:
 
     .. code-block:: console
 
-            $ luigi TestNotificationsTask --local-scheduler --email-force-send
+            $ luigi TestNotificationsStep --local-scheduler --email-force-send
 
     And then check your email inbox to see if you got an error email or any
     other kind of notifications that you expected.
@@ -365,12 +365,12 @@ def _prefix(subject):
         return subject
 
 
-def format_task_error(headline, task, command, formatted_exception=None):
+def format_step_error(headline, step, command, formatted_exception=None):
     """
-    Format a message body for an error email related to a luigi.task.Task
+    Format a message body for an error email related to a luigi.step.Step
 
     :param headline: Summary line for the message
-    :param task: `luigi.task.Task` instance where this error occurred
+    :param step: `luigi.step.Step` instance where this error occurred
     :param formatted_exception: optional string showing traceback
 
     :return: message body
@@ -413,9 +413,9 @@ def format_task_error(headline, task, command, formatted_exception=None):
         </html>
         ''')
 
-        str_params = task.to_str_params()
+        str_params = step.to_str_params()
         params = '\n'.join('<tr><th>{}</th><td>{}</td></tr>'.format(*items) for items in str_params.items())
-        body = msg_template.format(headline=headline, name=task.task_family, param_rows=params,
+        body = msg_template.format(headline=headline, name=step.step_family, param_rows=params,
                                    command=command, traceback=formatted_exception)
     else:
         msg_template = textwrap.dedent('''\
@@ -432,10 +432,10 @@ def format_task_error(headline, task, command, formatted_exception=None):
         {traceback}
         ''')
 
-        str_params = task.to_str_params()
+        str_params = step.to_str_params()
         max_width = max([0] + [len(x) for x in str_params.keys()])
         params = '\n'.join('  {:{width}}: {}'.format(*items, width=max_width) for items in str_params.items())
-        body = msg_template.format(headline=headline, name=task.task_family, params=params,
+        body = msg_template.format(headline=headline, name=step.step_family, params=params,
                                    command=command, traceback=formatted_exception)
 
     return body

@@ -33,7 +33,7 @@ from tempfile import NamedTemporaryFile
 
 import luigi
 import logging
-from luigi.contrib.docker_runner import DockerTask
+from luigi.contrib.docker_runner import DockerStep
 
 import pytest
 
@@ -55,23 +55,23 @@ local_file.write(b'this is a test file\n')
 local_file.flush()
 
 
-class SuccessJob(DockerTask):
+class SuccessJob(DockerStep):
     image = "busybox:latest"
     name = "SuccessJob"
 
 
-class FailJobImageNotFound(DockerTask):
+class FailJobImageNotFound(DockerStep):
     image = "image-does-not-exists"
     name = "FailJobImageNotFound"
 
 
-class FailJobContainer(DockerTask):
+class FailJobContainer(DockerStep):
     image = "busybox"
     name = "FailJobContainer"
     command = 'cat this-file-does-not-exist'
 
 
-class WriteToTmpDir(DockerTask):
+class WriteToTmpDir(DockerStep):
     image = "busybox"
     name = "WriteToTmpDir"
     container_tmp_dir = '/tmp/luigi-test'
@@ -79,7 +79,7 @@ class WriteToTmpDir(DockerTask):
     # command = 'test -d $LUIGI_TMP_DIR'# && echo ok >$LUIGI_TMP_DIR/test'
 
 
-class MountLocalFileAsVolume(DockerTask):
+class MountLocalFileAsVolume(DockerStep):
     image = "busybox"
     name = "MountLocalFileAsVolume"
     # volumes= {'/tmp/local_file_test': {'bind': local_file.name, 'mode': 'rw'}}
@@ -87,7 +87,7 @@ class MountLocalFileAsVolume(DockerTask):
     command = 'test -f /tmp/local_file_test'
 
 
-class MountLocalFileAsVolumeWithParam(DockerTask):
+class MountLocalFileAsVolumeWithParam(DockerStep):
     dummyopt = luigi.Parameter()
     image = "busybox"
     name = "MountLocalFileAsVolumeWithParam"
@@ -95,7 +95,7 @@ class MountLocalFileAsVolumeWithParam(DockerTask):
     command = 'test -f /tmp/local_file_test'
 
 
-class MountLocalFileAsVolumeWithParamRedefProperties(DockerTask):
+class MountLocalFileAsVolumeWithParamRedefProperties(DockerStep):
     dummyopt = luigi.Parameter()
     image = "busybox"
     name = "MountLocalFileAsVolumeWithParamRedef"
@@ -112,7 +112,7 @@ class MountLocalFileAsVolumeWithParamRedefProperties(DockerTask):
         return True
 
 
-class MultipleDockerTask(luigi.WrapperTask):
+class MultipleDockerStep(luigi.WrapperStep):
     '''because the volumes property is defined as a list, spinning multiple
     containers led to conflict in the volume binds definition, with multiple
     host directories pointing to the same container directory'''
@@ -121,14 +121,14 @@ class MultipleDockerTask(luigi.WrapperTask):
                 for opt in ['one', 'two', 'three']]
 
 
-class MultipleDockerTaskRedefProperties(luigi.WrapperTask):
+class MultipleDockerStepRedefProperties(luigi.WrapperStep):
     def requires(self):
         return [MountLocalFileAsVolumeWithParamRedefProperties(dummyopt=opt)
                 for opt in ['one', 'two', 'three']]
 
 
 @pytest.mark.contrib
-class TestDockerTask(unittest.TestCase):
+class TestDockerStep(unittest.TestCase):
 
     # def tearDown(self):
     #     local_file.close()
@@ -155,11 +155,11 @@ class TestDockerTask(unittest.TestCase):
         self.assertRaises(ContainerError, fail.run)
 
     def test_multiple_jobs(self):
-        worked = MultipleDockerTask()
+        worked = MultipleDockerStep()
         luigi.build([worked], local_scheduler=True)
         self.assertTrue(worked)
 
     def test_multiple_jobs2(self):
-        worked = MultipleDockerTaskRedefProperties()
+        worked = MultipleDockerStepRedefProperties()
         luigi.build([worked], local_scheduler=True)
         self.assertTrue(worked)

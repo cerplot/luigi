@@ -27,7 +27,7 @@ from luigi.configuration import LuigiTomlParser, get_config
 from luigi.mock import MockTarget
 
 
-class SomeTask(luigi.Task):
+class SomeStep(luigi.Step):
     n = luigi.IntParameter()
 
     def output(self):
@@ -39,28 +39,28 @@ class SomeTask(luigi.Task):
         f.close()
 
 
-class AmbiguousClass(luigi.Task):
+class AmbiguousClass(luigi.Step):
     pass
 
 
-class AmbiguousClass(luigi.Task):  # NOQA
+class AmbiguousClass(luigi.Step):  # NOQA
     pass
 
 
-class TaskWithSameName(luigi.Task):
+class StepWithSameName(luigi.Step):
 
     def run(self):
         self.x = 42
 
 
-class TaskWithSameName(luigi.Task):  # NOQA
+class StepWithSameName(luigi.Step):  # NOQA
     # there should be no ambiguity
 
     def run(self):
         self.x = 43
 
 
-class WriteToFile(luigi.Task):
+class WriteToFile(luigi.Step):
     filename = luigi.Parameter()
 
     def output(self):
@@ -72,7 +72,7 @@ class WriteToFile(luigi.Task):
         f.close()
 
 
-class FooBaseClass(luigi.Task):
+class FooBaseClass(luigi.Step):
     x = luigi.Parameter(default='foo_base_default')
 
 
@@ -80,7 +80,7 @@ class FooSubClass(FooBaseClass):
     pass
 
 
-class ATaskThatFails(luigi.Task):
+class AStepThatFails(luigi.Step):
     def run(self):
         raise ValueError()
 
@@ -89,13 +89,13 @@ class RequiredConfig(luigi.Config):
     required_test_param = luigi.Parameter()
 
 
-class TaskThatRequiresConfig(luigi.WrapperTask):
+class StepThatRequiresConfig(luigi.WrapperStep):
     def requires(self):
         if RequiredConfig().required_test_param == 'A':
-            return SubTaskThatFails()
+            return SubStepThatFails()
 
 
-class SubTaskThatFails(luigi.Task):
+class SubStepThatFails(luigi.Step):
     def complete(self):
         return False
 
@@ -122,18 +122,18 @@ class CmdlineTest(unittest.TestCase):
         DaemonLogging.config = LuigiTomlParser.instance()
 
     @mock.patch("logging.getLogger")
-    def test_cmdline_main_task_cls(self, logger):
-        luigi.run(['--local-scheduler', '--no-lock', '--n', '100'], main_task_cls=SomeTask)
+    def test_cmdline_main_step_cls(self, logger):
+        luigi.run(['--local-scheduler', '--no-lock', '--n', '100'], main_step_cls=SomeStep)
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_100': b'done'})
 
     @mock.patch("logging.getLogger")
     def test_cmdline_local_scheduler(self, logger):
-        luigi.run(['SomeTask', '--no-lock', '--n', '101'], local_scheduler=True)
+        luigi.run(['SomeStep', '--no-lock', '--n', '101'], local_scheduler=True)
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_101': b'done'})
 
     @mock.patch("logging.getLogger")
-    def test_cmdline_other_task(self, logger):
-        luigi.run(['--local-scheduler', '--no-lock', 'SomeTask', '--n', '1000'])
+    def test_cmdline_other_step(self, logger):
+        luigi.run(['--local-scheduler', '--no-lock', 'SomeStep', '--n', '1000'])
         self.assertEqual(dict(MockTarget.fs.get_all_data()), {'/tmp/test_1000': b'done'})
 
     @mock.patch("logging.getLogger")
@@ -166,11 +166,11 @@ class CmdlineTest(unittest.TestCase):
 
     @mock.patch('argparse.ArgumentParser.print_usage')
     def test_non_existent_class(self, print_usage):
-        self.assertRaises(luigi.task_register.TaskClassNotFoundException,
+        self.assertRaises(luigi.step_register.StepClassNotFoundException,
                           luigi.run, ['--local-scheduler', '--no-lock', 'XYZ'])
 
     @mock.patch('argparse.ArgumentParser.print_usage')
-    def test_no_task(self, print_usage):
+    def test_no_step(self, print_usage):
         self.assertRaises(SystemExit, luigi.run, ['--local-scheduler', '--no-lock'])
 
     def test_luigid_logging_conf(self):
@@ -275,17 +275,17 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--help-all'])
         self.assertGreater(len(stdout.splitlines()), 15)
 
-    def test_error_mesage_on_misspelled_task(self):
+    def test_error_mesage_on_misspelled_step(self):
         returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', 'RangeDaili'])
         self.assertTrue(stderr.find(b'RangeDaily') != -1)
 
     def test_bin_luigi_no_parameters(self):
         returncode, stdout, stderr = self._run_cmdline(['./bin/luigi'])
-        self.assertTrue(stderr.find(b'No task specified') != -1)
+        self.assertTrue(stderr.find(b'No step specified') != -1)
 
     def test_python_module_luigi_no_parameters(self):
         returncode, stdout, stderr = self._run_cmdline(['python', '-m', 'luigi'])
-        self.assertTrue(stderr.find(b'No task specified') != -1)
+        self.assertTrue(stderr.find(b'No step specified') != -1)
 
     def test_bin_luigi_help_class(self):
         returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'FooBaseClass', '--help'])
@@ -297,13 +297,13 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         self.assertTrue(stdout.find(b'--FooBaseClass-x') != -1)
         self.assertTrue(stdout.find(b'--x') != -1)
 
-    def test_bin_luigi_options_before_task(self):
+    def test_bin_luigi_options_before_step(self):
         args = ['./bin/luigi', '--module', 'cmdline_test', '--no-lock', '--local-scheduler', '--FooBaseClass-x', 'hello', 'FooBaseClass']
         returncode, stdout, stderr = self._run_cmdline(args)
         self.assertEqual(0, returncode)
 
     def test_bin_fail_on_unrecognized_args(self):
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--no-lock', '--local-scheduler', 'Task', '--unknown-param', 'hiiii'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--no-lock', '--local-scheduler', 'Step', '--unknown-param', 'hiiii'])
         self.assertNotEqual(0, returncode)
 
     def test_deps_py_script(self):
@@ -326,11 +326,11 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         for i in range(1, 30):
             self.assertTrue(stdout.find(("-[Streams-{{'date': '2012-06-{0}'}}".format(str(i).zfill(2))).encode('utf-8')) != -1)
 
-    def test_bin_mentions_misspelled_task(self):
+    def test_bin_mentions_misspelled_step(self):
         """
-        Test that the error message is informative when a task is misspelled.
+        Test that the error message is informative when a step is misspelled.
 
-        In particular it should say that the task is misspelled and not that
+        In particular it should say that the step is misspelled and not that
         the local parameters do not exist.
         """
         returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'HooBaseClass', '--x 5'])
@@ -339,13 +339,13 @@ class InvokeOverCmdlineTest(unittest.TestCase):
 
     def test_stack_trace_has_no_inner(self):
         """
-        Test that the stack trace for failing tasks are short
+        Test that the stack trace for failing steps are short
 
         The stack trace shouldn't contain unreasonably much implementation
-        details of luigi In particular it should say that the task is
+        details of luigi In particular it should say that the step is
         misspelled and not that the local parameters do not exist.
         """
-        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'ATaskThatFails', '--local-scheduler', '--no-lock'])
+        returncode, stdout, stderr = self._run_cmdline(['./bin/luigi', '--module', 'cmdline_test', 'AStepThatFails', '--local-scheduler', '--no-lock'])
         print(stdout)
 
         self.assertFalse(stdout.find(b"run() got an unexpected keyword argument 'tracking_url_callback'") != -1)
@@ -356,7 +356,7 @@ class InvokeOverCmdlineTest(unittest.TestCase):
         Test that config parameters specified on the command line are available while generating the execution summary.
         """
         returncode, stdout, stderr = self._run_cmdline([
-            './bin/luigi', '--module', 'cmdline_test', 'TaskThatRequiresConfig', '--local-scheduler', '--no-lock'
+            './bin/luigi', '--module', 'cmdline_test', 'StepThatRequiresConfig', '--local-scheduler', '--no-lock'
             '--RequiredConfig-required-test-param', 'A',
         ])
         print(stdout)

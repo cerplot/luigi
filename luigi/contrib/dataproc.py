@@ -32,7 +32,7 @@ def set_dataproc_client(client):
     _dataproc_client = client
 
 
-class _DataprocBaseTask(luigi.Task):
+class _DataprocBaseStep(luigi.Step):
     gcloud_project_id = luigi.Parameter(significant=False, positional=False)
     dataproc_cluster_name = luigi.Parameter(significant=False, positional=False)
     dataproc_region = luigi.Parameter(default="global", significant=False, positional=False)
@@ -40,9 +40,9 @@ class _DataprocBaseTask(luigi.Task):
     dataproc_client = get_dataproc_client()
 
 
-class DataprocBaseTask(_DataprocBaseTask):
+class DataprocBaseStep(_DataprocBaseStep):
     """
-    Base task for running jobs in Dataproc. It is recommended to use one of the tasks specific to your job type.
+    Base step for running jobs in Dataproc. It is recommended to use one of the steps specific to your job type.
     Extend this class if you need fine grained control over what kind of job gets submitted to your Dataproc cluster.
     """
 
@@ -111,7 +111,7 @@ class DataprocBaseTask(_DataprocBaseTask):
             time.sleep(5)
 
 
-class DataprocSparkTask(DataprocBaseTask):
+class DataprocSparkStep(DataprocBaseStep):
     """
     Runs a spark jobs on your Dataproc cluster
     """
@@ -126,7 +126,7 @@ class DataprocSparkTask(DataprocBaseTask):
         self.wait_for_job()
 
 
-class DataprocPysparkTask(DataprocBaseTask):
+class DataprocPysparkStep(DataprocBaseStep):
     """
     Runs a pyspark jobs on your Dataproc cluster
     """
@@ -141,8 +141,8 @@ class DataprocPysparkTask(DataprocBaseTask):
         self.wait_for_job()
 
 
-class CreateDataprocClusterTask(_DataprocBaseTask):
-    """ Task for creating a Dataproc cluster. """
+class CreateDataprocClusterStep(_DataprocBaseStep):
+    """ Step for creating a Dataproc cluster. """
 
     gcloud_zone = luigi.Parameter(default="europe-west1-c")
     gcloud_network = luigi.Parameter(default="default")
@@ -224,11 +224,11 @@ class CreateDataprocClusterTask(_DataprocBaseTask):
                 raise Exception(cluster_status['status']['details'])
 
 
-class DeleteDataprocClusterTask(_DataprocBaseTask):
+class DeleteDataprocClusterStep(_DataprocBaseStep):
     """
-    Task for deleting a Dataproc cluster.
-    One of the uses for this class is to extend it and have it require a Dataproc task that does a calculation and have
-    that task extend the cluster creation task. This allows you to create chains where you create a cluster,
+    Step for deleting a Dataproc cluster.
+    One of the uses for this class is to extend it and have it require a Dataproc step that does a calculation and have
+    that step extend the cluster creation step. This allows you to create chains where you create a cluster,
     run your job and remove the cluster right away.
     (Store your input and output files in gs://... instead of hdfs://... if you do this).
     """

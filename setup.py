@@ -60,7 +60,7 @@ if sys.version_info[:2] < (3, 4):
     install_requires.append('enum34>1.1.0')
 
 if os.environ.get('READTHEDOCS', None) == 'True':
-    # So that we can build documentation for luigi.db_task_history and luigi.contrib.sqla
+    # So that we can build documentation for luigi.db_step_history and luigi.contrib.sqla
     install_requires.append('sqlalchemy')
     # readthedocs don't like python-daemon, see #1342
     install_requires = [x for x in install_requires if not x.startswith('python-daemon')]

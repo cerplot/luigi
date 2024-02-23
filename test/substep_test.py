@@ -21,7 +21,7 @@ from helpers import unittest
 import luigi
 
 
-class AbstractTask(luigi.Task):
+class AbstractStep(luigi.Step):
     k = luigi.IntParameter()
 
     @property
@@ -37,7 +37,7 @@ class AbstractTask(luigi.Task):
         return ",".join([self.foo, self.helper_function()])
 
 
-class Implementation(AbstractTask):
+class Implementation(AbstractStep):
 
     @property
     def foo(self):
@@ -51,7 +51,7 @@ class AbstractSubclassTest(unittest.TestCase):
 
     def test_instantiate_abstract(self):
         def try_instantiate():
-            AbstractTask(k=1)
+            AbstractStep(k=1)
 
         self.assertRaises(TypeError, try_instantiate)
 

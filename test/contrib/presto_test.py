@@ -4,13 +4,13 @@ import mock
 from pyhive.presto import Cursor, Connection
 from pyhive.exc import DatabaseError
 
-from luigi.contrib.presto import PrestoTask, PrestoClient, PrestoTarget
+from luigi.contrib.presto import PrestoStep, PrestoClient, PrestoTarget
 
 
 class WithPrestoClientTest(unittest.TestCase):
     def test_creates_client_with_expected_params(self):
         # arrange
-        class _Task(PrestoTask):
+        class _Step(PrestoStep):
             host = '127.0.0.1'
             port = 8089
             user = 'user_123'
@@ -32,10 +32,10 @@ class WithPrestoClientTest(unittest.TestCase):
         }
 
         # act
-        task = _Task()
+        step = _Step()
 
         # assert
-        client = task._client
+        client = step._client
         assert isinstance(client, PrestoClient)
         connection = client._connection
         assert not connection._args
@@ -184,7 +184,7 @@ class PrestoTest(unittest.TestCase):
         client.info_uri = 'http://127.0.0.1:8080/ui/query.html?query=123'
         client.percentage_progress = 2.3
 
-        class _Task(PrestoTask):
+        class _Step(PrestoStep):
             host = '127.0.0.1'
             port = 8089
             user = 'user_123'
@@ -195,21 +195,21 @@ class PrestoTest(unittest.TestCase):
 
         # act
         with mock.patch('luigi.contrib.presto.PrestoClient', return_value=client):
-            task = _Task()
-            task.set_progress_percentage = mock.MagicMock()
-            task.set_tracking_url = mock.MagicMock()
-            task.run()
+            step = _Step()
+            step.set_progress_percentage = mock.MagicMock()
+            step.set_tracking_url = mock.MagicMock()
+            step.run()
 
         # assert
-        assert task.protocol == 'https'
-        assert task.output().catalog == 'hive'
-        assert task.output().database == 'db1'
-        assert task.output().table == 'tbl1'
-        assert task.output().partition is None
+        assert step.protocol == 'https'
+        assert step.output().catalog == 'hive'
+        assert step.output().database == 'db1'
+        assert step.output().table == 'tbl1'
+        assert step.output().partition is None
 
         client.execute.assert_called_once_with('select 1')
-        task.set_tracking_url.assert_called_once_with('http://127.0.0.1:8080/ui/query.html?query=123')
-        assert task.set_progress_percentage.mock_calls == [
+        step.set_tracking_url.assert_called_once_with('http://127.0.0.1:8080/ui/query.html?query=123')
+        assert step.set_progress_percentage.mock_calls == [
             mock.call(2.3),
             mock.call(2.3),
             mock.call(2.3),

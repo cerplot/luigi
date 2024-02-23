@@ -28,39 +28,39 @@ from luigi.util import common_params, copies, delegates, inherits, requires
 luigi.notifications.DEBUG = True
 
 
-class A(luigi.Task):
-    task_namespace = 'decorator'  # to prevent task name conflict between tests
+class A(luigi.Step):
+    step_namespace = 'decorator'  # to prevent step name conflict between tests
     param1 = luigi.Parameter("class A-specific default")
 
 
 @inherits(A)
-class B(luigi.Task):
+class B(luigi.Step):
     param2 = luigi.Parameter("class B-specific default")
 
 
 @inherits(B)
-class C(luigi.Task):
+class C(luigi.Step):
     param3 = luigi.Parameter("class C-specific default")
 
 
 @inherits(B)
-class D(luigi.Task):
+class D(luigi.Step):
     param1 = luigi.Parameter("class D overwriting class A's default")
 
 
 @inherits(B)
-class D_null(luigi.Task):
+class D_null(luigi.Step):
     param1 = None
 
 
 @inherits(A, B)
-class E(luigi.Task):
+class E(luigi.Step):
     param4 = luigi.Parameter("class E-specific default")
 
 
 @inherits(A)
 @inherits(B)
-class E_stacked(luigi.Task):
+class E_stacked(luigi.Step):
     param4 = luigi.Parameter("class E-specific default")
 
 
@@ -110,7 +110,7 @@ class InheritTest(unittest.TestCase):
     def test_empty_inheritance(self):
         with self.assertRaises(TypeError):
             @inherits()
-            class shouldfail(luigi.Task):
+            class shouldfail(luigi.Step):
                 pass
 
     def test_removing_parameter(self):
@@ -120,12 +120,12 @@ class InheritTest(unittest.TestCase):
         self.assertEqual(B.__name__, 'B')
 
 
-class F(luigi.Task):
-    param1 = luigi.Parameter("A parameter on a base task, that will be required later.")
+class F(luigi.Step):
+    param1 = luigi.Parameter("A parameter on a base step, that will be required later.")
 
 
 @inherits(F)
-class G(luigi.Task):
+class G(luigi.Step):
     param2 = luigi.Parameter("A separate parameter that doesn't affect 'F'")
 
     def requires(self):
@@ -133,7 +133,7 @@ class G(luigi.Task):
 
 
 @inherits(G)
-class H(luigi.Task):
+class H(luigi.Step):
     param2 = luigi.Parameter("OVERWRITING")
 
     def requires(self):
@@ -141,7 +141,7 @@ class H(luigi.Task):
 
 
 @inherits(G)
-class H_null(luigi.Task):
+class H_null(luigi.Step):
     param2 = None
 
     def requires(self):
@@ -150,23 +150,23 @@ class H_null(luigi.Task):
 
 
 @inherits(G)
-class I_task(luigi.Task):
+class I_step(luigi.Step):
 
     def requires(self):
         return F(**common_params(self, F))
 
 
-class J(luigi.Task):
+class J(luigi.Step):
     param1 = luigi.Parameter()  # something required, with no default
 
 
 @inherits(J)
-class K_shouldnotinstantiate(luigi.Task):
+class K_shouldnotinstantiate(luigi.Step):
     param2 = luigi.Parameter("A K-specific parameter")
 
 
 @inherits(J)
-class K_shouldfail(luigi.Task):
+class K_shouldfail(luigi.Step):
     param1 = None
     param2 = luigi.Parameter("A K-specific parameter")
 
@@ -175,7 +175,7 @@ class K_shouldfail(luigi.Task):
 
 
 @inherits(J)
-class K_shouldsucceed(luigi.Task):
+class K_shouldsucceed(luigi.Step):
     param1 = None
     param2 = luigi.Parameter("A K-specific parameter")
 
@@ -184,7 +184,7 @@ class K_shouldsucceed(luigi.Task):
 
 
 @inherits(J)
-class K_wrongparamsorder(luigi.Task):
+class K_wrongparamsorder(luigi.Step):
     param1 = None
     param2 = luigi.Parameter("A K-specific parameter")
 
@@ -200,7 +200,7 @@ class RequiresTest(unittest.TestCase):
         self.g_changed = G(param1="changing the default")
         self.h = H()
         self.h_null = H_null()
-        self.i = I_task()
+        self.i = I_step()
         self.k_shouldfail = K_shouldfail()
         self.k_shouldsucceed = K_shouldsucceed()
         self.k_wrongparamsorder = K_wrongparamsorder()
@@ -243,33 +243,33 @@ class RequiresTest(unittest.TestCase):
         self.assertRaises(TypeError, self.k_wrongparamsorder.requires)
 
 
-class V(luigi.Task):
+class V(luigi.Step):
     n = luigi.IntParameter(default=42)
 
 
 @inherits(V)
-class W(luigi.Task):
+class W(luigi.Step):
 
     def requires(self):
         return self.clone_parent()
 
 
 @requires(V)
-class W2(luigi.Task):
+class W2(luigi.Step):
     pass
 
 
 @requires(V)
-class W3(luigi.Task):
+class W3(luigi.Step):
     n = luigi.IntParameter(default=43)
 
 
-class X(luigi.Task):
+class X(luigi.Step):
     m = luigi.IntParameter(default=56)
 
 
 @requires(V, X)
-class Y(luigi.Task):
+class Y(luigi.Step):
     pass
 
 
@@ -304,7 +304,7 @@ class CloneParentTest(unittest.TestCase):
     def test_empty_requires(self):
         with self.assertRaises(TypeError):
             @requires()
-            class shouldfail(luigi.Task):
+            class shouldfail(luigi.Step):
                 pass
 
     def test_names(self):
@@ -314,7 +314,7 @@ class CloneParentTest(unittest.TestCase):
         self.assertEqual(v.__class__.__name__, 'V')
 
 
-class P(luigi.Task):
+class P(luigi.Step):
     date = luigi.DateParameter()
 
     def output(self):
@@ -327,7 +327,7 @@ class P(luigi.Task):
 
 
 @copies(P)
-class PCopy(luigi.Task):
+class PCopy(luigi.Step):
 
     def output(self):
         return MockTarget(self.date.strftime('/tmp/copy-data-%Y-%m-%d.txt'))
@@ -354,7 +354,7 @@ class PickleTest(unittest.TestCase):
         self.assertEqual(MockTarget.fs.get_data('/tmp/copy-data-2013-01-01.txt'), b'hello, world\n')
 
 
-class Subtask(luigi.Task):
+class Substep(luigi.Step):
     k = luigi.IntParameter()
 
     def f(self, x):
@@ -362,34 +362,34 @@ class Subtask(luigi.Task):
 
 
 @delegates
-class SubtaskDelegator(luigi.Task):
+class SubstepDelegator(luigi.Step):
 
-    def subtasks(self):
-        return [Subtask(1), Subtask(2)]
+    def substeps(self):
+        return [Substep(1), Substep(2)]
 
     def run(self):
         self.s = 0
-        for t in self.subtasks():
+        for t in self.substeps():
             self.s += t.f(42)
 
 
-class SubtaskTest(unittest.TestCase):
+class SubstepTest(unittest.TestCase):
 
-    def test_subtasks(self):
-        sd = SubtaskDelegator()
+    def test_substeps(self):
+        sd = SubstepDelegator()
         luigi.build([sd], local_scheduler=True)
         self.assertEqual(sd.s, 42 * (1 + 42))
 
-    def test_forgot_subtasks(self):
+    def test_forgot_substeps(self):
         def trigger_failure():
             @delegates
-            class SubtaskDelegatorBroken(luigi.Task):
+            class SubstepDelegatorBroken(luigi.Step):
                 pass
 
         self.assertRaises(AttributeError, trigger_failure)
 
     def test_cmdline(self):
-        # Exposes issue where wrapped tasks are registered twice under
+        # Exposes issue where wrapped steps are registered twice under
         # the same name
-        from luigi.task import Register
-        self.assertEqual(Register.get_task_cls('SubtaskDelegator'), SubtaskDelegator)
+        from luigi.step import Register
+        self.assertEqual(Register.get_step_cls('SubstepDelegator'), SubstepDelegator)

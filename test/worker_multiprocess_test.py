@@ -20,18 +20,18 @@ from helpers import unittest
 
 import luigi.notifications
 import luigi.worker
-from luigi import Parameter, RemoteScheduler, Task
+from luigi import Parameter, RemoteScheduler, Step
 from luigi.worker import Worker
 from mock import Mock
 
 luigi.notifications.DEBUG = True
 
 
-class DummyTask(Task):
+class DummyStep(Step):
     param = Parameter()
 
     def __init__(self, *args, **kwargs):
-        super(DummyTask, self).__init__(*args, **kwargs)
+        super(DummyStep, self).__init__(*args, **kwargs)
         self.has_run = False
 
     def complete(self):
@@ -49,59 +49,59 @@ class MultiprocessWorkerTest(unittest.TestCase):
     def run(self, result=None):
         self.scheduler = RemoteScheduler()
         self.scheduler.add_worker = Mock()
-        self.scheduler.add_task = Mock()
+        self.scheduler.add_step = Mock()
         with Worker(scheduler=self.scheduler, worker_id='X', worker_processes=2) as worker:
             self.worker = worker
             super(MultiprocessWorkerTest, self).run(result)
 
-    def gw_res(self, pending, task_id):
-        return dict(n_pending_tasks=pending,
-                    task_id=task_id,
-                    running_tasks=0, n_unique_pending=0)
+    def gw_res(self, pending, step_id):
+        return dict(n_pending_steps=pending,
+                    step_id=step_id,
+                    running_steps=0, n_unique_pending=0)
 
     def test_positive_path(self):
-        a = DummyTask("a")
-        b = DummyTask("b")
+        a = DummyStep("a")
+        b = DummyStep("b")
 
-        class MultipleRequirementTask(DummyTask):
+        class MultipleRequirementStep(DummyStep):
 
             def requires(self):
                 return [a, b]
 
-        c = MultipleRequirementTask("C")
+        c = MultipleRequirementStep("C")
 
         self.assertTrue(self.worker.add(c))
 
-        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.task_id),
-                                                    self.gw_res(2, b.task_id),
-                                                    self.gw_res(1, c.task_id),
+        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.step_id),
+                                                    self.gw_res(2, b.step_id),
+                                                    self.gw_res(1, c.step_id),
                                                     self.gw_res(0, None),
                                                     self.gw_res(0, None)])
 
         self.assertTrue(self.worker.run())
         self.assertTrue(c.has_run)
 
-    def test_path_with_task_failures(self):
-        class FailingTask(DummyTask):
+    def test_path_with_step_failures(self):
+        class FailingStep(DummyStep):
 
             def run(self):
                 raise Exception("I am failing")
 
-        a = FailingTask("a")
-        b = FailingTask("b")
+        a = FailingStep("a")
+        b = FailingStep("b")
 
-        class MultipleRequirementTask(DummyTask):
+        class MultipleRequirementStep(DummyStep):
 
             def requires(self):
                 return [a, b]
 
-        c = MultipleRequirementTask("C")
+        c = MultipleRequirementStep("C")
 
         self.assertTrue(self.worker.add(c))
 
-        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.task_id),
-                                                    self.gw_res(2, b.task_id),
-                                                    self.gw_res(1, c.task_id),
+        self.scheduler.get_work = Mock(side_effect=[self.gw_res(3, a.step_id),
+                                                    self.gw_res(2, b.step_id),
+                                                    self.gw_res(1, c.step_id),
                                                     self.gw_res(0, None),
                                                     self.gw_res(0, None)])
 
@@ -112,12 +112,12 @@ class SingleWorkerMultiprocessTest(unittest.TestCase):
 
     def test_default_multiprocessing_behavior(self):
         with Worker(worker_processes=1) as worker:
-            task = DummyTask("a")
-            task_process = worker._create_task_process(task)
-            self.assertFalse(task_process.use_multiprocessing)
+            step = DummyStep("a")
+            step_process = worker._create_step_process(step)
+            self.assertFalse(step_process.use_multiprocessing)
 
     def test_force_multiprocessing(self):
         with Worker(worker_processes=1, force_multiprocessing=True) as worker:
-            task = DummyTask("a")
-            task_process = worker._create_task_process(task)
-            self.assertTrue(task_process.use_multiprocessing)
+            step = DummyStep("a")
+            step_process = worker._create_step_process(step)
+            self.assertTrue(step_process.use_multiprocessing)

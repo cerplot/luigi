@@ -23,7 +23,7 @@ import luigi.notifications
 luigi.notifications.DEBUG = True
 
 
-class LinearSum(luigi.Task):
+class LinearSum(luigi.Step):
     lo = luigi.IntParameter()
     hi = luigi.IntParameter()
 
@@ -74,14 +74,14 @@ class CloneTest(unittest.TestCase):
         Cloning can pull non-source-parameters from source to target parameter.
         """
 
-        class SubTask(luigi.Task):
+        class SubStep(luigi.Step):
             lo = 1
 
             @property
             def hi(self):
                 return 2
 
-        t1 = SubTask()
+        t1 = SubStep()
         t2 = t1.clone(cls=LinearSum)
         self.assertEqual(t2.lo, 1)
         self.assertEqual(t2.hi, 2)

@@ -14,13 +14,13 @@
 # the License.
 
 """
-Produces contiguous completed ranges of recurring tasks.
+Produces contiguous completed ranges of recurring steps.
 
 See ``RangeDaily`` and ``RangeHourly`` for basic usage.
 
 Caveat - if gaps accumulate, their causes (e.g. missing dependencies) going
 unmonitored/unmitigated, then this will eventually keep retrying the same gaps
-over and over and make no progress to more recent times. (See ``task_limit``
+over and over and make no progress to more recent times. (See ``step_limit``
 and ``reverse`` parameters.)
 TODO foolproof against that kind of misuse?
 """
@@ -38,7 +38,7 @@ from dateutil.relativedelta import relativedelta
 import luigi
 from luigi.parameter import ParameterException
 from luigi.target import FileSystemTarget
-from luigi.task import Register, flatten_output
+from luigi.step import Register, flatten_output
 
 
 logger = logging.getLogger('luigi-interface')
@@ -54,7 +54,7 @@ class RangeEvent(luigi.Event):  # Not sure if subclassing currently serves a pur
 
     ``COMPLETE_FRACTION`` reaching 1 would be a telling event in case of a
     backfill with defined start and stop. Would not be strikingly useful for a
-    typical recurring task without stop defined, fluctuating close to 1.
+    typical recurring step without stop defined, fluctuating close to 1.
 
     ``DELAY`` is measured from the first found missing datehour till (current
     time + hours_forward), or till stop if it is defined. In hours for Hourly.
@@ -67,11 +67,11 @@ class RangeEvent(luigi.Event):  # Not sure if subclassing currently serves a pur
     DELAY = "event.tools.range.delay"
 
 
-class RangeBase(luigi.WrapperTask):
+class RangeBase(luigi.WrapperStep):
     """
-    Produces a contiguous completed range of a recurring task.
+    Produces a contiguous completed range of a recurring step.
 
-    Made for the common use case where a task is parameterized by e.g.
+    Made for the common use case where a step is parameterized by e.g.
     ``DateParameter``, and assurance is needed that any gaps arising from
     downtime are eventually filled.
 
@@ -87,9 +87,9 @@ class RangeBase(luigi.WrapperTask):
 
     Subclasses will need to use the ``of`` parameter when overriding methods.
     """
-    # TODO lift the single parameter constraint by passing unknown parameters through WrapperTask?
-    of = luigi.TaskParameter(
-        description="task name to be completed. The task must take a single datetime parameter")
+    # TODO lift the single parameter constraint by passing unknown parameters through WrapperStep?
+    of = luigi.StepParameter(
+        description="step name to be completed. The step must take a single datetime parameter")
     of_params = luigi.DictParameter(default=dict(), description="Arguments to be provided to the 'of' class when instantiating")
     # The common parameters 'start' and 'stop' have type (e.g. DateParameter,
     # DateHourParameter) dependent on the concrete subclass, cumbersome to
@@ -99,9 +99,9 @@ class RangeBase(luigi.WrapperTask):
     reverse = luigi.BoolParameter(
         default=False,
         description="specifies the preferred order for catching up. False - work from the oldest missing outputs onward; True - from the newest backward")
-    task_limit = luigi.IntParameter(
+    step_limit = luigi.IntParameter(
         default=50,
-        description="how many of 'of' tasks to require. Guards against scheduling insane amounts of tasks in one go")
+        description="how many of 'of' steps to require. Guards against scheduling insane amounts of steps in one go")
     # TODO overridable exclude_datetimes or something...
     now = luigi.IntParameter(
         default=None,
@@ -118,7 +118,7 @@ class RangeBase(luigi.WrapperTask):
         """
         if isinstance(self.of, str):
             warnings.warn('When using Range programatically, dont pass "of" param as string!')
-            return Register.get_task_cls(self.of)
+            return Register.get_step_cls(self.of)
         return self.of
 
     # a bunch of datetime arithmetic building blocks that need to be provided in subclasses
@@ -130,13 +130,13 @@ class RangeBase(luigi.WrapperTask):
 
     def datetime_to_parameters(self, dt):
         """
-        Given a date-time, will produce a dictionary of of-params combined with the ranged task parameter
+        Given a date-time, will produce a dictionary of of-params combined with the ranged step parameter
         """
         raise NotImplementedError
 
     def parameters_to_datetime(self, p):
         """
-        Given a dictionary of parameters, will extract the ranged task parameter value
+        Given a dictionary of parameters, will extract the ranged step parameter value
         """
         raise NotImplementedError
 
@@ -157,7 +157,7 @@ class RangeBase(luigi.WrapperTask):
     def finite_datetimes(self, finite_start, finite_stop):
         """
         Returns the individual datetimes in interval [finite_start, finite_stop)
-        for which task completeness should be required, as a sorted list.
+        for which step completeness should be required, as a sorted list.
         """
         raise NotImplementedError
 
@@ -173,12 +173,12 @@ class RangeBase(luigi.WrapperTask):
             finite_stop if self.stop is None else max(finite_stop, self.parameter_to_datetime(self.stop)))
 
         delay_in_jobs = len(datetimes) - datetimes.index(missing_datetimes[0]) if datetimes and missing_datetimes else 0
-        self.trigger_event(RangeEvent.DELAY, self.of_cls.task_family, delay_in_jobs)
+        self.trigger_event(RangeEvent.DELAY, self.of_cls.step_family, delay_in_jobs)
 
         expected_count = len(datetimes)
         complete_count = expected_count - len(missing_datetimes)
-        self.trigger_event(RangeEvent.COMPLETE_COUNT, self.of_cls.task_family, complete_count)
-        self.trigger_event(RangeEvent.COMPLETE_FRACTION, self.of_cls.task_family, float(complete_count) / expected_count if expected_count else 1)
+        self.trigger_event(RangeEvent.COMPLETE_COUNT, self.of_cls.step_family, complete_count)
+        self.trigger_event(RangeEvent.COMPLETE_FRACTION, self.of_cls.step_family, float(complete_count) / expected_count if expected_count else 1)
 
     def _format_datetime(self, dt):
         return self.datetime_to_parameter(dt)
@@ -188,8 +188,8 @@ class RangeBase(luigi.WrapperTask):
         param_last = self._format_datetime(datetimes[-1])
         return '[%s, %s]' % (param_first, param_last)
 
-    def _instantiate_task_cls(self, param):
-        return self.of(**self._task_parameters(param))
+    def _instantiate_step_cls(self, param):
+        return self.of(**self._step_parameters(param))
 
     @property
     def _param_name(self):
@@ -198,7 +198,7 @@ class RangeBase(luigi.WrapperTask):
         else:
             return self.param_name
 
-    def _task_parameters(self, param):
+    def _step_parameters(self, param):
         kwargs = dict(**self.of_params)
         kwargs[self._param_name] = param
         return kwargs
@@ -227,27 +227,27 @@ class RangeBase(luigi.WrapperTask):
 
         if datetimes:
             logger.debug('Actually checking if range %s of %s is complete',
-                         self._format_range(datetimes), self.of_cls.task_family)
+                         self._format_range(datetimes), self.of_cls.step_family)
             missing_datetimes = sorted(self._missing_datetimes(datetimes))
             logger.debug('Range %s lacked %d of expected %d %s instances',
-                         self._format_range(datetimes), len(missing_datetimes), len(datetimes), self.of_cls.task_family)
+                         self._format_range(datetimes), len(missing_datetimes), len(datetimes), self.of_cls.step_family)
         else:
             missing_datetimes = []
-            logger.debug('Empty range. No %s instances expected', self.of_cls.task_family)
+            logger.debug('Empty range. No %s instances expected', self.of_cls.step_family)
 
         self._emit_metrics(missing_datetimes, finite_start, finite_stop)
 
         if self.reverse:
-            required_datetimes = missing_datetimes[-self.task_limit:]
+            required_datetimes = missing_datetimes[-self.step_limit:]
         else:
-            required_datetimes = missing_datetimes[:self.task_limit]
+            required_datetimes = missing_datetimes[:self.step_limit]
         if required_datetimes:
             logger.debug('Requiring %d missing %s instances in range %s',
-                         len(required_datetimes), self.of_cls.task_family, self._format_range(required_datetimes))
+                         len(required_datetimes), self.of_cls.step_family, self._format_range(required_datetimes))
         if self.reverse:
-            required_datetimes.reverse()  # TODO priorities, so that within the batch tasks are ordered too
+            required_datetimes.reverse()  # TODO priorities, so that within the batch steps are ordered too
 
-        self._cached_requires = [self._instantiate_task_cls(self.datetime_to_parameter(d)) for d in required_datetimes]
+        self._cached_requires = [self._instantiate_step_cls(self.datetime_to_parameter(d)) for d in required_datetimes]
         return self._cached_requires
 
     def missing_datetimes(self, finite_datetimes):
@@ -260,7 +260,7 @@ class RangeBase(luigi.WrapperTask):
 
         Inadvisable as it may be slow.
         """
-        return [d for d in finite_datetimes if not self._instantiate_task_cls(self.datetime_to_parameter(d)).complete()]
+        return [d for d in finite_datetimes if not self._instantiate_step_cls(self.datetime_to_parameter(d)).complete()]
 
     def _missing_datetimes(self, finite_datetimes):
         """
@@ -278,7 +278,7 @@ class RangeBase(luigi.WrapperTask):
 
 class RangeDailyBase(RangeBase):
     """
-    Produces a contiguous completed range of a daily recurring task.
+    Produces a contiguous completed range of a daily recurring step.
     """
     start = luigi.DateParameter(
         default=None,
@@ -307,13 +307,13 @@ class RangeDailyBase(RangeBase):
 
     def datetime_to_parameters(self, dt):
         """
-        Given a date-time, will produce a dictionary of of-params combined with the ranged task parameter
+        Given a date-time, will produce a dictionary of of-params combined with the ranged step parameter
         """
-        return self._task_parameters(dt.date())
+        return self._step_parameters(dt.date())
 
     def parameters_to_datetime(self, p):
         """
-        Given a dictionary of parameters, will extract the ranged task parameter value
+        Given a dictionary of parameters, will extract the ranged step parameter value
         """
         dt = p[self._param_name]
         return datetime(dt.year, dt.month, dt.day)
@@ -340,7 +340,7 @@ class RangeDailyBase(RangeBase):
 
 class RangeHourlyBase(RangeBase):
     """
-    Produces a contiguous completed range of an hourly recurring task.
+    Produces a contiguous completed range of an hourly recurring step.
     """
     start = luigi.DateHourParameter(
         default=None,
@@ -370,13 +370,13 @@ class RangeHourlyBase(RangeBase):
 
     def datetime_to_parameters(self, dt):
         """
-        Given a date-time, will produce a dictionary of of-params combined with the ranged task parameter
+        Given a date-time, will produce a dictionary of of-params combined with the ranged step parameter
         """
-        return self._task_parameters(dt)
+        return self._step_parameters(dt)
 
     def parameters_to_datetime(self, p):
         """
-        Given a dictionary of parameters, will extract the ranged task parameter value
+        Given a dictionary of parameters, will extract the ranged step parameter value
         """
         return p[self._param_name]
 
@@ -405,7 +405,7 @@ class RangeHourlyBase(RangeBase):
 
 class RangeByMinutesBase(RangeBase):
     """
-    Produces a contiguous completed range of an recurring tasks separated a specified number of minutes.
+    Produces a contiguous completed range of an recurring steps separated a specified number of minutes.
     """
     start = luigi.DateMinuteParameter(
         default=None,
@@ -440,13 +440,13 @@ class RangeByMinutesBase(RangeBase):
 
     def datetime_to_parameters(self, dt):
         """
-        Given a date-time, will produce a dictionary of of-params combined with the ranged task parameter
+        Given a date-time, will produce a dictionary of of-params combined with the ranged step parameter
         """
-        return self._task_parameters(dt)
+        return self._step_parameters(dt)
 
     def parameters_to_datetime(self, p):
         """
-        Given a dictionary of parameters, will extract the ranged task parameter value
+        Given a dictionary of parameters, will extract the ranged step parameter value
         """
         dt = p[self._param_name]
         return datetime(dt.year, dt.month, dt.day, dt.hour, dt.minute)
@@ -531,23 +531,23 @@ def most_common(items):
     return element, counter
 
 
-def _get_per_location_glob(tasks, outputs, regexes):
+def _get_per_location_glob(steps, outputs, regexes):
     """
     Builds a glob listing existing output paths.
 
     Esoteric reverse engineering, but worth it given that (compared to an
     equivalent contiguousness guarantee by naive complete() checks)
     requests to the filesystem are cut by orders of magnitude, and users
-    don't even have to retrofit existing tasks anyhow.
+    don't even have to retrofit existing steps anyhow.
     """
     paths = [o.path for o in outputs]
     # naive, because some matches could be confused by numbers earlier
     # in path, e.g. /foo/fifa2000k/bar/2000-12-31/00
     matches = [r.search(p) for r, p in zip(regexes, paths)]
 
-    for m, p, t in zip(matches, paths, tasks):
+    for m, p, t in zip(matches, paths, steps):
         if m is None:
-            raise NotImplementedError("Couldn't deduce datehour representation in output path %r of task %s" % (p, t))
+            raise NotImplementedError("Couldn't deduce datehour representation in output path %r of step %s" % (p, t))
 
     n_groups = len(matches[0].groups())
     # the most common position of every group is likely
@@ -562,25 +562,25 @@ def _get_per_location_glob(tasks, outputs, regexes):
     return ''.join(glob).rsplit('/', 1)[0]
 
 
-def _get_filesystems_and_globs(datetime_to_task, datetime_to_re):
+def _get_filesystems_and_globs(datetime_to_step, datetime_to_re):
     """
-    Yields a (filesystem, glob) tuple per every output location of task.
+    Yields a (filesystem, glob) tuple per every output location of step.
 
-    The task can have one or several FileSystemTarget outputs.
+    The step can have one or several FileSystemTarget outputs.
 
-    For convenience, the task can be a luigi.WrapperTask,
+    For convenience, the step can be a luigi.WrapperStep,
     in which case outputs of all its dependencies are considered.
     """
     # probe some scattered datetimes unlikely to all occur in paths, other than by being sincere datetime parameter's representations
     # TODO limit to [self.start, self.stop) so messages are less confusing? Done trivially it can kill correctness
     sample_datetimes = [datetime(y, m, d, h) for y in range(2000, 2050, 10) for m in range(1, 4) for d in range(5, 8) for h in range(21, 24)]
     regexes = [re.compile(datetime_to_re(d)) for d in sample_datetimes]
-    sample_tasks = [datetime_to_task(d) for d in sample_datetimes]
-    sample_outputs = [flatten_output(t) for t in sample_tasks]
+    sample_steps = [datetime_to_step(d) for d in sample_datetimes]
+    sample_outputs = [flatten_output(t) for t in sample_steps]
 
-    for o, t in zip(sample_outputs, sample_tasks):
+    for o, t in zip(sample_outputs, sample_steps):
         if len(o) != len(sample_outputs[0]):
-            raise NotImplementedError("Outputs must be consistent over time, sorry; was %r for %r and %r for %r" % (o, t, sample_outputs[0], sample_tasks[0]))
+            raise NotImplementedError("Outputs must be consistent over time, sorry; was %r for %r and %r for %r" % (o, t, sample_outputs[0], sample_steps[0]))
             # TODO fall back on requiring last couple of days? to avoid astonishing blocking when changes like that are deployed
             # erm, actually it's not hard to test entire hours_back..hours_forward and split into consistent subranges FIXME?
         for target in o:
@@ -588,7 +588,7 @@ def _get_filesystems_and_globs(datetime_to_task, datetime_to_re):
                 raise NotImplementedError("Output targets must be instances of FileSystemTarget; was %r for %r" % (target, t))
 
     for o in zip(*sample_outputs):  # transposed, so here we're iterating over logical outputs, not datetimes
-        glob = _get_per_location_glob(sample_tasks, o, regexes)
+        glob = _get_per_location_glob(sample_steps, o, regexes)
         yield o[0].fs, glob
 
 
@@ -611,11 +611,11 @@ def _list_existing(filesystem, glob, paths):
     return set(listing)
 
 
-def infer_bulk_complete_from_fs(datetimes, datetime_to_task, datetime_to_re):
+def infer_bulk_complete_from_fs(datetimes, datetime_to_step, datetime_to_re):
     """
     Efficiently determines missing datetimes by filesystem listing.
 
-    The current implementation works for the common case of a task writing
+    The current implementation works for the common case of a step writing
     output to a ``FileSystemTarget`` whose path is built using strftime with
     format like '...%Y...%m...%d...%H...', without custom ``complete()`` or
     ``exists()``.
@@ -624,8 +624,8 @@ def infer_bulk_complete_from_fs(datetimes, datetime_to_task, datetime_to_re):
     Then this listing business could be factored away/be provided for
     explicitly in target API or some kind of a history server.)
     """
-    filesystems_and_globs_by_location = _get_filesystems_and_globs(datetime_to_task, datetime_to_re)
-    paths_by_datetime = [[o.path for o in flatten_output(datetime_to_task(d))] for d in datetimes]
+    filesystems_and_globs_by_location = _get_filesystems_and_globs(datetime_to_step, datetime_to_re)
+    paths_by_datetime = [[o.path for o in flatten_output(datetime_to_step(d))] for d in datetimes]
     listing = set()
     for (f, g), p in zip(filesystems_and_globs_by_location, zip(*paths_by_datetime)):  # transposed, so here we're iterating over logical outputs, not datetimes
         listing |= _list_existing(f, g, p)
@@ -641,7 +641,7 @@ def infer_bulk_complete_from_fs(datetimes, datetime_to_task, datetime_to_re):
 
 class RangeMonthly(RangeBase):
     """
-    Produces a contiguous completed range of a monthly recurring task.
+    Produces a contiguous completed range of a monthly recurring step.
 
     Unlike the Range* classes with shorter intervals, this class does not perform bulk optimisation.
     It is assumed that the number of months is low enough not to motivate the increased complexity.
@@ -675,13 +675,13 @@ class RangeMonthly(RangeBase):
 
     def datetime_to_parameters(self, dt):
         """
-        Given a date-time, will produce a dictionary of of-params combined with the ranged task parameter
+        Given a date-time, will produce a dictionary of of-params combined with the ranged step parameter
         """
-        return self._task_parameters(dt.date())
+        return self._step_parameters(dt.date())
 
     def parameters_to_datetime(self, p):
         """
-        Given a dictionary of parameters, will extract the ranged task parameter value
+        Given a dictionary of parameters, will extract the ranged step parameter value
         """
         dt = p[self._param_name]
         return datetime(dt.year, dt.month, 1)
@@ -715,7 +715,7 @@ class RangeMonthly(RangeBase):
 
 class RangeDaily(RangeDailyBase):
     """Efficiently produces a contiguous completed range of a daily recurring
-    task that takes a single ``DateParameter``.
+    step that takes a single ``DateParameter``.
 
     Falls back to infer it from output filesystem listing to facilitate the
     common case usage.
@@ -724,7 +724,7 @@ class RangeDaily(RangeDailyBase):
 
     .. code-block:: console
 
-        luigi --module your.module RangeDaily --of YourActualTask --start 2014-01-01
+        luigi --module your.module RangeDaily --of YourActualStep --start 2014-01-01
     """
 
     def missing_datetimes(self, finite_datetimes):
@@ -735,13 +735,13 @@ class RangeDaily(RangeDailyBase):
         except NotImplementedError:
             return infer_bulk_complete_from_fs(
                 finite_datetimes,
-                lambda d: self._instantiate_task_cls(self.datetime_to_parameter(d)),
+                lambda d: self._instantiate_step_cls(self.datetime_to_parameter(d)),
                 lambda d: d.strftime('(%Y).*(%m).*(%d)'))
 
 
 class RangeHourly(RangeHourlyBase):
     """Efficiently produces a contiguous completed range of an hourly recurring
-    task that takes a single ``DateHourParameter``.
+    step that takes a single ``DateHourParameter``.
 
     Benefits from ``bulk_complete`` information to efficiently cover gaps.
 
@@ -752,7 +752,7 @@ class RangeHourly(RangeHourlyBase):
 
     .. code-block:: console
 
-        luigi --module your.module RangeHourly --of YourActualTask --start 2014-01-01T00
+        luigi --module your.module RangeHourly --of YourActualStep --start 2014-01-01T00
     """
 
     def missing_datetimes(self, finite_datetimes):
@@ -764,13 +764,13 @@ class RangeHourly(RangeHourlyBase):
         except NotImplementedError:
             return infer_bulk_complete_from_fs(
                 finite_datetimes,
-                lambda d: self._instantiate_task_cls(self.datetime_to_parameter(d)),
+                lambda d: self._instantiate_step_cls(self.datetime_to_parameter(d)),
                 lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H)'))
 
 
 class RangeByMinutes(RangeByMinutesBase):
     """Efficiently produces a contiguous completed range of an recurring
-    task every interval minutes that takes a single ``DateMinuteParameter``.
+    step every interval minutes that takes a single ``DateMinuteParameter``.
 
     Benefits from ``bulk_complete`` information to efficiently cover gaps.
 
@@ -781,7 +781,7 @@ class RangeByMinutes(RangeByMinutesBase):
 
     .. code-block:: console
 
-        luigi --module your.module RangeByMinutes --of YourActualTask --start 2014-01-01T0123
+        luigi --module your.module RangeByMinutes --of YourActualStep --start 2014-01-01T0123
     """
 
     def missing_datetimes(self, finite_datetimes):
@@ -792,5 +792,5 @@ class RangeByMinutes(RangeByMinutesBase):
         except NotImplementedError:
             return infer_bulk_complete_from_fs(
                 finite_datetimes,
-                lambda d: self._instantiate_task_cls(self.datetime_to_parameter(d)),
+                lambda d: self._instantiate_step_cls(self.datetime_to_parameter(d)),
                 lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H).*(%M)'))

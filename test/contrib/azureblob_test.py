@@ -116,7 +116,7 @@ class AzureBlobClientTest(unittest.TestCase):
         self.assertFalse(self.client.exists(container_name))
 
 
-class MovieScriptTask(luigi.Task):
+class MovieScriptStep(luigi.Step):
     def output(self):
         return AzureBlobTarget("luigi-test", "movie-cheesy.txt", client, download_when_reading=False)
 
@@ -130,7 +130,7 @@ class MovieScriptTask(luigi.Task):
             op.write("Greed, for lack of a better word, is good.\n")
 
 
-class AzureJsonDumpTask(luigi.Task):
+class AzureJsonDumpStep(luigi.Step):
     def output(self):
         return AzureBlobTarget("luigi-test", "stats.json", client)
 
@@ -139,9 +139,9 @@ class AzureJsonDumpTask(luigi.Task):
             json.dump([1, 2, 3], op)
 
 
-class FinalTask(luigi.Task):
+class FinalStep(luigi.Step):
     def requires(self):
-        return {"movie": self.clone(MovieScriptTask), "np": self.clone(AzureJsonDumpTask)}
+        return {"movie": self.clone(MovieScriptStep), "np": self.clone(AzureJsonDumpStep)}
 
     def run(self):
         with self.input()["movie"].open('r') as movie, self.input()["np"].open('r') as np, self.output().open('w') as output:
@@ -166,7 +166,7 @@ class AzureBlobTargetTest(unittest.TestCase):
         pass
 
     def test_AzureBlobTarget(self):
-        final_task = FinalTask()
-        luigi.build([final_task], local_scheduler=True, log_level='NOTSET')
-        output = final_task.output().open("r").read()
+        final_step = FinalStep()
+        luigi.build([final_step], local_scheduler=True, log_level='NOTSET')
+        output = final_step.output().open("r").read()
         assert "Toto" in output

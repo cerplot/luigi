@@ -16,7 +16,7 @@
 #
 """
 Implements a subclass of :py:class:`~luigi.target.Target` that writes data to Postgres.
-Also provides a helper task to copy data into a Postgres table.
+Also provides a helper step to copy data into a Postgres table.
 """
 
 import os
@@ -301,13 +301,13 @@ class PostgresTarget(luigi.Target):
 
 class CopyToTable(rdbms.CopyToTable):
     """
-    Template task for inserting a data set into Postgres
+    Template step for inserting a data set into Postgres
 
     Usage:
     Subclass and override the required `host`, `database`, `user`,
     `password`, `table` and `columns` attributes.
 
-    To customize how to access data from an input task, override the `rows` method
+    To customize how to access data from an input step, override the `rows` method
     with a generator that yields each row as a tuple with fields ordered according to `columns`.
     """
 
@@ -433,7 +433,7 @@ class CopyToTable(rdbms.CopyToTable):
 
 class PostgresQuery(rdbms.Query):
     """
-    Template task for querying a Postgres compatible database
+    Template step for querying a Postgres compatible database
 
     Usage:
     Subclass and override the required `host`, `database`, `user`, `password`, `table`, and `query` attributes.
@@ -441,7 +441,7 @@ class PostgresQuery(rdbms.Query):
 
     Override the `run` method if your use case requires some action with the query result.
 
-    Task instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
+    Step instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
 
     To customize the query signature as recorded in the database marker table, override the `update_id` property.
     """
@@ -451,7 +451,7 @@ class PostgresQuery(rdbms.Query):
         cursor = connection.cursor()
         sql = self.query
 
-        logger.info('Executing query from task: {name}'.format(name=self.__class__))
+        logger.info('Executing query from step: {name}'.format(name=self.__class__))
         cursor.execute(sql)
 
         # Update marker table

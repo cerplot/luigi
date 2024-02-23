@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 """
-The abstract :py:class:`Task` class.
+The abstract :py:class:`Step` class.
 It is a central concept of Luigi and represents the state of the workflow.
-See :doc:`/tasks` for an overview.
+See :doc:`/steps` for an overview.
 """
 from collections import deque, OrderedDict
 from contextlib import contextmanager
@@ -34,7 +34,7 @@ import luigi
 
 from luigi import configuration
 from luigi import parameter
-from luigi.task_register import Register
+from luigi.step_register import Register
 from luigi.parameter import ParameterVisibility
 from luigi.parameter import UnconsumedParameterWarning
 
@@ -42,38 +42,38 @@ Parameter = parameter.Parameter
 logger = logging.getLogger('luigi-interface')
 
 
-TASK_ID_INCLUDE_PARAMS = 3
-TASK_ID_TRUNCATE_PARAMS = 16
-TASK_ID_TRUNCATE_HASH = 10
-TASK_ID_INVALID_CHAR_REGEX = re.compile(r'[^A-Za-z0-9_]')
+STEP_ID_INCLUDE_PARAMS = 3
+STEP_ID_TRUNCATE_PARAMS = 16
+STEP_ID_TRUNCATE_HASH = 10
+STEP_ID_INVALID_CHAR_REGEX = re.compile(r'[^A-Za-z0-9_]')
 _SAME_AS_PYTHON_MODULE = '_same_as_python_module'
 
 
 def namespace(namespace=None, scope=''):
     """
-    Call to set namespace of tasks declared after the call.
+    Call to set namespace of steps declared after the call.
 
     It is often desired to call this function with the keyword argument
     ``scope=__name__``.
 
-    The ``scope`` keyword makes it so that this call is only effective for task
+    The ``scope`` keyword makes it so that this call is only effective for step
     classes with a matching [*]_ ``__module__``. The default value for
     ``scope`` is the empty string, which means all classes. Multiple calls with
     the same scope simply replace each other.
 
-    The namespace of a :py:class:`Task` can also be changed by specifying the property
-    ``task_namespace``.
+    The namespace of a :py:class:`Step` can also be changed by specifying the property
+    ``step_namespace``.
 
     .. code-block:: python
 
-        class Task2(luigi.Task):
-            task_namespace = 'namespace2'
+        class Step2(luigi.Step):
+            step_namespace = 'namespace2'
 
     This explicit setting takes priority over whatever is set in the
     ``namespace()`` method, and it's also inherited through normal python
     inheritence.
 
-    There's no equivalent way to set the ``task_family``.
+    There's no equivalent way to set the ``step_family``.
 
     *New since Luigi 2.6.0:* ``scope`` keyword argument.
 
@@ -87,13 +87,13 @@ def namespace(namespace=None, scope=''):
 def auto_namespace(scope=''):
     """
     Same as :py:func:`namespace`, but instead of a constant namespace, it will
-    be set to the ``__module__`` of the task class. This is desirable for these
+    be set to the ``__module__`` of the step class. This is desirable for these
     reasons:
 
-     * Two tasks with the same name will not have conflicting task families
+     * Two steps with the same name will not have conflicting step families
      * It's more pythonic, as modules are Python's recommended way to
        do namespacing.
-     * It's traceable. When you see the full name of a task, you can immediately
+     * It's traceable. When you see the full name of a step, you can immediately
        identify where it is defined.
 
     We recommend calling this function from your package's outermost
@@ -114,24 +114,24 @@ def auto_namespace(scope=''):
     namespace(namespace=_SAME_AS_PYTHON_MODULE, scope=scope)
 
 
-def task_id_str(task_family, params):
+def step_id_str(step_family, params):
     """
-    Returns a canonical string used to identify a particular task
+    Returns a canonical string used to identify a particular step
 
-    :param task_family: The task family (class name) of the task
+    :param step_family: The step family (class name) of the step
     :param params: a dict mapping parameter names to their serialized values
     :return: A unique, shortened identifier corresponding to the family and params
     """
-    # task_id is a concatenation of task family, the first values of the first 3 parameters
+    # step_id is a concatenation of step family, the first values of the first 3 parameters
     # sorted by parameter name and a md5hash of the family/parameters as a cananocalised json.
     param_str = json.dumps(params, separators=(',', ':'), sort_keys=True)
     param_hash = hashlib.new('md5', param_str.encode('utf-8'), usedforsecurity=False).hexdigest()
 
-    param_summary = '_'.join(p[:TASK_ID_TRUNCATE_PARAMS]
-                             for p in (params[p] for p in sorted(params)[:TASK_ID_INCLUDE_PARAMS]))
-    param_summary = TASK_ID_INVALID_CHAR_REGEX.sub('_', param_summary)
+    param_summary = '_'.join(p[:STEP_ID_TRUNCATE_PARAMS]
+                             for p in (params[p] for p in sorted(params)[:STEP_ID_INCLUDE_PARAMS]))
+    param_summary = STEP_ID_INVALID_CHAR_REGEX.sub('_', param_summary)
 
-    return '{}_{}_{}'.format(task_family, param_summary, param_hash[:TASK_ID_TRUNCATE_HASH])
+    return '{}_{}_{}'.format(step_family, param_summary, param_hash[:STEP_ID_TRUNCATE_HASH])
 
 
 class BulkCompleteNotImplementedError(NotImplementedError):
@@ -144,23 +144,23 @@ class BulkCompleteNotImplementedError(NotImplementedError):
     pass
 
 
-class Task(metaclass=Register):
+class Step(metaclass=Register):
     """
-    This is the base class of all Luigi Tasks, the base unit of work in Luigi.
+    This is the base class of all Luigi Steps, the base unit of work in Luigi.
 
-    A Luigi Task describes a unit or work.
+    A Luigi Step describes a unit or work.
 
-    The key methods of a Task, which must be implemented in a subclass are:
+    The key methods of a Step, which must be implemented in a subclass are:
 
-    * :py:meth:`run` - the computation done by this task.
-    * :py:meth:`requires` - the list of Tasks that this Task depends on.
-    * :py:meth:`output` - the output :py:class:`Target` that this Task creates.
+    * :py:meth:`run` - the computation done by this step.
+    * :py:meth:`requires` - the list of Steps that this Step depends on.
+    * :py:meth:`output` - the output :py:class:`Target` that this Step creates.
 
-    Each :py:class:`~luigi.Parameter` of the Task should be declared as members:
+    Each :py:class:`~luigi.Parameter` of the Step should be declared as members:
 
     .. code:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             count = luigi.IntParameter()
             second_param = luigi.Parameter()
 
@@ -172,14 +172,14 @@ class Task(metaclass=Register):
 
     _event_callbacks = {}
 
-    #: Priority of the task: the scheduler should favor available
-    #: tasks with higher priority values first.
-    #: See :ref:`Task.priority`
+    #: Priority of the step: the scheduler should favor available
+    #: steps with higher priority values first.
+    #: See :ref:`Step.priority`
     priority = 0
     disabled = False
 
-    #: Resources used by the task. Should be formatted like {"scp": 1} to indicate that the
-    #: task requires 1 unit of the scp resource.
+    #: Resources used by the step. Should be formatted like {"scp": 1} to indicate that the
+    #: step requires 1 unit of the scp resource.
     resources = {}
 
     #: Number of seconds after which to time out the run function.
@@ -187,7 +187,7 @@ class Task(metaclass=Register):
     #: Defaults to 0 or worker-timeout value in config
     worker_timeout = None
 
-    #: Maximum number of tasks to run together as a batch. Infinite by default
+    #: Maximum number of steps to run together as a batch. Infinite by default
     max_batch_size = float('inf')
 
     @property
@@ -201,7 +201,7 @@ class Task(metaclass=Register):
     @property
     def retry_count(self):
         """
-        Override this positive integer to have different ``retry_count`` at task level
+        Override this positive integer to have different ``retry_count`` at step level
         Check :ref:`scheduler-config`
         """
         return None
@@ -209,7 +209,7 @@ class Task(metaclass=Register):
     @property
     def disable_hard_timeout(self):
         """
-        Override this positive integer to have different ``disable_hard_timeout`` at task level.
+        Override this positive integer to have different ``disable_hard_timeout`` at step level.
         Check :ref:`scheduler-config`
         """
         return None
@@ -217,7 +217,7 @@ class Task(metaclass=Register):
     @property
     def disable_window(self):
         """
-        Override this positive integer to have different ``disable_window`` at task level.
+        Override this positive integer to have different ``disable_window`` at step level.
         Check :ref:`scheduler-config`
         """
         return None
@@ -230,7 +230,7 @@ class Task(metaclass=Register):
     @property
     def owner_email(self):
         '''
-        Override this to send out additional error emails to task owner, in addition to the one
+        Override this to send out additional error emails to step owner, in addition to the one
         defined in the global configuration. This should return a string or a list of strings. e.g.
         'test@exmaple.com' or ['test1@example.com', 'test2@example.com']
         '''
@@ -283,13 +283,13 @@ class Task(metaclass=Register):
     @property
     def accepts_messages(self):
         """
-        For configuring which scheduler messages can be received. When falsy, this tasks does not
+        For configuring which scheduler messages can be received. When falsy, this steps does not
         accept any message. When True, all messages are accepted.
         """
         return False
 
     @property
-    def task_module(self):
+    def step_module(self):
         ''' Returns what Python module to import to get access to this class. '''
         # TODO(erikbern): we should think about a language-agnostic mechanism
         return self.__class__.__module__
@@ -302,60 +302,60 @@ class Task(metaclass=Register):
     # this value anyway.
     _namespace_at_class_time = None
 
-    task_namespace = __not_user_specified
+    step_namespace = __not_user_specified
     """
     This value can be overridden to set the namespace that will be used.
-    (See :ref:`Task.namespaces_famlies_and_ids`)
+    (See :ref:`Step.namespaces_famlies_and_ids`)
     If it's not specified and you try to read this value anyway, it will return
-    garbage. Please use :py:meth:`get_task_namespace` to read the namespace.
+    garbage. Please use :py:meth:`get_step_namespace` to read the namespace.
 
     Note that setting this value with ``@property`` will not work, because this
     is a class level value.
     """
 
     @classmethod
-    def get_task_namespace(cls):
+    def get_step_namespace(cls):
         """
-        The task family for the given class.
+        The step family for the given class.
 
         Note: You normally don't want to override this.
         """
-        if cls.task_namespace != cls.__not_user_specified:
-            return cls.task_namespace
+        if cls.step_namespace != cls.__not_user_specified:
+            return cls.step_namespace
         elif cls._namespace_at_class_time == _SAME_AS_PYTHON_MODULE:
             return cls.__module__
         return cls._namespace_at_class_time
 
     @property
-    def task_family(self):
+    def step_family(self):
         """
-        DEPRECATED since after 2.4.0. See :py:meth:`get_task_family` instead.
+        DEPRECATED since after 2.4.0. See :py:meth:`get_step_family` instead.
         Hopefully there will be less meta magic in Luigi.
 
         Convenience method since a property on the metaclass isn't directly
         accessible through the class instances.
         """
-        return self.__class__.task_family
+        return self.__class__.step_family
 
     @classmethod
-    def get_task_family(cls):
+    def get_step_family(cls):
         """
-        The task family for the given class.
+        The step family for the given class.
 
-        If ``task_namespace`` is not set, then it's simply the name of the
-        class.  Otherwise, ``<task_namespace>.`` is prefixed to the class name.
+        If ``step_namespace`` is not set, then it's simply the name of the
+        class.  Otherwise, ``<step_namespace>.`` is prefixed to the class name.
 
         Note: You normally don't want to override this.
         """
-        if not cls.get_task_namespace():
+        if not cls.get_step_namespace():
             return cls.__name__
         else:
-            return "{}.{}".format(cls.get_task_namespace(), cls.__name__)
+            return "{}.{}".format(cls.get_step_namespace(), cls.__name__)
 
     @classmethod
     def get_params(cls):
         """
-        Returns all of the Parameters for this Task.
+        Returns all of the Parameters for this Step.
         """
         # We want to do this here and not at class instantiation, or else there is no room to extend classes dynamically
         params = []
@@ -392,11 +392,11 @@ class Task(metaclass=Register):
 
         params_dict = dict(params)
 
-        task_family = cls.get_task_family()
+        step_family = cls.get_step_family()
 
-        # In case any exceptions are thrown, create a helpful description of how the Task was invoked
+        # In case any exceptions are thrown, create a helpful description of how the Step was invoked
         # TODO: should we detect non-reprable arguments? These will lead to mysterious errors
-        exc_desc = '%s[args=%s, kwargs=%s]' % (task_family, args, kwargs)
+        exc_desc = '%s[args=%s, kwargs=%s]' % (step_family, args, kwargs)
 
         # Fill in the positional arguments
         positional_params = [(n, p) for n, p in params if p.positional]
@@ -418,12 +418,12 @@ class Task(metaclass=Register):
         for param_name, param_obj in params:
             if param_name not in result:
                 try:
-                    has_task_value = param_obj.has_task_value(task_family, param_name)
+                    has_step_value = param_obj.has_step_value(step_family, param_name)
                 except Exception as exc:
                     raise ValueError("%s: Error when parsing the default value of '%s'" % (exc_desc, param_name)) from exc
-                if not has_task_value:
+                if not has_step_value:
                     raise parameter.MissingParameterException("%s: requires the '%s' parameter to be set" % (exc_desc, param_name))
-                result[param_name] = param_obj.task_value(task_family, param_name)
+                result[param_name] = param_obj.step_value(step_family, param_name)
 
         def list_to_tuple(x):
             """ Make tuples out of lists and sets to allow hashing """
@@ -436,16 +436,16 @@ class Task(metaclass=Register):
         conf = configuration.get_config()
         if not hasattr(cls, "_unconsumed_params"):
             cls._unconsumed_params = set()
-        if task_family in conf.sections():
+        if step_family in conf.sections():
             ignore_unconsumed = getattr(cls, 'ignore_unconsumed', set())
-            for key, value in conf[task_family].items():
+            for key, value in conf[step_family].items():
                 key = key.replace('-', '_')
-                composite_key = f"{task_family}_{key}"
+                composite_key = f"{step_family}_{key}"
                 if key not in result and key not in ignore_unconsumed and composite_key not in cls._unconsumed_params:
                     warnings.warn(
                         "The configuration contains the parameter "
-                        f"'{key}' with value '{value}' that is not consumed by the task "
-                        f"'{task_family}'.",
+                        f"'{key}' with value '{value}' that is not consumed by the step "
+                        f"'{step_family}'.",
                         UnconsumedParameterWarning,
                     )
                     cls._unconsumed_params.add(composite_key)
@@ -465,8 +465,8 @@ class Task(metaclass=Register):
         self.param_kwargs = dict(param_values)
 
         self._warn_on_wrong_param_types()
-        self.task_id = task_id_str(self.get_task_family(), self.to_str_params(only_significant=True, only_public=True))
-        self.__hash = hash(self.task_id)
+        self.step_id = step_id_str(self.get_step_family(), self.to_str_params(only_significant=True, only_public=True))
+        self.__hash = hash(self.step_id)
 
         self.set_tracking_url = None
         self.set_status_message = None
@@ -479,9 +479,9 @@ class Task(metaclass=Register):
 
     def initialized(self):
         """
-        Returns ``True`` if the Task is initialized and ``False`` otherwise.
+        Returns ``True`` if the Step is initialized and ``False`` otherwise.
         """
-        return hasattr(self, 'task_id')
+        return hasattr(self, 'step_id')
 
     def _warn_on_wrong_param_types(self):
         params = dict(self.get_params())
@@ -536,7 +536,7 @@ class Task(metaclass=Register):
         There's at least two scenarios where this is useful (see test/clone_test.py):
 
         * remove a lot of boiler plate when you have recursive dependencies and lots of args
-        * there's task inheritance and some logic is on the base class
+        * there's step inheritance and some logic is on the base class
 
         :param cls:
         :param kwargs:
@@ -559,28 +559,28 @@ class Task(metaclass=Register):
 
     def __repr__(self):
         """
-        Build a task representation like `MyTask(param1=1.5, param2='5')`
+        Build a step representation like `MyStep(param1=1.5, param2='5')`
         """
         params = self.get_params()
         param_values = self.get_param_values(params, [], self.param_kwargs)
 
-        # Build up task id
+        # Build up step id
         repr_parts = []
         param_objs = dict(params)
         for param_name, param_value in param_values:
             if param_objs[param_name].significant:
                 repr_parts.append('%s=%s' % (param_name, param_objs[param_name].serialize(param_value)))
 
-        task_str = '{}({})'.format(self.get_task_family(), ', '.join(repr_parts))
+        step_str = '{}({})'.format(self.get_step_family(), ', '.join(repr_parts))
 
-        return task_str
+        return step_str
 
     def __eq__(self, other):
-        return self.__class__ == other.__class__ and self.task_id == other.task_id
+        return self.__class__ == other.__class__ and self.step_id == other.step_id
 
     def complete(self):
         """
-        If the task has any outputs, return ``True`` if all outputs exist.
+        If the step has any outputs, return ``True`` if all outputs exist.
         Otherwise, return ``False``.
 
         However, you may freely override this method with custom logic.
@@ -588,7 +588,7 @@ class Task(metaclass=Register):
         outputs = flatten(self.output())
         if len(outputs) == 0:
             warnings.warn(
-                "Task %r without outputs has no custom complete() method" % self,
+                "Step %r without outputs has no custom complete() method" % self,
                 stacklevel=2
             )
             return False
@@ -598,7 +598,7 @@ class Task(metaclass=Register):
     @classmethod
     def bulk_complete(cls, parameter_tuples):
         """
-        Returns those of parameter_tuples for which this Task is complete.
+        Returns those of parameter_tuples for which this Step is complete.
 
         Override (with an efficient implementation) for efficient scheduling
         with range tools. Keep the logic consistent with that of complete().
@@ -607,9 +607,9 @@ class Task(metaclass=Register):
 
     def output(self):
         """
-        The output that this Task produces.
+        The output that this Step produces.
 
-        The output of the Task determines if the Task needs to be run--the task
+        The output of the Step determines if the Step needs to be run--the step
         is considered finished iff the outputs all exist. Subclasses should
         override this method to return a single :py:class:`Target` or a list of
         :py:class:`Target` instances.
@@ -619,27 +619,27 @@ class Task(metaclass=Register):
           by all workers, such as a DFS or database. Otherwise, workers might compute
           the same output since they don't see the work done by other workers.
 
-        See :ref:`Task.output`
+        See :ref:`Step.output`
         """
         return []  # default impl
 
     def requires(self):
         """
-        The Tasks that this Task depends on.
+        The Steps that this Step depends on.
 
-        A Task will only run if all of the Tasks that it requires are completed.
-        If your Task does not require any other Tasks, then you don't need to
+        A Step will only run if all of the Steps that it requires are completed.
+        If your Step does not require any other Steps, then you don't need to
         override this method. Otherwise, a subclass can override this method
-        to return a single Task, a list of Task instances, or a dict whose
-        values are Task instances.
+        to return a single Step, a list of Step instances, or a dict whose
+        values are Step instances.
 
-        See :ref:`Task.requires`
+        See :ref:`Step.requires`
         """
         return []  # default impl
 
     def _requires(self):
         """
-        Override in "template" tasks which themselves are supposed to be
+        Override in "template" steps which themselves are supposed to be
         subclassed and thus have their requires() overridden (name preserved to
         provide consistent end-user experience), yet need to introduce
         (non-input) dependencies.
@@ -651,7 +651,7 @@ class Task(metaclass=Register):
 
     def process_resources(self):
         """
-        Override in "template" tasks which provide common resource functionality
+        Override in "template" steps which provide common resource functionality
         but allow subclasses to specify additional resources while preserving
         the name for consistent end-user experience.
         """
@@ -659,12 +659,12 @@ class Task(metaclass=Register):
 
     def input(self):
         """
-        Returns the outputs of the Tasks returned by :py:meth:`requires`
+        Returns the outputs of the Steps returned by :py:meth:`requires`
 
-        See :ref:`Task.input`
+        See :ref:`Step.input`
 
         :return: a list of :py:class:`Target` objects which are specified as
-                 outputs of all required Tasks.
+                 outputs of all required Steps.
         """
         return getpaths(self.requires())
 
@@ -679,9 +679,9 @@ class Task(metaclass=Register):
 
     def run(self):
         """
-        The task run method, to be overridden in a subclass.
+        The step run method, to be overridden in a subclass.
 
-        See :ref:`Task.run`
+        See :ref:`Step.run`
         """
         pass  # default impl
 
@@ -702,7 +702,7 @@ class Task(metaclass=Register):
 
     def on_success(self):
         """
-        Override for doing custom completion handling for a larger class of tasks
+        Override for doing custom completion handling for a larger class of steps
 
         This method gets called when :py:meth:`run` completes without raising any exceptions.
 
@@ -714,23 +714,23 @@ class Task(metaclass=Register):
     @contextmanager
     def no_unpicklable_properties(self):
         """
-        Remove unpicklable properties before dump task and resume them after.
+        Remove unpicklable properties before dump step and resume them after.
 
-        This method could be called in subtask's dump method, to ensure unpicklable
+        This method could be called in substep's dump method, to ensure unpicklable
         properties won't break dump.
 
         This method is a context-manager which can be called as below:
 
         .. code-block: python
 
-            class DummyTask(luigi):
+            class DummyStep(luigi):
 
                 def _dump(self):
                     with self.no_unpicklable_properties():
                         pickle.dumps(self)
 
         """
-        unpicklable_properties = tuple(luigi.worker.TaskProcess.forward_reporter_attributes.values())
+        unpicklable_properties = tuple(luigi.worker.StepProcess.forward_reporter_attributes.values())
         reserved_properties = {}
         for property_name in unpicklable_properties:
             if hasattr(self, property_name):
@@ -745,9 +745,9 @@ class Task(metaclass=Register):
 
 class MixinNaiveBulkComplete:
     """
-    Enables a Task to be efficiently scheduled with e.g. range tools, by providing a bulk_complete implementation which checks completeness in a loop.
+    Enables a Step to be efficiently scheduled with e.g. range tools, by providing a bulk_complete implementation which checks completeness in a loop.
 
-    Applicable to tasks whose completeness checking is cheap.
+    Applicable to steps whose completeness checking is cheap.
 
     This doesn't exploit output location specific APIs for speed advantage, nevertheless removes redundant scheduler roundtrips.
     """
@@ -769,30 +769,30 @@ class MixinNaiveBulkComplete:
 
 class DynamicRequirements(object):
     """
-    Wraps dynamic requirements yielded in tasks's run methods to control how completeness checks of
-    (e.g.) large chunks of tasks are performed. Besides the wrapped *requirements*, instances of
+    Wraps dynamic requirements yielded in steps's run methods to control how completeness checks of
+    (e.g.) large chunks of steps are performed. Besides the wrapped *requirements*, instances of
     this class can be passed an optional function *custom_complete* that might implement an
     optimized check for completeness. If set, the function will be called with a single argument,
-    *complete_fn*, which should be used to perform the per-task check. Example:
+    *complete_fn*, which should be used to perform the per-step check. Example:
 
     .. code-block:: python
 
-        class SomeTaskWithDynamicRequirements(luigi.Task):
+        class SomeStepWithDynamicRequirements(luigi.Step):
             ...
 
             def run(self):
-                large_chunk_of_tasks = [OtherTask(i=i) for i in range(10000)]
+                large_chunk_of_steps = [OtherStep(i=i) for i in range(10000)]
 
                 def custom_complete(complete_fn):
-                    # example: assume OtherTask always write into the same directory, so just check
-                    #          if the first task is complete, and compare basenames for the rest
-                    if not complete_fn(large_chunk_of_tasks[0]):
+                    # example: assume OtherStep always write into the same directory, so just check
+                    #          if the first step is complete, and compare basenames for the rest
+                    if not complete_fn(large_chunk_of_steps[0]):
                         return False
-                    paths = [task.output().path for task in large_chunk_of_tasks]
+                    paths = [step.output().path for step in large_chunk_of_steps]
                     basenames = os.listdir(os.path.dirname(paths[0]))  # a single fs call
                     return all(os.path.basename(path) in basenames for path in paths)
 
-                yield DynamicRequirements(large_chunk_of_tasks, custom_complete)
+                yield DynamicRequirements(large_chunk_of_steps, custom_complete)
 
     .. py:attribute:: requirements
 
@@ -837,8 +837,8 @@ class DynamicRequirements(object):
     def complete(self, complete_fn=None):
         # default completeness check
         if complete_fn is None:
-            def complete_fn(task):
-                return task.complete()
+            def complete_fn(step):
+                return step.complete()
 
         # use the custom complete function when set
         if self.custom_complete:
@@ -848,38 +848,38 @@ class DynamicRequirements(object):
         return all(complete_fn(t) for t in self.flat_requirements)
 
 
-class ExternalTask(Task):
+class ExternalStep(Step):
     """
     Subclass for references to external dependencies.
 
-    An ExternalTask's does not have a `run` implementation, which signifies to
-    the framework that this Task's :py:meth:`output` is generated outside of
+    An ExternalStep's does not have a `run` implementation, which signifies to
+    the framework that this Step's :py:meth:`output` is generated outside of
     Luigi.
     """
     run = None
 
 
-def externalize(taskclass_or_taskobject):
+def externalize(stepclass_or_stepobject):
     """
-    Returns an externalized version of a Task. You may both pass an
-    instantiated task object or a task class. Some examples:
+    Returns an externalized version of a Step. You may both pass an
+    instantiated step object or a step class. Some examples:
 
     .. code-block:: python
 
-        class RequiringTask(luigi.Task):
+        class RequiringStep(luigi.Step):
             def requires(self):
-                task_object = self.clone(MyTask)
-                return externalize(task_object)
+                step_object = self.clone(MyStep)
+                return externalize(step_object)
 
             ...
 
-    Here's mostly equivalent code, but ``externalize`` is applied to a task
+    Here's mostly equivalent code, but ``externalize`` is applied to a step
     class instead.
 
     .. code-block:: python
 
-        @luigi.util.requires(externalize(MyTask))
-        class RequiringTask(luigi.Task):
+        @luigi.util.requires(externalize(MyStep))
+        class RequiringStep(luigi.Step):
             pass
             ...
 
@@ -888,11 +888,11 @@ def externalize(taskclass_or_taskobject):
 
     .. code-block:: python
 
-        MyTask = externalize(MyTask)
-        my_task_2 = externalize(MyTask2(param='foo'))
+        MyStep = externalize(MyStep)
+        my_step_2 = externalize(MyStep2(param='foo'))
 
-    If you however want a task class to be external from the beginning, you're
-    better off inheriting :py:class:`ExternalTask` rather than :py:class:`Task`.
+    If you however want a step class to be external from the beginning, you're
+    better off inheriting :py:class:`ExternalStep` rather than :py:class:`Step`.
 
     This function tries to be side-effect free by creating a copy of the class
     or the object passed in and then modify that object. In particular this
@@ -900,14 +900,14 @@ def externalize(taskclass_or_taskobject):
 
     .. code-block:: python
 
-        externalize(MyTask)  # BAD: This does nothing (as after luigi 2.4.0)
+        externalize(MyStep)  # BAD: This does nothing (as after luigi 2.4.0)
     """
-    copied_value = copy.copy(taskclass_or_taskobject)
-    if copied_value is taskclass_or_taskobject:
+    copied_value = copy.copy(stepclass_or_stepobject)
+    if copied_value is stepclass_or_stepobject:
         # Assume it's a class
-        clazz = taskclass_or_taskobject
+        clazz = stepclass_or_stepobject
 
-        @_task_wraps(clazz)
+        @_step_wraps(clazz)
         class _CopyOfClass(clazz):
             # How to copy a class: http://stackoverflow.com/a/9541120/621449
             _visible_in_registry = False
@@ -919,29 +919,29 @@ def externalize(taskclass_or_taskobject):
         return copied_value
 
 
-class WrapperTask(Task):
+class WrapperStep(Step):
     """
-    Use for tasks that only wrap other tasks and that by definition are done if all their requirements exist.
+    Use for steps that only wrap other steps and that by definition are done if all their requirements exist.
     """
 
     def complete(self):
         return all(r.complete() for r in flatten(self.requires()))
 
 
-class Config(Task):
+class Config(Step):
     """
     Class for configuration. See :ref:`ConfigClasses`.
     """
-    # TODO: let's refactor Task & Config so that it inherits from a common
+    # TODO: let's refactor Step & Config so that it inherits from a common
     # ParamContainer base class
     pass
 
 
 def getpaths(struct):
     """
-    Maps all Tasks in a structured data object to their .output().
+    Maps all Steps in a structured data object to their .output().
     """
-    if isinstance(struct, Task):
+    if isinstance(struct, Step):
         return struct.output()
     elif isinstance(struct, dict):
         return struct.__class__((k, getpaths(v)) for k, v in struct.items())
@@ -952,7 +952,7 @@ def getpaths(struct):
         try:
             return [getpaths(r) for r in struct]
         except TypeError:
-            raise Exception('Cannot map %s to Task/dict/list' % str(struct))
+            raise Exception('Cannot map %s to Step/dict/list' % str(struct))
 
 
 def flatten(struct):
@@ -991,29 +991,29 @@ def flatten(struct):
     return flat
 
 
-def flatten_output(task):
+def flatten_output(step):
     """
-    Lists all output targets by recursively walking output-less (wrapper) tasks.
+    Lists all output targets by recursively walking output-less (wrapper) steps.
     """
 
-    output_tasks = OrderedDict()  # OrderedDict used as ordered set
-    tasks_to_process = deque([task])
-    while tasks_to_process:
-        current_task = tasks_to_process.popleft()
-        if flatten(current_task.output()):
-            if current_task not in output_tasks:
-                output_tasks[current_task] = None
+    output_steps = OrderedDict()  # OrderedDict used as ordered set
+    steps_to_process = deque([step])
+    while steps_to_process:
+        current_step = steps_to_process.popleft()
+        if flatten(current_step.output()):
+            if current_step not in output_steps:
+                output_steps[current_step] = None
         else:
-            tasks_to_process.extend(flatten(current_task.requires()))
+            steps_to_process.extend(flatten(current_step.requires()))
 
-    return flatten(task.output() for task in output_tasks)
+    return flatten(step.output() for step in output_steps)
 
 
-def _task_wraps(task_class):
+def _step_wraps(step_class):
     # In order to make the behavior of a wrapper class nicer, we set the name of the
     # new class to the wrapped class, and copy over the docstring and module as well.
     # This makes it possible to pickle the wrapped class etc.
     # Btw, this is a slight abuse of functools.wraps. It's meant to be used only for
     # functions, but it works for classes too, if you pass updated=[]
     assigned = functools.WRAPPER_ASSIGNMENTS + ('_namespace_at_class_time',)
-    return functools.wraps(task_class, assigned=assigned, updated=[])
+    return functools.wraps(step_class, assigned=assigned, updated=[])

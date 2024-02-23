@@ -22,7 +22,7 @@ import abc
 import logging
 
 import luigi
-import luigi.task
+import luigi.step
 
 logger = logging.getLogger('luigi-interface')
 
@@ -30,7 +30,7 @@ logger = logging.getLogger('luigi-interface')
 class _MetadataColumnsMixin:
     """Provide an additional behavior that adds columns and values to tables
 
-    This mixin is used to provide an additional behavior that allow a task to
+    This mixin is used to provide an additional behavior that allow a step to
     add generic metadata columns to every table created for both PSQL and
     Redshift.
 
@@ -145,9 +145,9 @@ class _MetadataColumnsMixin:
             cursor.execute(query)
 
 
-class CopyToTable(luigi.task.MixinNaiveBulkComplete, _MetadataColumnsMixin, luigi.Task):
+class CopyToTable(luigi.step.MixinNaiveBulkComplete, _MetadataColumnsMixin, luigi.Step):
     """
-    An abstract task for inserting a data set into RDBMS.
+    An abstract step for inserting a data set into RDBMS.
 
     Usage:
 
@@ -228,7 +228,7 @@ class CopyToTable(luigi.task.MixinNaiveBulkComplete, _MetadataColumnsMixin, luig
         """
         This update id will be a unique identifier for this insert on this table.
         """
-        return self.task_id
+        return self.step_id
 
     @abc.abstractmethod
     def output(self):
@@ -265,9 +265,9 @@ class CopyToTable(luigi.task.MixinNaiveBulkComplete, _MetadataColumnsMixin, luig
         raise NotImplementedError("This method must be overridden")
 
 
-class Query(luigi.task.MixinNaiveBulkComplete, luigi.Task):
+class Query(luigi.step.MixinNaiveBulkComplete, luigi.Step):
     """
-    An abstract task for executing an RDBMS query.
+    An abstract step for executing an RDBMS query.
 
     Usage:
 
@@ -340,9 +340,9 @@ class Query(luigi.task.MixinNaiveBulkComplete, luigi.Task):
     @property
     def update_id(self):
         """
-        Override to create a custom marker table 'update_id' signature for Query subclass task instances
+        Override to create a custom marker table 'update_id' signature for Query subclass step instances
         """
-        return self.task_id
+        return self.step_id
 
     @abc.abstractmethod
     def run(self):

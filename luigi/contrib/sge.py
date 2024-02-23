@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-"""SGE batch system Tasks.
+"""SGE batch system Steps.
 
 Adapted by Jake Feala (@jfeala) from
 `LSF extension <https://github.com/dattalab/luigi/blob/lsf/luigi/lsf.py>`_
@@ -27,10 +27,10 @@ shared cluster. Jobs are submitted using the ``qsub`` command and monitored
 using ``qstat``. To get started, install luigi on all nodes.
 
 To run luigi workflows on an SGE cluster, subclass
-:class:`luigi.contrib.sge.SGEJobTask` as you would any :class:`luigi.Task`,
+:class:`luigi.contrib.sge.SGEJobStep` as you would any :class:`luigi.Step`,
 but override the ``work()`` method, instead of ``run()``, to define the job
 code. Then, run your Luigi workflow from the master node, assigning > 1
-``workers`` in order to distribute the tasks in parallel across the cluster.
+``workers`` in order to distribute the steps in parallel across the cluster.
 
 The following is an example usage (and can also be found in ``sge_tests.py``)
 
@@ -39,12 +39,12 @@ The following is an example usage (and can also be found in ``sge_tests.py``)
     import logging
     import luigi
     import os
-    from luigi.contrib.sge import SGEJobTask
+    from luigi.contrib.sge import SGEJobStep
 
     logger = logging.getLogger('luigi-interface')
 
 
-    class TestJobTask(SGEJobTask):
+    class TestJobStep(SGEJobStep):
 
         i = luigi.Parameter()
 
@@ -58,20 +58,20 @@ The following is an example usage (and can also be found in ``sge_tests.py``)
 
 
     if __name__ == '__main__':
-        tasks = [TestJobTask(i=str(i), n_cpu=i+1) for i in range(3)]
-        luigi.build(tasks, local_scheduler=True, workers=3)
+        steps = [TestJobStep(i=str(i), n_cpu=i+1) for i in range(3)]
+        luigi.build(steps, local_scheduler=True, workers=3)
 
 
 The ``n-cpu`` parameter allows you to define different compute resource
-requirements (or slots, in SGE terms) for each task. In this example, the
-third Task asks for 3 CPU slots. If your cluster only contains nodes with
-2 CPUs, this task will hang indefinitely in the queue. See the docs for
-:class:`luigi.contrib.sge.SGEJobTask` for other SGE parameters. As for any
-task, you can also set these in your luigi configuration file as shown below.
+requirements (or slots, in SGE terms) for each step. In this example, the
+third Step asks for 3 CPU slots. If your cluster only contains nodes with
+2 CPUs, this step will hang indefinitely in the queue. See the docs for
+:class:`luigi.contrib.sge.SGEJobStep` for other SGE parameters. As for any
+step, you can also set these in your luigi configuration file as shown below.
 The default values below were matched to the values used by MIT StarCluster,
 an open-source SGE cluster manager for use with Amazon EC2::
 
-    [SGEJobTask]
+    [SGEJobStep]
     shared-tmp-dir = /home
     parallel-env = orte
     n-cpu = 2
@@ -147,7 +147,7 @@ def _build_qsub_command(cmd, job_name, outfile, errfile, pe, n_cpu):
         pe=pe, n_cpu=n_cpu)
 
 
-class SGEJobTask(luigi.Task):
+class SGEJobStep(luigi.Step):
 
     """Base class for executing a job on SunGrid Engine
 
@@ -155,7 +155,7 @@ class SGEJobTask(luigi.Task):
 
     Parameters:
 
-    - n_cpu: Number of CPUs (or "slots") to allocate for the Task. This
+    - n_cpu: Number of CPUs (or "slots") to allocate for the Step. This
           value is passed as ``qsub -pe {pe} {n_cpu}``
     - parallel_env: SGE parallel environment name. The default is "orte",
           the parallel environment installed with MIT StarCluster. If you
@@ -163,11 +163,11 @@ class SGEJobTask(luigi.Task):
           sysadmin for the right pe to use. This value is passed as {pe}
           to the qsub command above.
     - shared_tmp_dir: Shared drive accessible from all nodes in the cluster.
-          Task classes and dependencies are pickled to a temporary folder on
+          Step classes and dependencies are pickled to a temporary folder on
           this drive. The default is ``/home``, the NFS share location setup
           by StarCluster
     - job_name_format: String that can be passed in to customize the job name
-        string passed to qsub; e.g. "Task123_{task_family}_{n_cpu}...".
+        string passed to qsub; e.g. "Step123_{step_family}_{n_cpu}...".
     - job_name: Exact job name to pass to qsub.
     - run_locally: Run locally instead of on the cluster.
     - poll_time: the length of time to wait in order to poll qstat
@@ -201,19 +201,19 @@ class SGEJobTask(luigi.Task):
         description="don't tarball (and extract) the luigi project files")
 
     def __init__(self, *args, **kwargs):
-        super(SGEJobTask, self).__init__(*args, **kwargs)
+        super(SGEJobStep, self).__init__(*args, **kwargs)
         if self.job_name:
             # use explicitly provided job name
             pass
         elif self.job_name_format:
             # define the job name with the provided format
             self.job_name = self.job_name_format.format(
-                task_family=self.task_family, **self.__dict__)
+                step_family=self.step_family, **self.__dict__)
         else:
-            # default to the task family
-            self.job_name = self.task_family
+            # default to the step family
+            self.job_name = self.step_family
 
-    def _fetch_task_failures(self):
+    def _fetch_step_failures(self):
         if not os.path.exists(self.errfile):
             logger.info('No error file')
             return []
@@ -230,7 +230,7 @@ class SGEJobTask(luigi.Task):
         # Set up temp folder in shared directory (trim to max filename length)
         base_tmp_dir = self.shared_tmp_dir
         random_id = '%016x' % random.getrandbits(64)
-        folder_name = self.task_id + '-' + random_id
+        folder_name = self.step_id + '-' + random_id
         self.tmp_dir = os.path.join(base_tmp_dir, folder_name)
         max_filename_length = os.fstatvfs(0).f_namemax
         self.tmp_dir = self.tmp_dir[:max_filename_length]
@@ -295,7 +295,7 @@ class SGEJobTask(luigi.Task):
         # Build qsub submit command
         self.outfile = os.path.join(self.tmp_dir, 'job.out')
         self.errfile = os.path.join(self.tmp_dir, 'job.err')
-        submit_cmd = _build_qsub_command(job_str, self.task_family, self.outfile,
+        submit_cmd = _build_qsub_command(job_str, self.step_family, self.outfile,
                                          self.errfile, self.parallel_env, self.n_cpu)
         logger.debug('qsub command: \n' + submit_cmd)
 
@@ -325,11 +325,11 @@ class SGEJobTask(luigi.Task):
             elif sge_status == 'qw':
                 logger.info('Job is pending...')
             elif 'E' in sge_status:
-                logger.error('Job has FAILED:\n' + '\n'.join(self._fetch_task_failures()))
+                logger.error('Job has FAILED:\n' + '\n'.join(self._fetch_step_failures()))
                 break
             elif sge_status == 't' or sge_status == 'u':
                 # Then the job could either be failed or done.
-                errors = self._fetch_task_failures()
+                errors = self._fetch_step_failures()
                 if not errors:
                     logger.info('Job is done')
                 else:
@@ -341,12 +341,12 @@ class SGEJobTask(luigi.Task):
                 raise Exception("job status isn't one of ['r', 'qw', 'E*', 't', 'u']: %s" % sge_status)
 
 
-class LocalSGEJobTask(SGEJobTask):
-    """A local version of SGEJobTask, for easier debugging.
+class LocalSGEJobStep(SGEJobStep):
+    """A local version of SGEJobStep, for easier debugging.
 
     This version skips the ``qsub`` steps and simply runs ``work()``
     on the local node, so you don't need to be on an SGE cluster to
-    use your Task in a test workflow.
+    use your Step in a test workflow.
     """
 
     def run(self):

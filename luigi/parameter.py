@@ -16,7 +16,7 @@
 #
 
 ''' Parameters are one of the core concepts of Luigi.
-All Parameters sit on :class:`~luigi.task.Task` classes.
+All Parameters sit on :class:`~luigi.step.Step` classes.
 See :ref:`Parameter` for more info on how to define parameters.
 '''
 
@@ -38,7 +38,7 @@ except ImportError:
 from configparser import NoOptionError, NoSectionError
 
 from luigi import date_interval
-from luigi import task_register
+from luigi import step_register
 from luigi import configuration
 from luigi.cmdline_parser import CmdlineParser
 
@@ -101,42 +101,42 @@ class OptionalParameterTypeWarning(UserWarning):
 
 
 class UnconsumedParameterWarning(UserWarning):
-    """Warning class for parameters that are not consumed by the task."""
+    """Warning class for parameters that are not consumed by the step."""
 
 
 class Parameter:
     """
     Parameter whose value is a ``str``, and a base class for other parameter types.
 
-    Parameters are objects set on the Task class level to make it possible to parameterize tasks.
+    Parameters are objects set on the Step class level to make it possible to parameterize steps.
     For instance:
 
     .. code:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             foo = luigi.Parameter()
 
-        class RequiringTask(luigi.Task):
+        class RequiringStep(luigi.Step):
             def requires(self):
-                return MyTask(foo="hello")
+                return MyStep(foo="hello")
 
             def run(self):
                 print(self.requires().foo)  # prints "hello"
 
-    This makes it possible to instantiate multiple tasks, eg ``MyTask(foo='bar')`` and
-    ``MyTask(foo='baz')``. The task will then have the ``foo`` attribute set appropriately.
+    This makes it possible to instantiate multiple steps, eg ``MyStep(foo='bar')`` and
+    ``MyStep(foo='baz')``. The step will then have the ``foo`` attribute set appropriately.
 
-    When a task is instantiated, it will first use any argument as the value of the parameter, eg.
-    if you instantiate ``a = TaskA(x=44)`` then ``a.x == 44``. When the value is not provided, the
+    When a step is instantiated, it will first use any argument as the value of the parameter, eg.
+    if you instantiate ``a = StepA(x=44)`` then ``a.x == 44``. When the value is not provided, the
     value  will be resolved in this order of falling priority:
 
         * Any value provided on the command line:
 
-          - To the root task (eg. ``--param xyz``)
+          - To the root step (eg. ``--param xyz``)
 
-          - Then to the class, using the qualified task name syntax (eg. ``--TaskA-param xyz``).
+          - Then to the class, using the qualified step name syntax (eg. ``--StepA-param xyz``).
 
-        * With ``[TASK_NAME]>PARAM_NAME: <serialized value>`` syntax. See :ref:`ParamConfigIngestion`
+        * With ``[STEP_NAME]>PARAM_NAME: <serialized value>`` syntax. See :ref:`ParamConfigIngestion`
 
         * Any default value set using the ``default`` flag.
 
@@ -153,7 +153,7 @@ class Parameter:
                         ``IntParameter``. By default, no default is stored and
                         the value must be specified at runtime.
         :param bool significant: specify ``False`` if the parameter should not be treated as part of
-                                 the unique identifier for a Task. An insignificant Parameter might
+                                 the unique identifier for a Step. An insignificant Parameter might
                                  also be used to specify a password or other sensitive information
                                  that should not be made public via the scheduler. Default:
                                  ``True``.
@@ -185,7 +185,7 @@ class Parameter:
                           DeprecationWarning,
                           stacklevel=2)
             positional = False
-        self.significant = significant  # Whether different values for this parameter will differentiate otherwise equal tasks
+        self.significant = significant  # Whether different values for this parameter will differentiate otherwise equal steps
         self.positional = positional
         self.visibility = visibility if ParameterVisibility.has_value(visibility) else ParameterVisibility.PUBLIC
 
@@ -196,7 +196,7 @@ class Parameter:
             raise ParameterException('config_path must be a hash containing entries for section and name')
         self._config_path = config_path
 
-        self._counter = Parameter._counter  # We need to keep track of this to get the order right (see Task class)
+        self._counter = Parameter._counter  # We need to keep track of this to get the order right (see Step class)
         Parameter._counter += 1
 
     def _get_value_from_config(self, section, name):
@@ -211,15 +211,15 @@ class Parameter:
 
         return self.parse(value)
 
-    def _get_value(self, task_name, param_name):
-        for value, warn in self._value_iterator(task_name, param_name):
+    def _get_value(self, step_name, param_name):
+        for value, warn in self._value_iterator(step_name, param_name):
             if value != _no_value:
                 if warn:
                     warnings.warn(warn, DeprecationWarning)
                 return value
         return _no_value
 
-    def _value_iterator(self, task_name, param_name):
+    def _value_iterator(self, step_name, param_name):
         """
         Yield the parameter values, with optional deprecation warning as second tuple value.
 
@@ -227,21 +227,21 @@ class Parameter:
         """
         cp_parser = CmdlineParser.get_instance()
         if cp_parser:
-            dest = self._parser_global_dest(param_name, task_name)
+            dest = self._parser_global_dest(param_name, step_name)
             found = getattr(cp_parser.known_args, dest, None)
             yield (self._parse_or_no_value(found), None)
-        yield (self._get_value_from_config(task_name, param_name), None)
+        yield (self._get_value_from_config(step_name, param_name), None)
         if self._config_path:
             yield (self._get_value_from_config(self._config_path['section'], self._config_path['name']),
                    'The use of the configuration [{}] {} is deprecated. Please use [{}] {}'.format(
-                       self._config_path['section'], self._config_path['name'], task_name, param_name))
+                       self._config_path['section'], self._config_path['name'], step_name, param_name))
         yield (self._default, None)
 
-    def has_task_value(self, task_name, param_name):
-        return self._get_value(task_name, param_name) != _no_value
+    def has_step_value(self, step_name, param_name):
+        return self._get_value(step_name, param_name) != _no_value
 
-    def task_value(self, task_name, param_name):
-        value = self._get_value(task_name, param_name)
+    def step_value(self, step_name, param_name):
+        value = self._get_value(step_name, param_name)
         if value == _no_value:
             raise MissingParameterException("No default specified")
         else:
@@ -300,7 +300,7 @@ class Parameter:
         Given a parsed parameter value, normalizes it.
 
         The value can either be the result of parse(), the default value or
-        arguments passed into the task's constructor by instantiation.
+        arguments passed into the step's constructor by instantiation.
 
         This is very implementation defined, but can be used to validate/clamp
         valid values. For example, if you wanted to only accept even integers,
@@ -314,8 +314,8 @@ class Parameter:
         If your Parameter type has an enumerable ordering of values. You can
         choose to override this method. This method is used by the
         :py:mod:`luigi.execution_summary` module for pretty printing
-        purposes. Enabling it to pretty print tasks like ``MyTask(num=1),
-        MyTask(num=2), MyTask(num=3)`` to ``MyTask(num=1..3)``.
+        purposes. Enabling it to pretty print steps like ``MyStep(num=1),
+        MyStep(num=2), MyStep(num=3)`` to ``MyStep(num=1..3)``.
 
         :param value: The value
         :return: The next value, like "value + 1". Or ``None`` if there's no enumerable ordering.
@@ -329,14 +329,14 @@ class Parameter:
             return self.parse(x)
 
     @staticmethod
-    def _parser_global_dest(param_name, task_name):
-        return task_name + '_' + param_name
+    def _parser_global_dest(param_name, step_name):
+        return step_name + '_' + param_name
 
     @classmethod
-    def _parser_kwargs(cls, param_name, task_name=None):
+    def _parser_kwargs(cls, param_name, step_name=None):
         return {
             "action": "store",
-            "dest": cls._parser_global_dest(param_name, task_name) if task_name else param_name,
+            "dest": cls._parser_global_dest(param_name, step_name) if step_name else param_name,
         }
 
 
@@ -450,7 +450,7 @@ class DateParameter(_DateParameterBase):
 
     .. code:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             date = luigi.DateParameter()
 
             def run(self):
@@ -465,7 +465,7 @@ class DateParameter(_DateParameterBase):
 
         import datetime
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             date = luigi.DateParameter(default=datetime.date.today())
     """
 
@@ -491,7 +491,7 @@ class MonthParameter(DateParameter):
     (day of :py:class:`~datetime.date` is "rounded" to first of the month).
 
     A MonthParameter is a Date string formatted ``YYYY-MM``. For example, ``2013-07`` specifies
-    July of 2013. Task objects constructed from code accept :py:class:`~datetime.date` (ignoring the day value) or
+    July of 2013. Step objects constructed from code accept :py:class:`~datetime.date` (ignoring the day value) or
     :py:class:`~luigi.date_interval.Month`.
     """
 
@@ -530,7 +530,7 @@ class YearParameter(DateParameter):
     Parameter whose value is a :py:class:`~datetime.date`, specified to the year
     (day and month of :py:class:`~datetime.date` is "rounded" to first day of the year).
 
-    A YearParameter is a Date string formatted ``YYYY``. Task objects constructed from code accept
+    A YearParameter is a Date string formatted ``YYYY``. Step objects constructed from code accept
     :py:class:`~datetime.date` (ignoring the month and day values) or :py:class:`~luigi.date_interval.Year`.
     """
 
@@ -719,14 +719,14 @@ class BoolParameter(Parameter):
     the explicit bool value (``"--the-bool-parameter true|false"``), e.g. when you configure the
     default value to be ``True``. This is called *explicit* parsing. When omitting the parameter
     value, it is still considered ``True`` but to avoid ambiguities during argument parsing, make
-    sure to always place bool parameters behind the task family on the command line when using
+    sure to always place bool parameters behind the step family on the command line when using
     explicit parsing.
 
     You can toggle between the two parsing modes on a per-parameter base via
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             implicit_bool = luigi.BoolParameter(parsing=luigi.BoolParameter.IMPLICIT_PARSING)
             explicit_bool = luigi.BoolParameter(parsing=luigi.BoolParameter.EXPLICIT_PARSING)
 
@@ -900,43 +900,43 @@ class TimeDeltaParameter(Parameter):
             warnings.warn('Parameter "{}" with value "{}" is not of type timedelta.'.format(param_name, param_value))
 
 
-class TaskParameter(Parameter):
+class StepParameter(Parameter):
     """
-    A parameter that takes another luigi task class.
+    A parameter that takes another luigi step class.
 
     When used programatically, the parameter should be specified
-    directly with the :py:class:`luigi.task.Task` (sub) class. Like
-    ``MyMetaTask(my_task_param=my_tasks.MyTask)``. On the command line,
-    you specify the :py:meth:`luigi.task.Task.get_task_family`. Like
+    directly with the :py:class:`luigi.step.Step` (sub) class. Like
+    ``MyMetaStep(my_step_param=my_steps.MyStep)``. On the command line,
+    you specify the :py:meth:`luigi.step.Step.get_step_family`. Like
 
     .. code-block:: console
 
-            $ luigi --module my_tasks MyMetaTask --my_task_param my_namespace.MyTask
+            $ luigi --module my_steps MyMetaStep --my_step_param my_namespace.MyStep
 
-    Where ``my_namespace.MyTask`` is defined in the ``my_tasks`` python module.
+    Where ``my_namespace.MyStep`` is defined in the ``my_steps`` python module.
 
-    When the :py:class:`luigi.task.Task` class is instantiated to an object.
-    The value will always be a task class (and not a string).
+    When the :py:class:`luigi.step.Step` class is instantiated to an object.
+    The value will always be a step class (and not a string).
     """
 
     def parse(self, input):
         """
-        Parse a task_famly using the :class:`~luigi.task_register.Register`
+        Parse a step_famly using the :class:`~luigi.step_register.Register`
         """
-        return task_register.Register.get_task_cls(input)
+        return step_register.Register.get_step_cls(input)
 
     def serialize(self, cls):
         """
-        Converts the :py:class:`luigi.task.Task` (sub) class to its family name.
+        Converts the :py:class:`luigi.step.Step` (sub) class to its family name.
         """
-        return cls.get_task_family()
+        return cls.get_step_family()
 
 
 class EnumParameter(Parameter):
     """
     A parameter whose value is an :class:`~enum.Enum`.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
@@ -944,14 +944,14 @@ class EnumParameter(Parameter):
           Honda = 1
           Volvo = 2
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           my_param = luigi.EnumParameter(enum=Model)
 
     At the command line, use,
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --my-param Honda
+        $ luigi --module my_steps MyStep --my-param Honda
 
     """
 
@@ -977,7 +977,7 @@ class EnumListParameter(Parameter):
 
     Values are taken to be a list, i.e. order is preserved, duplicates may occur, and empty list is possible.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
@@ -985,14 +985,14 @@ class EnumListParameter(Parameter):
           Honda = 1
           Volvo = 2
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           my_param = luigi.EnumListParameter(enum=Model)
 
     At the command line, use,
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --my-param Honda,Volvo
+        $ luigi --module my_steps MyStep --my-param Honda,Volvo
 
     """
 
@@ -1034,11 +1034,11 @@ class DictParameter(Parameter):
     """
     Parameter whose value is a ``dict``.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           tags = luigi.DictParameter()
 
             def run(self):
@@ -1050,13 +1050,13 @@ class DictParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --tags <JSON string>
+        $ luigi --module my_steps MyStep --tags <JSON string>
 
     Simple example with two tags:
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --tags '{"role": "web", "env": "staging"}'
+        $ luigi --module my_steps MyStep --tags '{"role": "web", "env": "staging"}'
 
     It can be used to define dynamic parameters, when you do not know the exact list of your parameters (e.g. list of
     tags, that are dynamically constructed outside Luigi), or you have a complex parameter containing logically related
@@ -1066,7 +1066,7 @@ class DictParameter(Parameter):
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           tags = luigi.DictParameter(
             schema={
               "type": "object",
@@ -1084,13 +1084,13 @@ class DictParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --tags '{"role": "web", "env": "staging"}'
+        $ luigi --module my_steps MyStep --tags '{"role": "web", "env": "staging"}'
 
     while this command will fail because the parameter is not valid:
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --tags '{"role": "UNKNOWN_VALUE", "env": "staging"}'
+        $ luigi --module my_steps MyStep --tags '{"role": "UNKNOWN_VALUE", "env": "staging"}'
 
     Finally, the provided schema can be a custom validator:
 
@@ -1105,7 +1105,7 @@ class DictParameter(Parameter):
           }
         )
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           tags = luigi.DictParameter(schema=custom_validator)
 
           def run(self):
@@ -1152,8 +1152,8 @@ class DictParameter(Parameter):
 
         We need to use an immutable dictionary, to create a hashable parameter and also preserve the internal structure
         of parsing. The traversal order of standard ``dict`` is undefined, which can result various string
-        representations of this parameter, and therefore a different task id for the task containing this parameter.
-        This is because task id contains the hash of parameters' JSON representation.
+        representations of this parameter, and therefore a different step id for the step containing this parameter.
+        This is because step id contains the hash of parameters' JSON representation.
 
         :param s: String to be parse
         """
@@ -1176,11 +1176,11 @@ class ListParameter(Parameter):
     """
     Parameter whose value is a ``list``.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           grades = luigi.ListParameter()
 
             def run(self):
@@ -1194,19 +1194,19 @@ class ListParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --grades <JSON string>
+        $ luigi --module my_steps MyStep --grades <JSON string>
 
     Simple example with two grades:
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --grades '[100,70]'
+        $ luigi --module my_steps MyStep --grades '[100,70]'
 
     It is possible to provide a JSON schema that should be validated by the given value:
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           grades = luigi.ListParameter(
             schema={
               "type": "array",
@@ -1229,14 +1229,14 @@ class ListParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --numbers '[1, 8.7, 6]'
+        $ luigi --module my_steps MyStep --numbers '[1, 8.7, 6]'
 
     while these commands will fail because the parameter is not valid:
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --numbers '[]'  # must have at least 1 element
-        $ luigi --module my_tasks MyTask --numbers '[-999, 999]'  # elements must be in [0, 10]
+        $ luigi --module my_steps MyStep --numbers '[]'  # must have at least 1 element
+        $ luigi --module my_steps MyStep --numbers '[-999, 999]'  # elements must be in [0, 10]
 
     Finally, the provided schema can be a custom validator:
 
@@ -1254,7 +1254,7 @@ class ListParameter(Parameter):
           }
         )
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           grades = luigi.ListParameter(schema=custom_validator)
 
           def run(self):
@@ -1333,11 +1333,11 @@ class TupleParameter(ListParameter):
     """
     Parameter whose value is a ``tuple`` or ``tuple`` of tuples.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
           book_locations = luigi.TupleParameter()
 
             def run(self):
@@ -1349,13 +1349,13 @@ class TupleParameter(ListParameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --book_locations <JSON string>
+        $ luigi --module my_steps MyStep --book_locations <JSON string>
 
     Simple example with two grades:
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --book_locations '((12,3),(4,15),(52,1))'
+        $ luigi --module my_steps MyStep --book_locations '((12,3),(4,15),(52,1))'
     """
 
     def parse(self, x):
@@ -1400,11 +1400,11 @@ class NumericalParameter(Parameter):
     Parameter whose value is a number of the specified type, e.g. ``int`` or
     ``float`` and in the range specified.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             my_param_1 = luigi.NumericalParameter(
                 var_type=int, min_value=-3, max_value=7) # -3 <= my_param_1 < 7
             my_param_2 = luigi.NumericalParameter(
@@ -1414,7 +1414,7 @@ class NumericalParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --my-param-1 -3 --my-param-2 -2
+        $ luigi --module my_steps MyStep --my-param-1 -3 --my-param-2 -2
     """
 
     def __init__(self, left_op=operator.le, right_op=operator.lt, *args, **kwargs):
@@ -1485,18 +1485,18 @@ class ChoiceParameter(Parameter):
         1. an instance of :class:`~collections.Iterable` and
         2. the class of the variables to convert to.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             my_param = luigi.ChoiceParameter(choices=[0.1, 0.2, 0.3], var_type=float)
 
     At the command line, use
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --my-param 0.1
+        $ luigi --module my_steps MyStep --my-param 0.1
 
     Consider using :class:`~luigi.EnumParameter` for a typed, structured
     alternative.  This class can perform the same role when all choices are the
@@ -1549,11 +1549,11 @@ class PathParameter(Parameter):
     """
     Parameter whose value is a path.
 
-    In the task definition, use
+    In the step definition, use
 
     .. code-block:: python
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             existing_file_path = luigi.PathParameter(exists=True)
             new_file_path = luigi.PathParameter()
 
@@ -1572,7 +1572,7 @@ class PathParameter(Parameter):
 
     .. code-block:: console
 
-        $ luigi --module my_tasks MyTask --existing-file-path <path> --new-file-path <path>
+        $ luigi --module my_steps MyStep --existing-file-path <path> --new-file-path <path>
     """
 
     def __init__(self, *args, absolute=False, exists=False, **kwargs):

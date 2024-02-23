@@ -42,12 +42,12 @@ class TestException(Exception):
     pass
 
 
-class TestTask(luigi.Task):
+class TestStep(luigi.Step):
     foo = luigi.Parameter()
     bar = luigi.Parameter()
 
 
-class FailSchedulingTask(TestTask):
+class FailSchedulingStep(TestStep):
     def requires(self):
         raise TestException('Oops!')
 
@@ -58,7 +58,7 @@ class FailSchedulingTask(TestTask):
         return False
 
 
-class FailRunTask(TestTask):
+class FailRunStep(TestStep):
     def run(self):
         raise TestException('Oops!')
 
@@ -72,65 +72,65 @@ class ExceptionFormatTest(unittest.TestCase):
         self.sch = Scheduler()
 
     def test_fail_run(self):
-        task = FailRunTask(foo='foo', bar='bar')
-        self._run_task(task)
+        step = FailRunStep(foo='foo', bar='bar')
+        self._run_step(step)
 
     def test_fail_run_html(self):
-        task = FailRunTask(foo='foo', bar='bar')
-        self._run_task_html(task)
+        step = FailRunStep(foo='foo', bar='bar')
+        self._run_step_html(step)
 
     def test_fail_schedule(self):
-        task = FailSchedulingTask(foo='foo', bar='bar')
-        self._run_task(task)
+        step = FailSchedulingStep(foo='foo', bar='bar')
+        self._run_step(step)
 
     def test_fail_schedule_html(self):
-        task = FailSchedulingTask(foo='foo', bar='bar')
-        self._run_task_html(task)
+        step = FailSchedulingStep(foo='foo', bar='bar')
+        self._run_step_html(step)
 
     @with_config({'email': {'receiver': 'nowhere@example.com',
                             'prefix': '[TEST] '}})
     @mock.patch('luigi.notifications.send_error_email')
-    def _run_task(self, task, mock_send):
+    def _run_step(self, step, mock_send):
         with Worker(scheduler=self.sch) as w:
-            w.add(task)
+            w.add(step)
             w.run()
 
         self.assertEqual(mock_send.call_count, 1)
         args, kwargs = mock_send.call_args
-        self._check_subject(args[0], task)
-        self._check_body(args[1], task, html=False)
+        self._check_subject(args[0], step)
+        self._check_body(args[1], step, html=False)
 
     @with_config({'email': {'receiver': 'nowhere@axample.com',
                             'prefix': '[TEST] ',
                             'format': 'html'}})
     @mock.patch('luigi.notifications.send_error_email')
-    def _run_task_html(self, task, mock_send):
+    def _run_step_html(self, step, mock_send):
         with Worker(scheduler=self.sch) as w:
-            w.add(task)
+            w.add(step)
             w.run()
 
         self.assertEqual(mock_send.call_count, 1)
         args, kwargs = mock_send.call_args
-        self._check_subject(args[0], task)
-        self._check_body(args[1], task, html=True)
+        self._check_subject(args[0], step)
+        self._check_body(args[1], step, html=True)
 
-    def _check_subject(self, subject, task):
-        self.assertIn(str(task), subject)
+    def _check_subject(self, subject, step):
+        self.assertIn(str(step), subject)
 
-    def _check_body(self, body, task, html=False):
+    def _check_body(self, body, step, html=False):
         if html:
-            self.assertIn('<th>name</th><td>{}</td>'.format(task.task_family), body)
+            self.assertIn('<th>name</th><td>{}</td>'.format(step.step_family), body)
             self.assertIn('<div class="highlight"', body)
             self.assertIn('Oops!', body)
 
-            for param, value in task.param_kwargs.items():
+            for param, value in step.param_kwargs.items():
                 self.assertIn('<th>{}</th><td>{}</td>'.format(param, value), body)
         else:
-            self.assertIn('Name: {}\n'.format(task.task_family), body)
+            self.assertIn('Name: {}\n'.format(step.step_family), body)
             self.assertIn('Parameters:\n', body)
             self.assertIn('TestException: Oops!', body)
 
-            for param, value in task.param_kwargs.items():
+            for param, value in step.param_kwargs.items():
                 self.assertIn('{}: {}\n'.format(param, value), body)
 
     @with_config({"email": {"receiver": "a@a.a"}})

@@ -25,27 +25,27 @@ import luigi.contrib.postgres
 import luigi.contrib.spark
 
 
-class ExternalStreams(luigi.ExternalTask):
+class ExternalStreams(luigi.ExternalStep):
     """
     Example of a possible external data dump
 
     To depend on external targets (typically at the top of your dependency graph), you can define
-    an ExternalTask like this.
+    an ExternalStep like this.
     """
     date = luigi.DateParameter()
 
     def output(self):
         """
-        Returns the target output for this task.
+        Returns the target output for this step.
         In this case, it expects a file to be present in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y-%m-%d.tsv'))
 
 
-class Streams(luigi.Task):
+class Streams(luigi.Step):
     """
     Faked version right now, just generates bogus data.
     """
@@ -64,10 +64,10 @@ class Streams(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in the local file system.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in the local file system.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
@@ -75,7 +75,7 @@ class Streams(luigi.Task):
 
 class StreamsHdfs(Streams):
     """
-    This task performs the same work as :py:class:`~.Streams` but its output is written to HDFS.
+    This step performs the same work as :py:class:`~.Streams` but its output is written to HDFS.
 
     This class uses :py:meth:`~.Streams.run` and
     overrides :py:meth:`~.Streams.output` so redefine HDFS as its target.
@@ -83,18 +83,18 @@ class StreamsHdfs(Streams):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('data/streams_%Y_%m_%d_faked.tsv'))
 
 
-class AggregateArtists(luigi.Task):
+class AggregateArtists(luigi.Step):
     """
-    This task runs over the target data returned by :py:meth:`~/.Streams.output` and
+    This step runs over the target data returned by :py:meth:`~/.Streams.output` and
     writes the result into its :py:meth:`~.AggregateArtists.output` target (local file).
     """
 
@@ -102,21 +102,21 @@ class AggregateArtists(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget("data/artist_streams_{}.tsv".format(self.date_interval))
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.Streams`
 
-        :return: list of object (:py:class:`luigi.task.Task`)
+        :return: list of object (:py:class:`luigi.step.Step`)
         """
         return [Streams(date) for date in self.date_interval]
 
@@ -134,9 +134,9 @@ class AggregateArtists(luigi.Task):
                 out_file.write('{}\t{}\n'.format(artist, count))
 
 
-class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitTask):
+class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
     """
-    This task runs a :py:class:`luigi.contrib.spark.SparkSubmitTask` task
+    This step runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
     over each target data returned by :py:meth:`~/.StreamsHdfs.output` and
     writes the result into its :py:meth:`~.AggregateArtistsSpark.output` target (a file in HDFS).
     """
@@ -158,34 +158,34 @@ class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitTask):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget("data/artist_streams_%s.tsv" % self.date_interval)
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.StreamsHdfs`
 
-        :return: list of object (:py:class:`luigi.task.Task`)
+        :return: list of object (:py:class:`luigi.step.Step`)
         """
         return [StreamsHdfs(date) for date in self.date_interval]
 
     def app_options(self):
-        # :func:`~luigi.task.Task.input` returns the targets produced by the tasks in
-        # `~luigi.task.Task.requires`.
+        # :func:`~luigi.step.Step.input` returns the targets produced by the steps in
+        # `~luigi.step.Step.requires`.
         return [','.join([p.path for p in self.input()]),
                 self.output().path]
 
 
-class Top10Artists(luigi.Task):
+class Top10Artists(luigi.Step):
     """
-    This task runs over the target data returned by :py:meth:`~/.AggregateArtists.output` or
+    This step runs over the target data returned by :py:meth:`~/.AggregateArtists.output` or
     :py:meth:`~/.AggregateArtistsSpark.output` in case :py:attr:`~/.Top10Artists.use_spark` is set and
     writes the result into its :py:meth:`~.Top10Artists.output` target (a file in local filesystem).
     """
@@ -195,12 +195,12 @@ class Top10Artists(luigi.Task):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.AggregateArtists` or
         * :py:class:`~.AggregateArtistsSpark` if :py:attr:`~/.Top10Artists.use_spark` is set.
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
         if self.use_spark:
             return AggregateArtistsSpark(self.date_interval)
@@ -209,10 +209,10 @@ class Top10Artists(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget("data/top_artists_%s.tsv" % self.date_interval)
@@ -238,7 +238,7 @@ class Top10Artists(luigi.Task):
 
 class ArtistToplistToDatabase(luigi.contrib.postgres.CopyToTable):
     """
-    This task runs a :py:class:`luigi.contrib.postgres.CopyToTable` task
+    This step runs a :py:class:`luigi.contrib.postgres.CopyToTable` step
     over the target data returned by :py:meth:`~/.Top10Artists.output` and
     writes the result into its :py:meth:`~.ArtistToplistToDatabase.output` target which,
     by default, is :py:class:`luigi.contrib.postgres.PostgresTarget` (a table in PostgreSQL).
@@ -263,11 +263,11 @@ class ArtistToplistToDatabase(luigi.contrib.postgres.CopyToTable):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.Top10Artists`
 
-        :return: list of object (:py:class:`luigi.task.Task`)
+        :return: list of object (:py:class:`luigi.step.Step`)
         """
         return Top10Artists(self.date_interval, self.use_spark)
 

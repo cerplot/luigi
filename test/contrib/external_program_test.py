@@ -25,7 +25,7 @@ from multiprocessing import Value
 from helpers import unittest
 import luigi
 import luigi.contrib.hdfs
-from luigi.contrib.external_program import ExternalProgramTask, ExternalPythonProgramTask
+from luigi.contrib.external_program import ExternalProgramStep, ExternalPythonProgramStep
 from luigi.contrib.external_program import ExternalProgramRunError
 from mock import patch, call
 from subprocess import Popen
@@ -46,7 +46,7 @@ def setup_run_process(proc):
     proc.return_value.stderr = BytesIO()
 
 
-class TestExternalProgramTask(ExternalProgramTask):
+class TestExternalProgramStep(ExternalProgramStep):
     def program_args(self):
         return ['app_path', 'arg1', 'arg2']
 
@@ -54,11 +54,11 @@ class TestExternalProgramTask(ExternalProgramTask):
         return luigi.LocalTarget('output')
 
 
-class TestLogStderrOnFailureOnlyTask(TestExternalProgramTask):
+class TestLogStderrOnFailureOnlyStep(TestExternalProgramStep):
     always_log_stderr = False
 
 
-class TestTouchTask(ExternalProgramTask):
+class TestTouchStep(ExternalProgramStep):
     file_path = luigi.Parameter()
 
     def program_args(self):
@@ -68,7 +68,7 @@ class TestTouchTask(ExternalProgramTask):
         return luigi.LocalTarget(self.file_path)
 
 
-class TestEchoTask(ExternalProgramTask):
+class TestEchoStep(ExternalProgramStep):
     MESSAGE = "Hello, world!"
 
     def program_args(self):
@@ -76,11 +76,11 @@ class TestEchoTask(ExternalProgramTask):
 
 
 @pytest.mark.contrib
-class ExternalProgramTaskTest(unittest.TestCase):
+class ExternalProgramStepTest(unittest.TestCase):
     @patch('luigi.contrib.external_program.subprocess.Popen')
     def test_run(self, proc):
         setup_run_process(proc)
-        job = TestExternalProgramTask()
+        job = TestExternalProgramStep()
         job.run()
 
         self.assertEqual(proc.call_args[0][0],
@@ -93,7 +93,7 @@ class ExternalProgramTaskTest(unittest.TestCase):
         proc.return_value.returncode = 1
         file.return_value = BytesIO(b'stderr')
         try:
-            job = TestExternalProgramTask()
+            job = TestExternalProgramStep()
             job.run()
         except ExternalProgramRunError as e:
             self.assertEqual(e.err, 'stderr')
@@ -109,7 +109,7 @@ class ExternalProgramTaskTest(unittest.TestCase):
         proc.return_value.returncode = 1
         file.return_value = BytesIO(b'stderr')
         with self.assertRaises(ExternalProgramRunError):
-            job = TestLogStderrOnFailureOnlyTask()
+            job = TestLogStderrOnFailureOnlyStep()
             job.run()
 
         self.assertIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
@@ -120,7 +120,7 @@ class ExternalProgramTaskTest(unittest.TestCase):
     def test_log_stderr_on_success_by_default(self, proc, file, logger):
         proc.return_value.returncode = 0
         file.return_value = BytesIO(b'stderr')
-        job = TestExternalProgramTask()
+        job = TestExternalProgramStep()
         job.run()
 
         self.assertIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
@@ -134,10 +134,10 @@ class ExternalProgramTaskTest(unittest.TestCase):
             return Popen(args, stdout=out, **kwargs)
 
         with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
-            task = TestEchoTask(capture_output=False)
-            task.run()
-            stdout = task._clean_output_file(out).strip()
-            self.assertEqual(stdout, task.MESSAGE)
+            step = TestEchoStep(capture_output=False)
+            step.run()
+            stdout = step._clean_output_file(out).strip()
+            self.assertEqual(stdout, step.MESSAGE)
 
     @patch('luigi.contrib.external_program.logger')
     @patch('luigi.contrib.external_program.tempfile.TemporaryFile')
@@ -145,7 +145,7 @@ class ExternalProgramTaskTest(unittest.TestCase):
     def test_dont_log_stderr_on_success_if_disabled(self, proc, file, logger):
         proc.return_value.returncode = 0
         file.return_value = BytesIO(b'stderr')
-        job = TestLogStderrOnFailureOnlyTask()
+        job = TestLogStderrOnFailureOnlyStep()
         job.run()
 
         self.assertNotIn(call.info('Program stderr:\nstderr'), logger.mock_calls)
@@ -153,7 +153,7 @@ class ExternalProgramTaskTest(unittest.TestCase):
     @patch('luigi.contrib.external_program.subprocess.Popen')
     def test_program_args_must_be_implemented(self, proc):
         with self.assertRaises(NotImplementedError):
-            job = ExternalProgramTask()
+            job = ExternalProgramStep()
             job.run()
 
     @patch('luigi.contrib.external_program.subprocess.Popen')
@@ -164,20 +164,20 @@ class ExternalProgramTaskTest(unittest.TestCase):
 
         proc.return_value.wait = interrupt
         try:
-            job = TestExternalProgramTask()
+            job = TestExternalProgramStep()
             job.run()
         except KeyboardInterrupt:
             pass
         proc.return_value.kill.check_called()
 
-    def test_non_mocked_task_run(self):
+    def test_non_mocked_step_run(self):
         # create a tempdir first, to ensure an empty playground for
-        # TestTouchTask to create its file in
+        # TestTouchStep to create its file in
         tempdir = tempfile.mkdtemp()
         tempfile_path = os.path.join(tempdir, 'testfile')
 
         try:
-            job = TestTouchTask(file_path=tempfile_path)
+            job = TestTouchStep(file_path=tempfile_path)
             job.run()
 
             self.assertTrue(luigi.LocalTarget(tempfile_path).exists())
@@ -192,12 +192,12 @@ class ExternalProgramTaskTest(unittest.TestCase):
             if url == "TEXT":
                 val.value += 1
 
-        task = TestEchoTask(capture_output=False, stream_for_searching_tracking_url='stdout',
+        step = TestEchoStep(capture_output=False, stream_for_searching_tracking_url='stdout',
                             tracking_url_pattern=r"SOME (.*)")
-        task.MESSAGE = "SOME TEXT"
+        step.MESSAGE = "SOME TEXT"
 
-        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
-            task.run()
+        with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            step.run()
             self.assertEqual(test_val.value, 1)
 
     def test_tracking_url_pattern_works_with_capture_output_enabled(self):
@@ -207,12 +207,12 @@ class ExternalProgramTaskTest(unittest.TestCase):
             if url == "THING":
                 val.value += 1
 
-        task = TestEchoTask(capture_output=True, stream_for_searching_tracking_url='stdout',
+        step = TestEchoStep(capture_output=True, stream_for_searching_tracking_url='stdout',
                             tracking_url_pattern=r"ANY(.*)")
-        task.MESSAGE = "ANYTHING"
+        step.MESSAGE = "ANYTHING"
 
-        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
-            task.run()
+        with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            step.run()
             self.assertEqual(test_val.value, 1)
 
     def test_tracking_url_pattern_works_with_stderr(self):
@@ -225,12 +225,12 @@ class ExternalProgramTaskTest(unittest.TestCase):
         def Popen_wrap(args, **kwargs):
             return Popen('>&2 echo "ANYTHING_ELSE"', shell=True, **kwargs)
 
-        task = TestEchoTask(capture_output=True, stream_for_searching_tracking_url='stderr',
+        step = TestEchoStep(capture_output=True, stream_for_searching_tracking_url='stderr',
                             tracking_url_pattern=r"ANY(.*)")
 
         with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
-            with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
-                task.run()
+            with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+                step.run()
                 self.assertEqual(test_val.value, 1)
 
     def test_no_url_searching_is_performed_if_pattern_is_not_set(self):
@@ -239,10 +239,10 @@ class ExternalProgramTaskTest(unittest.TestCase):
             self.assertNotEqual(kwargs['stdout'], subprocess.PIPE)
             return Popen(args, **kwargs)
 
-        task = TestEchoTask(capture_output=True, stream_for_searching_tracking_url='stdout')
+        step = TestEchoStep(capture_output=True, stream_for_searching_tracking_url='stdout')
 
         with mock.patch('luigi.contrib.external_program.subprocess.Popen', wraps=Popen_wrap):
-            task.run()
+            step.run()
 
     def test_tracking_url_context_works_without_capture_output(self):
         test_val = Value('i', 0)
@@ -251,17 +251,17 @@ class ExternalProgramTaskTest(unittest.TestCase):
             if url == "world":
                 val.value += 1
 
-        task = TestEchoTask(capture_output=False, stream_for_searching_tracking_url='stdout',
+        step = TestEchoStep(capture_output=False, stream_for_searching_tracking_url='stdout',
                             tracking_url_pattern=r"Hello, (.*)!")
-        test_args = list(map(str, task.program_args()))
-        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
-            with task._proc_with_tracking_url_context(proc_args=test_args, proc_kwargs={}) as proc:
+        test_args = list(map(str, step.program_args()))
+        with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            with step._proc_with_tracking_url_context(proc_args=test_args, proc_kwargs={}) as proc:
                 proc.wait()
         self.assertEqual(test_val.value, 1)
 
     def test_tracking_url_context_works_correctly_when_logs_output_pattern_to_url_is_not_default(self):
 
-        class _Task(TestEchoTask):
+        class _Step(TestEchoStep):
             def build_tracking_url(self, logs_output):
                 return 'The {} is mine'.format(logs_output)
 
@@ -271,21 +271,21 @@ class ExternalProgramTaskTest(unittest.TestCase):
             if url == "The world is mine":
                 val.value += 1
 
-        task = _Task(
+        step = _Step(
             capture_output=False,
             stream_for_searching_tracking_url='stdout',
             tracking_url_pattern=r"Hello, (.*)!"
         )
 
-        test_args = list(map(str, task.program_args()))
+        test_args = list(map(str, step.program_args()))
 
-        with mock.patch.object(task, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
-            with task._proc_with_tracking_url_context(proc_args=test_args, proc_kwargs={}) as proc:
+        with mock.patch.object(step, 'set_tracking_url', new=partial(fake_set_tracking_url, test_val)):
+            with step._proc_with_tracking_url_context(proc_args=test_args, proc_kwargs={}) as proc:
                 proc.wait()
         self.assertEqual(test_val.value, 1)
 
 
-class TestExternalPythonProgramTask(ExternalPythonProgramTask):
+class TestExternalPythonProgramStep(ExternalPythonProgramStep):
     virtualenv = '/path/to/venv'
     extra_pythonpath = '/extra/pythonpath'
 
@@ -297,13 +297,13 @@ class TestExternalPythonProgramTask(ExternalPythonProgramTask):
 
 
 @pytest.mark.contrib
-class ExternalPythonProgramTaskTest(unittest.TestCase):
+class ExternalPythonProgramStepTest(unittest.TestCase):
     @patch.dict('os.environ', {'OTHERVAR': 'otherval'}, clear=True)
     @patch('luigi.contrib.external_program.subprocess.Popen')
     def test_original_environment_is_kept_intact(self, proc):
         setup_run_process(proc)
 
-        job = TestExternalPythonProgramTask()
+        job = TestExternalPythonProgramStep()
         job.run()
 
         proc_env = proc.call_args[1]['env']
@@ -315,7 +315,7 @@ class ExternalPythonProgramTaskTest(unittest.TestCase):
     def test_venv_is_set_and_prepended_to_path(self, proc):
         setup_run_process(proc)
 
-        job = TestExternalPythonProgramTask()
+        job = TestExternalPythonProgramStep()
         job.run()
 
         proc_env = proc.call_args[1]['env']
@@ -330,7 +330,7 @@ class ExternalPythonProgramTaskTest(unittest.TestCase):
     def test_pythonpath_is_set_if_empty(self, proc):
         setup_run_process(proc)
 
-        job = TestExternalPythonProgramTask()
+        job = TestExternalPythonProgramStep()
         job.run()
 
         proc_env = proc.call_args[1]['env']
@@ -342,7 +342,7 @@ class ExternalPythonProgramTaskTest(unittest.TestCase):
     def test_pythonpath_is_prepended_if_not_empty(self, proc):
         setup_run_process(proc)
 
-        job = TestExternalPythonProgramTask()
+        job = TestExternalPythonProgramStep()
         job.run()
 
         proc_env = proc.call_args[1]['env']

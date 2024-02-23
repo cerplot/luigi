@@ -22,27 +22,27 @@ import luigi
 import luigi.interface
 
 
-class DateTask(luigi.Task):
+class DateStep(luigi.Step):
     day = luigi.DateParameter()
 
 
-class DateHourTask(luigi.Task):
+class DateHourStep(luigi.Step):
     dh = luigi.DateHourParameter()
 
 
-class DateMinuteTask(luigi.Task):
+class DateMinuteStep(luigi.Step):
     dm = luigi.DateMinuteParameter()
 
 
-class DateSecondTask(luigi.Task):
+class DateSecondStep(luigi.Step):
     ds = luigi.DateSecondParameter()
 
 
-class MonthTask(luigi.Task):
+class MonthStep(luigi.Step):
     month = luigi.MonthParameter()
 
 
-class YearTask(luigi.Task):
+class YearStep(luigi.Step):
     year = luigi.YearParameter()
 
 
@@ -56,12 +56,12 @@ class DateParameterTest(unittest.TestCase):
         self.assertEqual(d, '2015-04-03')
 
     def test_parse_interface(self):
-        in_parse(["DateTask", "--day", "2015-04-03"],
-                 lambda task: self.assertEqual(task.day, datetime.date(2015, 4, 3)))
+        in_parse(["DateStep", "--day", "2015-04-03"],
+                 lambda step: self.assertEqual(step.day, datetime.date(2015, 4, 3)))
 
-    def test_serialize_task(self):
-        t = DateTask(datetime.date(2015, 4, 3))
-        self.assertEqual(str(t), 'DateTask(day=2015-04-03)')
+    def test_serialize_step(self):
+        t = DateStep(datetime.date(2015, 4, 3))
+        self.assertEqual(str(t), 'DateStep(day=2015-04-03)')
 
 
 class DateHourParameterTest(unittest.TestCase):
@@ -78,12 +78,12 @@ class DateHourParameterTest(unittest.TestCase):
         self.assertEqual(dh, '2013-02-01T18')
 
     def test_parse_interface(self):
-        in_parse(["DateHourTask", "--dh", "2013-02-01T18"],
-                 lambda task: self.assertEqual(task.dh, datetime.datetime(2013, 2, 1, 18, 0, 0)))
+        in_parse(["DateHourStep", "--dh", "2013-02-01T18"],
+                 lambda step: self.assertEqual(step.dh, datetime.datetime(2013, 2, 1, 18, 0, 0)))
 
-    def test_serialize_task(self):
-        t = DateHourTask(datetime.datetime(2013, 2, 1, 18, 0, 0))
-        self.assertEqual(str(t), 'DateHourTask(dh=2013-02-01T18)')
+    def test_serialize_step(self):
+        t = DateHourStep(datetime.datetime(2013, 2, 1, 18, 0, 0))
+        self.assertEqual(str(t), 'DateHourStep(dh=2013-02-01T18)')
 
 
 class DateMinuteParameterTest(unittest.TestCase):
@@ -110,12 +110,12 @@ class DateMinuteParameterTest(unittest.TestCase):
         self.assertEqual(dm, '2013-02-01T1807')
 
     def test_parse_interface(self):
-        in_parse(["DateMinuteTask", "--dm", "2013-02-01T1842"],
-                 lambda task: self.assertEqual(task.dm, datetime.datetime(2013, 2, 1, 18, 42, 0)))
+        in_parse(["DateMinuteStep", "--dm", "2013-02-01T1842"],
+                 lambda step: self.assertEqual(step.dm, datetime.datetime(2013, 2, 1, 18, 42, 0)))
 
-    def test_serialize_task(self):
-        t = DateMinuteTask(datetime.datetime(2013, 2, 1, 18, 42, 0))
-        self.assertEqual(str(t), 'DateMinuteTask(dm=2013-02-01T1842)')
+    def test_serialize_step(self):
+        t = DateMinuteStep(datetime.datetime(2013, 2, 1, 18, 42, 0))
+        self.assertEqual(str(t), 'DateMinuteStep(dm=2013-02-01T1842)')
 
 
 class DateSecondParameterTest(unittest.TestCase):
@@ -128,12 +128,12 @@ class DateSecondParameterTest(unittest.TestCase):
         self.assertEqual(ds, '2013-02-01T184227')
 
     def test_parse_interface(self):
-        in_parse(["DateSecondTask", "--ds", "2013-02-01T184227"],
-                 lambda task: self.assertEqual(task.ds, datetime.datetime(2013, 2, 1, 18, 42, 27)))
+        in_parse(["DateSecondStep", "--ds", "2013-02-01T184227"],
+                 lambda step: self.assertEqual(step.ds, datetime.datetime(2013, 2, 1, 18, 42, 27)))
 
-    def test_serialize_task(self):
-        t = DateSecondTask(datetime.datetime(2013, 2, 1, 18, 42, 27))
-        self.assertEqual(str(t), 'DateSecondTask(ds=2013-02-01T184227)')
+    def test_serialize_step(self):
+        t = DateSecondStep(datetime.datetime(2013, 2, 1, 18, 42, 27))
+        self.assertEqual(str(t), 'DateSecondStep(ds=2013-02-01T184227)')
 
 
 class MonthParameterTest(unittest.TestCase):
@@ -142,14 +142,14 @@ class MonthParameterTest(unittest.TestCase):
         self.assertEqual(m, datetime.date(2015, 4, 1))
 
     def test_construct_month_interval(self):
-        m = MonthTask(luigi.date_interval.Month(2015, 4))
+        m = MonthStep(luigi.date_interval.Month(2015, 4))
         self.assertEqual(m.month, datetime.date(2015, 4, 1))
 
     def test_month_interval_default(self):
-        class MonthDefaultTask(luigi.task.Task):
+        class MonthDefaultStep(luigi.step.Step):
             month = luigi.MonthParameter(default=luigi.date_interval.Month(2015, 4))
 
-        m = MonthDefaultTask()
+        m = MonthDefaultStep()
         self.assertEqual(m.month, datetime.date(2015, 4, 1))
 
     def test_serialize(self):
@@ -157,12 +157,12 @@ class MonthParameterTest(unittest.TestCase):
         self.assertEqual(m, '2015-04')
 
     def test_parse_interface(self):
-        in_parse(["MonthTask", "--month", "2015-04"],
-                 lambda task: self.assertEqual(task.month, datetime.date(2015, 4, 1)))
+        in_parse(["MonthStep", "--month", "2015-04"],
+                 lambda step: self.assertEqual(step.month, datetime.date(2015, 4, 1)))
 
-    def test_serialize_task(self):
-        task = MonthTask(datetime.date(2015, 4, 3))
-        self.assertEqual(str(task), 'MonthTask(month=2015-04)')
+    def test_serialize_step(self):
+        step = MonthStep(datetime.date(2015, 4, 3))
+        self.assertEqual(str(step), 'MonthStep(month=2015-04)')
 
 
 class YearParameterTest(unittest.TestCase):
@@ -171,14 +171,14 @@ class YearParameterTest(unittest.TestCase):
         self.assertEqual(year, datetime.date(2015, 1, 1))
 
     def test_construct_year_interval(self):
-        y = YearTask(luigi.date_interval.Year(2015))
+        y = YearStep(luigi.date_interval.Year(2015))
         self.assertEqual(y.year, datetime.date(2015, 1, 1))
 
     def test_year_interval_default(self):
-        class YearDefaultTask(luigi.task.Task):
+        class YearDefaultStep(luigi.step.Step):
             year = luigi.YearParameter(default=luigi.date_interval.Year(2015))
 
-        m = YearDefaultTask()
+        m = YearDefaultStep()
         self.assertEqual(m.year, datetime.date(2015, 1, 1))
 
     def test_serialize(self):
@@ -186,9 +186,9 @@ class YearParameterTest(unittest.TestCase):
         self.assertEqual(year, '2015')
 
     def test_parse_interface(self):
-        in_parse(["YearTask", "--year", "2015"],
-                 lambda task: self.assertEqual(task.year, datetime.date(2015, 1, 1)))
+        in_parse(["YearStep", "--year", "2015"],
+                 lambda step: self.assertEqual(step.year, datetime.date(2015, 1, 1)))
 
-    def test_serialize_task(self):
-        task = YearTask(datetime.date(2015, 4, 3))
-        self.assertEqual(str(task), 'YearTask(year=2015)')
+    def test_serialize_step(self):
+        step = YearStep(datetime.date(2015, 4, 3))
+        self.assertEqual(str(step), 'YearStep(year=2015)')

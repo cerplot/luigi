@@ -24,7 +24,7 @@ import logging
 from mock import patch
 
 import luigi
-from luigi.contrib.sge import SGEJobTask, _parse_qstat_state
+from luigi.contrib.sge import SGEJobStep, _parse_qstat_state
 
 import pytest
 
@@ -33,7 +33,7 @@ DEFAULT_HOME = '/home'
 logger = logging.getLogger('luigi-interface')
 
 
-QSTAT_OUTPUT = """job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID
+QSTAT_OUTPUT = """job-ID  prior   name       user         state submit/start at     queue                          slots ja-step-ID
 -----------------------------------------------------------------------------------------------------------------
      1 0.55500 job1 root         r     07/09/2015 16:56:45 all.q@node001                      1
      2 0.55500 job2 root         qw    07/09/2015 16:56:42                                    1
@@ -61,7 +61,7 @@ class TestSGEWrappers(unittest.TestCase):
         self.assertEqual(_parse_qstat_state('', 4), 'u')
 
 
-class TestJobTask(SGEJobTask):
+class TestJobStep(SGEJobStep):
 
     """Simple SGE job: write a test file to NSF shared drive and waits a minute"""
 
@@ -84,8 +84,8 @@ class TestSGEJob(unittest.TestCase):
     def test_run_job(self):
         if on_sge_master():
             outfile = os.path.join(DEFAULT_HOME, 'testfile_1')
-            tasks = [TestJobTask(i=str(i), n_cpu=1) for i in range(3)]
-            luigi.build(tasks, local_scheduler=True, workers=3)
+            steps = [TestJobStep(i=str(i), n_cpu=1) for i in range(3)]
+            luigi.build(steps, local_scheduler=True, workers=3)
             self.assertTrue(os.path.exists(outfile))
 
     @patch('subprocess.check_output')
@@ -94,8 +94,8 @@ class TestSGEJob(unittest.TestCase):
             'Your job 12345 ("test_job") has been submitted',
             ''
         ]
-        task = TestJobTask(i="1", n_cpu=1, shared_tmp_dir='/tmp')
-        luigi.build([task], local_scheduler=True)
+        step = TestJobStep(i="1", n_cpu=1, shared_tmp_dir='/tmp')
+        luigi.build([step], local_scheduler=True)
         self.assertEqual(mock_check_output.call_count, 2)
 
     def tearDown(self):

@@ -19,42 +19,42 @@ from helpers import LuigiTestCase
 
 import luigi
 import luigi.scheduler
-import luigi.task_history
+import luigi.step_history
 import luigi.worker
 
 luigi.notifications.DEBUG = True
 
 
-class SimpleTaskHistory(luigi.task_history.TaskHistory):
+class SimpleStepHistory(luigi.step_history.StepHistory):
 
     def __init__(self):
         self.actions = []
 
-    def task_scheduled(self, task):
-        self.actions.append(('scheduled', task.id))
+    def step_scheduled(self, step):
+        self.actions.append(('scheduled', step.id))
 
-    def task_finished(self, task, successful):
-        self.actions.append(('finished', task.id))
+    def step_finished(self, step, successful):
+        self.actions.append(('finished', step.id))
 
-    def task_started(self, task, worker_host):
-        self.actions.append(('started', task.id))
+    def step_started(self, step, worker_host):
+        self.actions.append(('started', step.id))
 
 
-class TaskHistoryTest(LuigiTestCase):
+class StepHistoryTest(LuigiTestCase):
 
     def test_run(self):
-        th = SimpleTaskHistory()
-        sch = luigi.scheduler.Scheduler(task_history_impl=th)
+        th = SimpleStepHistory()
+        sch = luigi.scheduler.Scheduler(step_history_impl=th)
         with luigi.worker.Worker(scheduler=sch) as w:
-            class MyTask(luigi.Task):
+            class MyStep(luigi.Step):
                 pass
 
-            task = MyTask()
-            w.add(task)
+            step = MyStep()
+            w.add(step)
             w.run()
 
             self.assertEqual(th.actions, [
-                ('scheduled', task.task_id),
-                ('started', task.task_id),
-                ('finished', task.task_id)
+                ('scheduled', step.step_id),
+                ('started', step.step_id),
+                ('finished', step.step_id)
             ])

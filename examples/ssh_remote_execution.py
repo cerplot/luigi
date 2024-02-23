@@ -24,7 +24,7 @@ from luigi.mock import MockTarget
 SSH_HOST = "some.accessible.host"
 
 
-class CreateRemoteData(luigi.Task):
+class CreateRemoteData(luigi.Step):
     """
     Dump info on running processes on remote host.
     Data is still stored on the remote host
@@ -32,10 +32,10 @@ class CreateRemoteData(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on a remote server using SSH.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on a remote server using SSH.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return RemoteTarget(
@@ -50,7 +50,7 @@ class CreateRemoteData(luigi.Task):
         ]))
 
 
-class ProcessRemoteData(luigi.Task):
+class ProcessRemoteData(luigi.Step):
     """
     Create a toplist of users based on how many running processes they have on a remote machine.
 
@@ -59,11 +59,11 @@ class ProcessRemoteData(luigi.Task):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.CreateRemoteData`
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
         return CreateRemoteData()
 
@@ -86,10 +86,10 @@ class ProcessRemoteData(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will simulate the creation of a file in a filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will simulate the creation of a file in a filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return MockTarget("output", mirror_on_stderr=True)

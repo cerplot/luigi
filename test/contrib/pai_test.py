@@ -28,8 +28,8 @@ import responses
 import time
 import luigi
 import logging
-from luigi.contrib.pai import PaiTask
-from luigi.contrib.pai import TaskRole
+from luigi.contrib.pai import PaiStep
+from luigi.contrib.pai import StepRole
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -44,15 +44,15 @@ expiration:3600
 """
 
 
-class SklearnJob(PaiTask):
+class SklearnJob(PaiStep):
     image = "openpai/pai.example.sklearn"
     name = "test_job_sk_{0}".format(time.time())
     command = 'cd scikit-learn/benchmarks && python bench_mnist.py'
     virtual_cluster = 'spark'
-    tasks = [TaskRole('test', 'cd scikit-learn/benchmarks && python bench_mnist.py', memoryMB=4096)]
+    steps = [StepRole('test', 'cd scikit-learn/benchmarks && python bench_mnist.py', memoryMB=4096)]
 
 
-class TestPaiTask(unittest.TestCase):
+class TestPaiStep(unittest.TestCase):
 
     @responses.activate
     def test_success(self):
@@ -61,20 +61,20 @@ class TestPaiTask(unittest.TestCase):
         """
         responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/token',
                       json={"token": "test", "user": "admin", "admin": True}, status=200)
-        sk_task = SklearnJob()
+        sk_step = SklearnJob()
 
         responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/jobs',
-                      json={"message": "update job {0} successfully".format(sk_task.name)}, status=202)
+                      json={"message": "update job {0} successfully".format(sk_step.name)}, status=202)
 
-        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_task.name),
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_step.name),
                       json={}, status=404)
 
-        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_task.name),
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(sk_step.name),
                       body='{"jobStatus": {"state":"SUCCEED"}}', status=200)
 
-        success = luigi.build([sk_task], local_scheduler=True)
+        success = luigi.build([sk_step], local_scheduler=True)
         self.assertTrue(success)
-        self.assertTrue(sk_task.complete())
+        self.assertTrue(sk_step.complete())
 
     @responses.activate
     def test_fail(self):
@@ -83,17 +83,17 @@ class TestPaiTask(unittest.TestCase):
         """
         responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/token',
                       json={"token": "test", "user": "admin", "admin": True}, status=200)
-        fail_task = SklearnJob()
+        fail_step = SklearnJob()
 
         responses.add(responses.POST, 'http://127.0.0.1:9186/api/v1/jobs',
-                      json={"message": "update job {0} successfully".format(fail_task.name)}, status=202)
+                      json={"message": "update job {0} successfully".format(fail_step.name)}, status=202)
 
-        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_task.name),
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_step.name),
                       json={}, status=404)
 
-        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_task.name),
+        responses.add(responses.GET, 'http://127.0.0.1:9186/api/v1/jobs/{0}'.format(fail_step.name),
                       body='{"jobStatus": {"state":"FAILED"}}', status=200)
 
-        success = luigi.build([fail_task], local_scheduler=True)
+        success = luigi.build([fail_step], local_scheduler=True)
         self.assertFalse(success)
-        self.assertFalse(fail_task.complete())
+        self.assertFalse(fail_step.complete())

@@ -64,15 +64,15 @@ class HiveTest(unittest.TestCase):
             self.assertEqual("statement{0}".format(pre_count + 1), res)
 
     def test_create_parent_dirs(self):
-        dirname = "/tmp/hive_task_test_dir"
+        dirname = "/tmp/hive_step_test_dir"
 
-        class FooHiveTask:
+        class FooHiveStep:
 
             def output(self):
                 return LocalTarget(os.path.join(dirname, "foo"))
 
         runner = luigi.contrib.hive.HiveQueryRunner()
-        runner.prepare_outputs(FooHiveTask())
+        runner.prepare_outputs(FooHiveStep())
         self.assertTrue(os.path.exists(dirname))
 
 
@@ -402,7 +402,7 @@ class WarehouseHiveClientTest(unittest.TestCase):
             self.assertRaises(ValueError, _call_exists)
 
 
-class MyHiveTask(luigi.contrib.hive.HiveQueryTask):
+class MyHiveStep(luigi.contrib.hive.HiveQueryStep):
     param = luigi.Parameter()
 
     def query(self):
@@ -410,17 +410,17 @@ class MyHiveTask(luigi.contrib.hive.HiveQueryTask):
 
 
 @pytest.mark.apache
-class TestHiveTask(unittest.TestCase):
-    task_class = MyHiveTask
+class TestHiveStep(unittest.TestCase):
+    step_class = MyHiveStep
 
     @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
     def test_run(self, run_and_track_hadoop_job):
-        success = luigi.run([self.task_class.__name__, '--param', 'foo', '--local-scheduler', '--no-lock'])
+        success = luigi.run([self.step_class.__name__, '--param', 'foo', '--local-scheduler', '--no-lock'])
         self.assertTrue(success)
         self.assertEqual('hive', run_and_track_hadoop_job.call_args[0][0][0])
 
 
-class MyHiveTaskArgs(MyHiveTask):
+class MyHiveStepArgs(MyHiveStep):
 
     def hivevars(self):
         return {'my_variable1': 'value1', 'my_variable2': 'value2'}
@@ -429,24 +429,24 @@ class MyHiveTaskArgs(MyHiveTask):
         return {'hive.additional.conf': 'conf_value'}
 
 
-class TestHiveTaskArgs(TestHiveTask):
-    task_class = MyHiveTaskArgs
+class TestHiveStepArgs(TestHiveStep):
+    step_class = MyHiveStepArgs
 
     def test_arglist(self):
-        task = self.task_class(param='foo')
+        step = self.step_class(param='foo')
         f_name = 'my_file'
         runner = luigi.contrib.hive.HiveQueryRunner()
-        arglist = runner.get_arglist(f_name, task)
+        arglist = runner.get_arglist(f_name, step)
 
         f_idx = arglist.index('-f')
         self.assertEqual(arglist[f_idx + 1], f_name)
 
-        hivevars = ['{}={}'.format(k, v) for k, v in task.hivevars().items()]
+        hivevars = ['{}={}'.format(k, v) for k, v in step.hivevars().items()]
         for var in hivevars:
             idx = arglist.index(var)
             self.assertEqual(arglist[idx - 1], '--hivevar')
 
-        hiveconfs = ['{}={}'.format(k, v) for k, v in task.hiveconfs().items()]
+        hiveconfs = ['{}={}'.format(k, v) for k, v in step.hiveconfs().items()]
         for conf in hiveconfs:
             idx = arglist.index(conf)
             self.assertEqual(arglist[idx - 1], '--hiveconf')
@@ -468,15 +468,15 @@ class TestHiveTarget(unittest.TestCase):
         client.table_exists.assert_called_with('foo', 'db', 'bar')
 
 
-class ExternalHiveTaskTest(unittest.TestCase):
+class ExternalHiveStepTest(unittest.TestCase):
     def test_table(self):
         # arrange
-        class _Task(luigi.contrib.hive.ExternalHiveTask):
+        class _Step(luigi.contrib.hive.ExternalHiveStep):
             database = 'schema1'
             table = 'table1'
 
         # act
-        output = _Task().output()
+        output = _Step().output()
 
         # assert
         assert isinstance(output, luigi.contrib.hive.HivePartitionTarget)
@@ -486,13 +486,13 @@ class ExternalHiveTaskTest(unittest.TestCase):
 
     def test_partition_exists(self):
         # arrange
-        class _Task(luigi.contrib.hive.ExternalHiveTask):
+        class _Step(luigi.contrib.hive.ExternalHiveStep):
             database = 'schema2'
             table = 'table2'
             partition = {'a': 1}
 
         # act
-        output = _Task().output()
+        output = _Step().output()
 
         # assert
         assert isinstance(output, luigi.contrib.hive.HivePartitionTarget)

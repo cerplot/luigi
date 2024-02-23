@@ -28,7 +28,7 @@ below:
     import luigi
     from luigi.contrib import sqla
 
-    class SQLATask(sqla.CopyToTable):
+    class SQLAStep(sqla.CopyToTable):
         # columns defines the table schema, with each element corresponding
         # to a column in the format (args, kwargs) which will be sent to
         # the sqlalchemy.Column(*args, **kwargs)
@@ -44,8 +44,8 @@ below:
                 yield row
 
     if __name__ == '__main__':
-        task = SQLATask()
-        luigi.build([task], local_scheduler=True)
+        step = SQLAStep()
+        luigi.build([step], local_scheduler=True)
 
 
 If the target table where the data needs to be copied already exists, then
@@ -58,7 +58,7 @@ can be set as True. Here is a modified version of the above example:
     import luigi
     from luigi.contrib import sqla
 
-    class SQLATask(sqla.CopyToTable):
+    class SQLAStep(sqla.CopyToTable):
         # If database table is already created, then the schema can be loaded
         # by setting the reflect flag to True
         reflect = True
@@ -70,12 +70,12 @@ can be set as True. Here is a modified version of the above example:
                 yield row
 
     if __name__ == '__main__':
-        task = SQLATask()
-        luigi.build([task], local_scheduler=True)
+        step = SQLAStep()
+        luigi.build([step], local_scheduler=True)
 
 
 In the above examples, the data that needs to be copied was directly provided by
-overriding the rows method. Alternately, if the data comes from another task, the
+overriding the rows method. Alternately, if the data comes from another step, the
 modified example would look as shown below:
 
 .. code-block:: python
@@ -85,18 +85,18 @@ modified example would look as shown below:
     from luigi.contrib import sqla
     from luigi.mock import MockTarget
 
-    class BaseTask(luigi.Task):
+    class BaseStep(luigi.Step):
         def output(self):
-            return MockTarget("BaseTask")
+            return MockTarget("BaseStep")
 
         def run(self):
             out = self.output().open("w")
-            TASK_LIST = ["item%d\\tproperty%d\\n" % (i, i) for i in range(10)]
-            for task in TASK_LIST:
-                out.write(task)
+            STEP_LIST = ["item%d\\tproperty%d\\n" % (i, i) for i in range(10)]
+            for step in STEP_LIST:
+                out.write(step)
             out.close()
 
-    class SQLATask(sqla.CopyToTable):
+    class SQLAStep(sqla.CopyToTable):
         # columns defines the table schema, with each element corresponding
         # to a column in the format (args, kwargs) which will be sent to
         # the sqlalchemy.Column(*args, **kwargs)
@@ -108,18 +108,18 @@ modified example would look as shown below:
         table = "item_property"  # name of the table to store data
 
         def requires(self):
-            return BaseTask()
+            return BaseStep()
 
     if __name__ == '__main__':
-        task1, task2 = SQLATask(), BaseTask()
-        luigi.build([task1, task2], local_scheduler=True)
+        step1, step2 = SQLAStep(), BaseStep()
+        luigi.build([step1, step2], local_scheduler=True)
 
 
-In the above example, the output from `BaseTask` is copied into the
+In the above example, the output from `BaseStep` is copied into the
 database. Here we did not have to implement the `rows` method because
 by default `rows` implementation assumes every line is a row with
 column values separated by a tab. One can define `column_separator`
-option for the task if the values are say comma separated instead of
+option for the step if the values are say comma separated instead of
 tab separated.
 
 You can pass in database specific connection arguments by setting the connect_args
@@ -131,8 +131,8 @@ The other option to `sqla.CopyToTable` that can be of help with performance aspe
 a transaction at a time. Depending on the size of the inserts, this value can be tuned
 for performance.
 
-See here for a `tutorial on building task pipelines using luigi
-<http://gouthamanbalaraman.com/blog/building-luigi-task-pipeline.html>`_ and
+See here for a `tutorial on building step pipelines using luigi
+<http://gouthamanbalaraman.com/blog/building-luigi-step-pipeline.html>`_ and
 using `SQLAlchemy in workflow pipelines <http://gouthamanbalaraman.com/blog/sqlalchemy-luigi-workflow-pipeline.html>`_.
 
 Author: Gouthaman Balaraman
@@ -157,7 +157,7 @@ class SQLAlchemyTarget(luigi.Target):
     This will rarely have to be directly instantiated by the user.
 
     Typical usage would be to override `luigi.contrib.sqla.CopyToTable` class
-    to create a task to write to the database.
+    to create a step to write to the database.
     """
     marker_table = None
     _engine_dict = {}  # dict of sqlalchemy engine instances
@@ -272,9 +272,9 @@ class SQLAlchemyTarget(luigi.Target):
         raise NotImplementedError("Cannot open() SQLAlchemyTarget")
 
 
-class CopyToTable(luigi.Task):
+class CopyToTable(luigi.Step):
     """
-    An abstract task for inserting a data set into SQLAlchemy RDBMS
+    An abstract step for inserting a data set into SQLAlchemy RDBMS
 
     Usage:
 
@@ -312,7 +312,7 @@ class CopyToTable(luigi.Task):
 
     # Specify the database schema of the target table, if supported by the
     # RDBMS. Note that this doesn't change the schema of the marker table.
-    # The schema MUST already exist in the database, or this will task fail.
+    # The schema MUST already exist in the database, or this will step fail.
     schema = ''
 
     # options
@@ -365,7 +365,7 @@ class CopyToTable(luigi.Task):
         """
         This update id will be a unique identifier for this insert on this table.
         """
-        return self.task_id
+        return self.step_id
 
     def output(self):
         return SQLAlchemyTarget(
@@ -386,7 +386,7 @@ class CopyToTable(luigi.Task):
                 yield line.strip("\n").split(self.column_separator)
 
     def run(self):
-        self._logger.info("Running task copy to table for update id %s for table %s" % (self.update_id(), self.table))
+        self._logger.info("Running step copy to table for update id %s for table %s" % (self.update_id(), self.table))
         output = self.output()
         engine = output.engine
         self.create_table(engine)
@@ -405,7 +405,7 @@ class CopyToTable(luigi.Task):
     def copy(self, conn, ins_rows, table_bound):
         """
         This method does the actual insertion of the rows of data given by ins_rows into the
-        database. A task that needs row updates instead of insertions should overload this method.
+        database. A step that needs row updates instead of insertions should overload this method.
         :param conn: The sqlalchemy connection object
         :param ins_rows: The dictionary of rows with the keys in the format _<column_name>. For example
         if you have a table with a column name "property", then the key in the dictionary

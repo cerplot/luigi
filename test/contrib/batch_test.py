@@ -26,7 +26,7 @@ try:
     import boto3
     client = boto3.client('batch')
 except ImportError:
-    raise unittest.SkipTest('boto3 is not installed. BatchTasks require boto3')
+    raise unittest.SkipTest('boto3 is not installed. BatchSteps require boto3')
 
 
 class MockBotoBatchClient:
@@ -165,10 +165,10 @@ class BatchClientTest(unittest.TestCase):
 
 @pytest.mark.aws
 @skipOnTravisAndGithubActions("boto3 now importable. These tests need mocked")
-class BatchTaskTest(unittest.TestCase):
+class BatchStepTest(unittest.TestCase):
 
     def setUp(self):
-        self.task = batch.BatchTask(
+        self.step = batch.BatchStep(
             job_definition='test_job_def',
             job_name='test_job',
             poll_time=10)

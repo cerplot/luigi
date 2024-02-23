@@ -17,39 +17,39 @@
 from helpers import LuigiTestCase
 
 import luigi
-from luigi.task_register import (Register,
-                                 TaskClassNotFoundException,
-                                 TaskClassAmbigiousException,
+from luigi.step_register import (Register,
+                                 StepClassNotFoundException,
+                                 StepClassAmbigiousException,
                                  )
 
 
-class TaskRegisterTest(LuigiTestCase):
+class StepRegisterTest(LuigiTestCase):
 
-    def test_externalize_taskclass(self):
-        with self.assertRaises(TaskClassNotFoundException):
-            Register.get_task_cls('scooby.Doo')
+    def test_externalize_stepclass(self):
+        with self.assertRaises(StepClassNotFoundException):
+            Register.get_step_cls('scooby.Doo')
 
-        class Task1(luigi.Task):
+        class Step1(luigi.Step):
             @classmethod
-            def get_task_family(cls):
+            def get_step_family(cls):
                 return "scooby.Doo"
 
-        self.assertEqual(Task1, Register.get_task_cls('scooby.Doo'))
+        self.assertEqual(Step1, Register.get_step_cls('scooby.Doo'))
 
-        class Task2(luigi.Task):
+        class Step2(luigi.Step):
             @classmethod
-            def get_task_family(cls):
+            def get_step_family(cls):
                 return "scooby.Doo"
 
-        with self.assertRaises(TaskClassAmbigiousException):
-            Register.get_task_cls('scooby.Doo')
+        with self.assertRaises(StepClassAmbigiousException):
+            Register.get_step_cls('scooby.Doo')
 
-        class Task3(luigi.Task):
+        class Step3(luigi.Step):
             @classmethod
-            def get_task_family(cls):
+            def get_step_family(cls):
                 return "scooby.Doo"
 
         # There previously was a rare bug where the third installed class could
         # "undo" class ambiguity.
-        with self.assertRaises(TaskClassAmbigiousException):
-            Register.get_task_cls('scooby.Doo')
+        with self.assertRaises(StepClassAmbigiousException):
+            Register.get_step_cls('scooby.Doo')

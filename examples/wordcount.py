@@ -17,7 +17,7 @@
 import luigi
 
 
-class InputText(luigi.ExternalTask):
+class InputText(luigi.ExternalStep):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
@@ -26,34 +26,34 @@ class InputText(luigi.ExternalTask):
 
     def output(self):
         """
-        Returns the target output for this task.
+        Returns the target output for this step.
         In this case, it expects a file to be present in the local file system.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget(self.date.strftime('/var/tmp/text/%Y-%m-%d.txt'))
 
 
-class WordCount(luigi.Task):
+class WordCount(luigi.Step):
     date_interval = luigi.DateIntervalParameter()
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.InputText`
 
-        :return: list of object (:py:class:`luigi.task.Task`)
+        :return: list of object (:py:class:`luigi.step.Step`)
         """
         return [InputText(date) for date in self.date_interval.dates()]
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget('/var/tmp/text-count/%s' % self.date_interval)

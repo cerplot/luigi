@@ -32,7 +32,7 @@ import logging
 from mock import patch
 
 import luigi
-from luigi.contrib.lsf import LSFJobTask
+from luigi.contrib.lsf import LSFJobStep
 
 import pytest
 
@@ -55,7 +55,7 @@ def on_lsf_master():
         return False
 
 
-class TestJobTask(LSFJobTask):
+class TestJobStep(LSFJobStep):
 
     '''Simple SGE job: write a test file to NSF shared drive and waits a minute'''
 
@@ -80,8 +80,8 @@ class TestSGEJob(unittest.TestCase):
     def test_run_job(self, mock_open, mock_communicate):
         if on_lsf_master():
             outfile = os.path.join(DEFAULT_HOME, 'testfile_1')
-            tasks = [TestJobTask(i=str(i), n_cpu_flag=1) for i in range(3)]
-            luigi.build(tasks, local_scheduler=True, workers=3)
+            steps = [TestJobStep(i=str(i), n_cpu_flag=1) for i in range(3)]
+            luigi.build(steps, local_scheduler=True, workers=3)
             self.assertTrue(os.path.exists(outfile))
 
     @patch('subprocess.Popen')
@@ -91,8 +91,8 @@ class TestSGEJob(unittest.TestCase):
             'Job <1000001> is submitted to queue <queue-name>.',
             ''
         ]
-        task = TestJobTask(i=str(1), n_cpu_flag=1, shared_tmp_dir='/tmp')
-        luigi.build([task], local_scheduler=True)
+        step = TestJobStep(i=str(1), n_cpu_flag=1, shared_tmp_dir='/tmp')
+        luigi.build([step], local_scheduler=True)
         self.assertEqual(mock_open.call_count, 0)
 
     def tearDown(self):

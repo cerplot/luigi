@@ -28,15 +28,15 @@ import inspect
 
 import pickle
 
-from luigi.contrib.external_program import ExternalProgramTask
+from luigi.contrib.external_program import ExternalProgramStep
 from luigi import configuration
 
 logger = logging.getLogger('luigi-interface')
 
 
-class SparkSubmitTask(ExternalProgramTask):
+class SparkSubmitStep(ExternalProgramStep):
     """
-    Template task for running a Spark job
+    Template step for running a Spark job
 
     Supports running jobs on Spark local, standalone, Mesos or Yarn
 
@@ -66,7 +66,7 @@ class SparkSubmitTask(ExternalProgramTask):
 
     def app_options(self):
         """
-        Subclass this method to map your task parameters to the app's arguments
+        Subclass this method to map your step parameters to the app's arguments
 
         """
         return []
@@ -263,9 +263,9 @@ class SparkSubmitTask(ExternalProgramTask):
         return []
 
 
-class PySparkTask(SparkSubmitTask):
+class PySparkStep(SparkSubmitStep):
     """
-    Template task for running an inline PySpark job
+    Template step for running an inline PySpark job
 
     Simply implement the ``main`` method in your subclass
 
@@ -332,7 +332,7 @@ class PySparkTask(SparkSubmitTask):
             shutil.copy(module_path, os.path.join(self.run_path, '.'))
             self._dump(fd)
         try:
-            super(PySparkTask, self).run()
+            super(PySparkStep, self).run()
         finally:
             shutil.rmtree(self.run_path)
 

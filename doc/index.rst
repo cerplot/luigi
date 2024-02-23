@@ -13,7 +13,7 @@ Table of Contents
 
    example_top_artists.rst
    workflows.rst
-   tasks.rst
+   steps.rst
    parameters.rst
    running_luigi.rst
    central_scheduler.rst

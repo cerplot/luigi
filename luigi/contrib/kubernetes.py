@@ -46,7 +46,7 @@ try:
     from pykube.http import HTTPClient
     from pykube.objects import Job, Pod
 except ImportError:
-    logger.warning('pykube is not installed. KubernetesJobTask requires pykube.')
+    logger.warning('pykube is not installed. KubernetesJobStep requires pykube.')
 
 
 class kubernetes(luigi.Config):
@@ -64,7 +64,7 @@ class kubernetes(luigi.Config):
         description="K8s namespace in which the job will run")
 
 
-class KubernetesJobTask(luigi.Task):
+class KubernetesJobStep(luigi.Step):
     __DEFAULT_POLL_INTERVAL = 5  # see __track_job
     __DEFAULT_POD_CREATION_INTERVAL = 5
     _kubernetes_config = None  # Needs to be loaded at runtime
@@ -125,7 +125,7 @@ class KubernetesJobTask(luigi.Task):
     @property
     def name(self):
         """
-        A name for this job. This task will automatically append a UUID to the
+        A name for this job. This step will automatically append a UUID to the
         name before to submit to Kubernetes.
         """
         raise NotImplementedError("subclass must define name")
@@ -159,7 +159,7 @@ class KubernetesJobTask(luigi.Task):
 
         - If restartPolicy is not defined, it will be set to "Never" by default.
         - **Warning**: restartPolicy=OnFailure will bypass max_retrials, and restart
-          the container until success, with the risk of blocking the Luigi task.
+          the container until success, with the risk of blocking the Luigi step.
 
         For more informations please refer to:
         http://kubernetes.io/docs/user-guide/pods/multi-container/#the-spec-schema
@@ -239,7 +239,7 @@ class KubernetesJobTask(luigi.Task):
         self.signal_complete()
 
     def signal_complete(self):
-        """Signal job completion for scheduler and dependent tasks.
+        """Signal job completion for scheduler and dependent steps.
 
          Touching a system file is an easy way to signal completion. example::
          .. code-block:: python
@@ -257,7 +257,7 @@ class KubernetesJobTask(luigi.Task):
 
     def __get_job(self):
         jobs = Job.objects(self.__kube_api, namespace=self.kubernetes_namespace) \
-            .filter(selector="luigi_task_id=" + self.job_uuid) \
+            .filter(selector="luigi_step_id=" + self.job_uuid) \
             .response['items']
         assert len(jobs) == 1, "Kubernetes job " + self.uu_name + " not found"
         return Job(self.__kube_api, jobs[0])
@@ -356,7 +356,7 @@ class KubernetesJobTask(luigi.Task):
                 "name": self.uu_name,
                 "labels": {
                     "spawned_by": "luigi",
-                    "luigi_task_id": self.job_uuid
+                    "luigi_step_id": self.job_uuid
                 }
             },
             "spec": {

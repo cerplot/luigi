@@ -22,7 +22,7 @@ import re
 from contextlib import contextmanager
 
 import luigi
-import luigi.task_register
+import luigi.step_register
 import luigi.cmdline_parser
 from luigi.cmdline_parser import CmdlineParser
 import os
@@ -144,10 +144,10 @@ class with_config:
         return wrapper
 
 
-class RunOnceTask(luigi.Task):
+class RunOnceStep(luigi.Step):
 
     def __init__(self, *args, **kwargs):
-        super(RunOnceTask, self).__init__(*args, **kwargs)
+        super(RunOnceStep, self).__init__(*args, **kwargs)
         self.comp = False
 
     def complete(self):
@@ -166,23 +166,23 @@ class StringContaining(str):
 
 class LuigiTestCase(unittest.TestCase):
     """
-    Tasks registred within a test case will get unregistered in a finalizer
+    Steps registred within a test case will get unregistered in a finalizer
 
     Instance caches are cleared before and after all runs
     """
     def setUp(self):
         super(LuigiTestCase, self).setUp()
-        self._stashed_reg = luigi.task_register.Register._get_reg()
-        luigi.task_register.Register.clear_instance_cache()
+        self._stashed_reg = luigi.step_register.Register._get_reg()
+        luigi.step_register.Register.clear_instance_cache()
 
     def tearDown(self):
-        luigi.task_register.Register._set_reg(self._stashed_reg)
+        luigi.step_register.Register._set_reg(self._stashed_reg)
         super(LuigiTestCase, self).tearDown()
-        luigi.task_register.Register.clear_instance_cache()
+        luigi.step_register.Register.clear_instance_cache()
 
     def run_locally(self, args):
         """ Helper for running tests testing more of the stack, the command
-        line parsing and task from name intstantiation parts in particular. """
+        line parsing and step from name intstantiation parts in particular. """
         temp = CmdlineParser._instance
         try:
             CmdlineParser._instance = None
@@ -193,7 +193,7 @@ class LuigiTestCase(unittest.TestCase):
 
     def run_locally_split(self, space_seperated_args):
         """ Helper for running tests testing more of the stack, the command
-        line parsing and task from name intstantiation parts in particular. """
+        line parsing and step from name intstantiation parts in particular. """
         return self.run_locally(space_seperated_args.split(' '))
 
 
@@ -216,7 +216,7 @@ class parsing:
 
 def in_parse(cmds, deferred_computation):
     with CmdlineParser.global_instance(cmds) as cp:
-        deferred_computation(cp.get_task_obj())
+        deferred_computation(cp.get_step_obj())
 
 
 @contextmanager

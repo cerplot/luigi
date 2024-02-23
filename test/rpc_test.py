@@ -134,13 +134,13 @@ class RPCTest(scheduler_api_test.SchedulerApiTest, ServerTestBase):
 
     # disable test that doesn't work with remote scheduler
 
-    def test_task_first_failure_time(self):
+    def test_step_first_failure_time(self):
         pass
 
-    def test_task_first_failure_time_remains_constant(self):
+    def test_step_first_failure_time_remains_constant(self):
         pass
 
-    def test_task_has_excessive_failures(self):
+    def test_step_has_excessive_failures(self):
         pass
 
     def test_quadratic_behavior(self):

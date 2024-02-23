@@ -22,15 +22,15 @@ import time
 import luigi
 
 
-class Configuration(luigi.Task):
+class Configuration(luigi.Step):
     seed = luigi.IntParameter()
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget('/tmp/Config_%d.txt' % self.seed)
@@ -45,15 +45,15 @@ class Configuration(luigi.Task):
             f.write(result)
 
 
-class Data(luigi.Task):
+class Data(luigi.Step):
     magic_number = luigi.IntParameter()
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget('/tmp/Data_%d.txt' % self.magic_number)
@@ -64,15 +64,15 @@ class Data(luigi.Task):
             f.write('%s' % self.magic_number)
 
 
-class Dynamic(luigi.Task):
+class Dynamic(luigi.Step):
     seed = luigi.IntParameter(default=1)
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget('/tmp/Dynamic_%d.txt' % self.seed)
@@ -97,10 +97,10 @@ class Dynamic(luigi.Task):
         def custom_complete(complete_fn):
             # example: Data() stores all outputs in the same directory, so avoid doing len(data) fs
             # calls but rather check only the first, and compare basenames for the rest
-            # (complete_fn defaults to "lambda task: task.complete()" but can also include caching)
+            # (complete_fn defaults to "lambda step: step.complete()" but can also include caching)
             if not complete_fn(data_dependent_deps[0]):
                 return False
-            paths = [task.output().path for task in data_dependent_deps]
+            paths = [step.output().path for step in data_dependent_deps]
             basenames = os.listdir(os.path.dirname(paths[0]))  # a single fs call
             return all(os.path.basename(path) in basenames for path in paths)
 

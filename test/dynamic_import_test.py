@@ -23,7 +23,7 @@ import luigi.interface
 CONTENTS = b'''
 import luigi
 
-class FooTask(luigi.Task):
+class FooStep(luigi.Step):
     x = luigi.IntParameter()
 
     def run(self):
@@ -35,5 +35,5 @@ class CmdlineTest(LuigiTestCase):
 
     def test_dynamic_loading(self):
         with temporary_unloaded_module(CONTENTS) as temp_module_name:
-            luigi.interface.run(['--module', temp_module_name, 'FooTask', '--x', '123', '--local-scheduler', '--no-lock'])
+            luigi.interface.run(['--module', temp_module_name, 'FooStep', '--x', '123', '--local-scheduler', '--no-lock'])
             self.assertEqual(luigi._testing_glob_var, 123)

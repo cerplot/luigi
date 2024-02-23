@@ -54,22 +54,22 @@ class DailyCopyToTableTest(unittest.TestCase):
     @mock.patch('mysql.connector.connect')
     def test_bulk_complete(self, mock_connect):
         mock_cursor = MockMysqlCursor([  # Existing update_ids
-            DummyMysqlImporter(date=datetime.datetime(2015, 1, 3)).task_id
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 3)).step_id
         ])
         mock_connect.return_value.cursor.return_value = mock_cursor
 
-        task = RangeDaily(of=DummyMysqlImporter,
+        step = RangeDaily(of=DummyMysqlImporter,
                           start=datetime.date(2015, 1, 2),
                           now=datetime_to_epoch(datetime.datetime(2015, 1, 7)))
-        actual = sorted([t.task_id for t in task.requires()])
+        actual = sorted([t.step_id for t in step.requires()])
 
         self.assertEqual(actual, sorted([
-            DummyMysqlImporter(date=datetime.datetime(2015, 1, 2)).task_id,
-            DummyMysqlImporter(date=datetime.datetime(2015, 1, 4)).task_id,
-            DummyMysqlImporter(date=datetime.datetime(2015, 1, 5)).task_id,
-            DummyMysqlImporter(date=datetime.datetime(2015, 1, 6)).task_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 2)).step_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 4)).step_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 5)).step_id,
+            DummyMysqlImporter(date=datetime.datetime(2015, 1, 6)).step_id,
         ]))
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
 
 
 @pytest.mark.mysql
@@ -88,13 +88,13 @@ class TestCopyToTableWithMetaColumns(unittest.TestCase):
                                                 mock_update_columns,
                                                 mock_metadata_columns_enabled):
 
-        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+        step = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
 
-        mock_cursor = MockMysqlCursor([task.task_id])
+        mock_cursor = MockMysqlCursor([step.step_id])
         mock_connect.return_value.cursor.return_value = mock_cursor
 
-        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
-        task.run()
+        step = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+        step.run()
 
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
@@ -113,12 +113,12 @@ class TestCopyToTableWithMetaColumns(unittest.TestCase):
                                                  mock_update_columns,
                                                  mock_metadata_columns_enabled):
 
-        task = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
+        step = DummyMysqlImporter(date=datetime.datetime(1991, 3, 24))
 
-        mock_cursor = MockMysqlCursor([task.task_id])
+        mock_cursor = MockMysqlCursor([step.step_id])
         mock_connect.return_value.cursor.return_value = mock_cursor
 
-        task.run()
+        step.run()
 
         self.assertFalse(mock_add_columns.called)
         self.assertFalse(mock_update_columns.called)

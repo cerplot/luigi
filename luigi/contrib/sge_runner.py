@@ -21,15 +21,15 @@ The SunGrid Engine runner
 The main() function of this module will be executed on the
 compute node by the submitted job. It accepts as a single
 argument the shared temp folder containing the package archive
-and pickled task to run, and carries out these steps:
+and pickled step to run, and carries out these steps:
 
 - extract tarfile of package dependencies and place on the path
-- unpickle SGETask instance created on the master node
-- run SGETask.work()
+- unpickle SGEStep instance created on the master node
+- run SGEStep.work()
 
-On completion, SGETask on the master node will detect that
+On completion, SGEStep on the master node will detect that
 the job has left the queue, delete the temporary folder, and
-return from SGETask.run()
+return from SGEStep.run()
 """
 
 import os
@@ -43,7 +43,7 @@ def _do_work_on_compute_node(work_dir, tarball=True):
 
     if tarball:
         # Extract the necessary dependencies
-        # This can create a lot of I/O overhead when running many SGEJobTasks,
+        # This can create a lot of I/O overhead when running many SGEJobSteps,
         # so is optional if the luigi project is accessible from the cluster node
         _extract_packages_archive(work_dir)
 

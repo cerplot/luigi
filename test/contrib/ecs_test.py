@@ -16,7 +16,7 @@
 #
 
 """
-Integration test for the Luigi wrapper of EC2 Container Service (ECSTask)
+Integration test for the Luigi wrapper of EC2 Container Service (ECSStep)
 
 Requires:
 
@@ -34,16 +34,16 @@ Written and maintained by Jake Feala (@jfeala) for Outlier Bio (@outlierbio)
 import unittest
 
 import luigi
-from luigi.contrib.ecs import ECSTask, _get_task_statuses
+from luigi.contrib.ecs import ECSStep, _get_step_statuses
 from moto import mock_ecs
 import pytest
 
 try:
     import boto3
 except ImportError:
-    raise unittest.SkipTest('boto3 is not installed. ECSTasks require boto3')
+    raise unittest.SkipTest('boto3 is not installed. ECSSteps require boto3')
 
-TEST_TASK_DEF = {
+TEST_STEP_DEF = {
     'family': 'hello-world',
     'volumes': [],
     'containerDefinitions': [
@@ -65,30 +65,30 @@ TEST_TASK_DEF = {
 }
 
 
-class ECSTaskNoOutput(ECSTask):
+class ECSStepNoOutput(ECSStep):
 
     def complete(self):
-        if self.ecs_task_ids:
+        if self.ecs_step_ids:
             return all([status == 'STOPPED'
-                        for status in _get_task_statuses(self.ecs_task_ids)])
+                        for status in _get_step_statuses(self.ecs_step_ids)])
         return False
 
 
-class ECSTaskOverrideCommand(ECSTaskNoOutput):
+class ECSStepOverrideCommand(ECSStepNoOutput):
 
     @property
     def command(self):
         return [{'name': 'hello-world', 'command': ['/bin/sleep', '10']}]
 
 
-class ECSTaskCustomRunTaskKwargs(ECSTaskNoOutput):
+class ECSStepCustomRunStepKwargs(ECSStepNoOutput):
 
     @property
-    def run_task_kwargs(self):
+    def run_step_kwargs(self):
         return {'overrides': {'ephemeralStorage': {'sizeInGiB': 30}}}
 
 
-class ECSTaskCustomRunTaskKwargsWithCollidingCommand(ECSTaskNoOutput):
+class ECSStepCustomRunStepKwargsWithCollidingCommand(ECSStepNoOutput):
 
     @property
     def command(self):
@@ -98,7 +98,7 @@ class ECSTaskCustomRunTaskKwargsWithCollidingCommand(ECSTaskNoOutput):
         ]
 
     @property
-    def run_task_kwargs(self):
+    def run_step_kwargs(self):
         return {
             'launchType': 'FARGATE',
             'platformVersion': '1.4.0',
@@ -125,7 +125,7 @@ class ECSTaskCustomRunTaskKwargsWithCollidingCommand(ECSTaskNoOutput):
         }
 
 
-class ECSTaskCustomRunTaskKwargsWithMergedCommands(ECSTaskNoOutput):
+class ECSStepCustomRunStepKwargsWithMergedCommands(ECSStepNoOutput):
 
     @property
     def command(self):
@@ -134,7 +134,7 @@ class ECSTaskCustomRunTaskKwargsWithMergedCommands(ECSTaskNoOutput):
         ]
 
     @property
-    def run_task_kwargs(self):
+    def run_step_kwargs(self):
         return {
             'launchType': 'FARGATE',
             'platformVersion': '1.4.0',
@@ -162,40 +162,40 @@ class ECSTaskCustomRunTaskKwargsWithMergedCommands(ECSTaskNoOutput):
 
 
 @pytest.mark.aws
-class TestECSTask(unittest.TestCase):
+class TestECSStep(unittest.TestCase):
 
     @mock_ecs
     def setUp(self):
-        # Register the test task definition
-        response = boto3.client('ecs').register_task_definition(**TEST_TASK_DEF)
-        self.arn = response['taskDefinition']['taskDefinitionArn']
+        # Register the test step definition
+        response = boto3.client('ecs').register_step_definition(**TEST_STEP_DEF)
+        self.arn = response['stepDefinition']['stepDefinitionArn']
 
     @mock_ecs
-    def test_unregistered_task(self):
-        t = ECSTaskNoOutput(task_def=TEST_TASK_DEF)
+    def test_unregistered_step(self):
+        t = ECSStepNoOutput(step_def=TEST_STEP_DEF)
         luigi.build([t], local_scheduler=True)
 
     @mock_ecs
-    def test_registered_task(self):
-        t = ECSTaskNoOutput(task_def_arn=self.arn)
+    def test_registered_step(self):
+        t = ECSStepNoOutput(step_def_arn=self.arn)
         luigi.build([t], local_scheduler=True)
 
     @mock_ecs
     def test_override_command(self):
-        t = ECSTaskOverrideCommand(task_def_arn=self.arn)
+        t = ECSStepOverrideCommand(step_def_arn=self.arn)
         luigi.build([t], local_scheduler=True)
 
     @mock_ecs
-    def test_custom_run_task_kwargs(self):
-        t = ECSTaskCustomRunTaskKwargs(task_def_arn=self.arn)
+    def test_custom_run_step_kwargs(self):
+        t = ECSStepCustomRunStepKwargs(step_def_arn=self.arn)
         self.assertEqual(t.combined_overrides, {
             'ephemeralStorage': {'sizeInGiB': 30}
         })
         luigi.build([t], local_scheduler=True)
 
     @mock_ecs
-    def test_custom_run_task_kwargs_with_colliding_command(self):
-        t = ECSTaskCustomRunTaskKwargsWithCollidingCommand(task_def_arn=self.arn)
+    def test_custom_run_step_kwargs_with_colliding_command(self):
+        t = ECSStepCustomRunStepKwargsWithCollidingCommand(step_def_arn=self.arn)
         combined_overrides = t.combined_overrides
         self.assertEqual(
             sorted(combined_overrides['containerOverrides'], key=lambda x: x['name']),
@@ -211,8 +211,8 @@ class TestECSTask(unittest.TestCase):
         luigi.build([t], local_scheduler=True)
 
     @mock_ecs
-    def test_custom_run_task_kwargs_with_merged_commands(self):
-        t = ECSTaskCustomRunTaskKwargsWithMergedCommands(task_def_arn=self.arn)
+    def test_custom_run_step_kwargs_with_merged_commands(self):
+        t = ECSStepCustomRunStepKwargsWithMergedCommands(step_def_arn=self.arn)
         combined_overrides = t.combined_overrides
         self.assertEqual(
             sorted(combined_overrides['containerOverrides'], key=lambda x: x['name']),

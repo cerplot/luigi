@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <title>Luigi Task Visualiser</title>
+        <title>Luigi Step Visualiser</title>
         <link href="css/luigi.css" rel="stylesheet">
         <script src="lib/jquery-1.10.0.min.js"></script>
         <link href="lib/bootstrap3/css/bootstrap.min.css" rel="stylesheet">
@@ -31,19 +31,19 @@
 
         <script type="text/template" name="actionsTemplate">
             <div class="span2">
-                <a href="#tab=graph&taskId={{encodedTaskId}}&hideDone=1" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip"><i class="fa fa-sitemap"></i></a>
+                <a href="#tab=graph&stepId={{encodedStepId}}&hideDone=1" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip"><i class="fa fa-sitemap"></i></a>
                 {{#error}}<button class="btn btn-danger btn-xs showError" title="Show error" data-toggle="tooltip"><i class="fa fa-bug"></i></button>{{/error}}
                 {{#error}}<button class="btn btn-warning btn-xs forgiveFailures" title="Forgive failures" data-toggle="tooltip"><i class="fa fa-ambulance"></i></button>{{/error}}
                 {{#re_enable}}<button class="btn btn-danger btn-xs showError" title="Show error" data-toggle="tooltip"><i class="fa fa-bug"></i></button>{{/re_enable}}
-                {{#re_enable}}<a class="btn btn-warning btn-xs re-enable-button" title="Re-enable" data-toggle="tooltip" data-task-id="{{taskId}}">Re-enable</a>{{/re_enable}}
-                {{#mark_as_done}}<a class="btn btn-success btn-xs markAsDone" title="Mark as done" data-toggle="tooltip" data-task-id="{{taskId}}"><i class="fa fa-fast-forward"></i></a>{{/mark_as_done}}
+                {{#re_enable}}<a class="btn btn-warning btn-xs re-enable-button" title="Re-enable" data-toggle="tooltip" data-step-id="{{stepId}}">Re-enable</a>{{/re_enable}}
+                {{#mark_as_done}}<a class="btn btn-success btn-xs markAsDone" title="Mark as done" data-toggle="tooltip" data-step-id="{{stepId}}"><i class="fa fa-fast-forward"></i></a>{{/mark_as_done}}
                 {{#trackingUrl}}<a target="_blank" href="{{trackingUrl}}" class="btn btn-primary btn-xs" title="Track Progress" data-toggle="tooltip"><i class="fa fa-eye"></i></a>{{/trackingUrl}}
-                {{#statusMessage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>{{/statusMessage}}
+                {{#statusMessage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>{{/statusMessage}}
                 {{^statusMessage}}
-                  {{#progressPercentage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>
+                  {{#progressPercentage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>
                   {{/progressPercentage}}
                 {{/statusMessage}}
-                {{#acceptsMessages}}<button class="btn btn-default btn-xs schedulerMessage" title="Send message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}" data-worker="{{workerIdRunning}}"><i class="fa fa-paper-plane"></i></button>{{/acceptsMessages}}
+                {{#acceptsMessages}}<button class="btn btn-default btn-xs schedulerMessage" title="Send message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}" data-worker="{{workerIdRunning}}"><i class="fa fa-paper-plane"></i></button>{{/acceptsMessages}}
             </div>
         </script>
         <script type="text/template" name="errorTemplate">
@@ -56,7 +56,7 @@
               <div class="modal-body">
                 <pre class="pre-scrollable">{{error}}</pre>
                 Command to re-run:
-                <pre class="pre-scrollable">luigi --module {{taskModule}} {{taskFamily}} {{taskParams}}</pre>
+                <pre class="pre-scrollable">luigi --module {{stepModule}} {{stepFamily}} {{stepParams}}</pre>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -149,7 +149,7 @@
                   <div class="modal-body">
                     Are you sure you want to disable this worker?
                     <p>
-                        A disabled worker will finish its existing tasks but not start new ones.
+                        A disabled worker will finish its existing steps but not start new ones.
                     </p>
                   </div>
                   <div class="modal-footer">
@@ -202,12 +202,12 @@
                 <div class="box-body">
                     Started: {{start_time}}<br>
                     Last Checkin: {{active}}<br>
-                    Root Task: <a href="#tab=graph&taskId={{{encoded_first_task}}}&hideDone=1">{{first_task_display_name}}</a><br>
+                    Root Step: <a href="#tab=graph&stepId={{{encoded_first_step}}}&hideDone=1">{{first_step_display_name}}</a><br>
                     Running: {{num_running}}<br>
                     Pending: {{num_pending}}<br>
                     Unique Pending: {{num_uniques}}<br>
                     {{#is_disabled}}
-                    This worker is <b>disabled</b>. It will not start new tasks.<br>
+                    This worker is <b>disabled</b>. It will not start new steps.<br>
                     {{/is_disabled}}
 
                     {{#num_running}}
@@ -222,7 +222,7 @@
                         <th>Actions</th>
                       </thead>
                       <tbody>
-                      {{#tasks}}
+                      {{#steps}}
                       <tr>
                         <td>{{displayName}}</td>
                         <td>{{priority}}</td>
@@ -230,25 +230,25 @@
                         <td>
                           {{#progressPercentage}}
                           <div class="progress">
-                            <div class="progress-bar taskProgressBar" role="progressbar" data-task-id="{{taskId}}" style="width: {{progressPercentage}}%" aria-valuenow="{{progressPercentage}}" aria-valuemin="0" aria-valuemax="100">{{progressPercentage}}%</div>
+                            <div class="progress-bar stepProgressBar" role="progressbar" data-step-id="{{stepId}}" style="width: {{progressPercentage}}%" aria-valuenow="{{progressPercentage}}" aria-valuemin="0" aria-valuemax="100">{{progressPercentage}}%</div>
                           </div>
                           {{/progressPercentage}}
                           {{^progressPercentage}}-{{/progressPercentage}}
                         </td>
                         <td>{{displayTime}}</td>
                         <td>
-                          <a href="#tab=graph&taskId={{encodedTaskId}}" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip" data-action="drawGraph"><i class="fa fa-sitemap"/></a>
+                          <a href="#tab=graph&stepId={{encodedStepId}}" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip" data-action="drawGraph"><i class="fa fa-sitemap"/></a>
                           {{#trackingUrl}}<a target="_blank" href="{{trackingUrl}}" class="btn btn-primary btn-xs" title="Track Progress" data-toggle="tooltip"><i class="fa fa-eye"></i></a>{{/trackingUrl}}
-                          {{#statusMessage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>{{/statusMessage}}
+                          {{#statusMessage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>{{/statusMessage}}
                           {{^statusMessage}}
-                            {{#progressPercentage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>
+                            {{#progressPercentage}}<button class="btn btn-primary btn-xs statusMessage" title="Status message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}"><i class="fa fa-comment"></i></button>
                             {{/progressPercentage}}
                           {{/statusMessage}}
-                          {{#acceptsMessages}}<button class="btn btn-success btn-xs schedulerMessage" title="Send message" data-toggle="tooltip" data-task-id="{{taskId}}" data-display-name="{{displayName}}" data-worker="{{workerIdRunning}}"><i class="fa fa-paper-plane"></i></button>
+                          {{#acceptsMessages}}<button class="btn btn-success btn-xs schedulerMessage" title="Send message" data-toggle="tooltip" data-step-id="{{stepId}}" data-display-name="{{displayName}}" data-worker="{{workerIdRunning}}"><i class="fa fa-paper-plane"></i></button>
                           {{/acceptsMessages}}
                         </td>
                       </tr>
-                      {{/tasks}}
+                      {{/steps}}
                       {{/num_running}}
                       </tbody>
                     </table>
@@ -323,14 +323,14 @@
                             <th>Actions</th>
                         </thead>
                         <tbody>
-                            {{#tasks}}
+                            {{#steps}}
                             <tr>
                                 <td>{{displayName}}</td>
                                 <td>{{priority}}</td>
                                 <td>{{displayTime}}</td>
-                                <td><a href="#tab=graph&taskId={{taskId}}&hideDone=1" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip" data-action="drawGraph"><i class="fa fa-sitemap"/></a></td>
+                                <td><a href="#tab=graph&stepId={{stepId}}&hideDone=1" class="btn btn-info btn-xs" title="View graph" data-toggle="tooltip" data-action="drawGraph"><i class="fa fa-sitemap"/></a></td>
                             </tr>
-                            {{/tasks}}
+                            {{/steps}}
                         </tbody>
                     </table>
                 </div>
@@ -342,36 +342,36 @@
 
         <script type="text/template" name="sidebarTemplate">
             <ul class="sidebar-menu">
-                <li class="header">TASK FAMILIES <span class="badge" id="clear-task-filter">Clear selection</span></li>
-                {{#tasks}}
+                <li class="header">STEP FAMILIES <span class="badge" id="clear-step-filter">Clear selection</span></li>
+                {{#steps}}
                 <li>
                   <a href="#" class="sidebar-folder">{{name}}</a>
                   <ul class="sidebar-menu" style="display: none">
-                    {{#tasks}}
-                    <li data-task="{{name}}"><a href="#"><span class="badge">{{count}}</span> {{name}}</a>
+                    {{#steps}}
+                    <li data-step="{{name}}"><a href="#"><span class="badge">{{count}}</span> {{name}}</a>
                     </li>
-                    {{/tasks}}
+                    {{/steps}}
                   </ul>
                 </li>
-                {{/tasks}}
+                {{/steps}}
             </ul>
         </script>
 
         <script type="text/template" name="warningsTemplate">
            <div class="callout callout-danger">
             <p>
-              Too many {{#missingCategories}} <strong>{{name}}</strong>, {{/missingCategories}}  tasks to display.
+              Too many {{#missingCategories}} <strong>{{name}}</strong>, {{/missingCategories}}  steps to display.
             </p>
             <p>
-              Task family counts only include displayed tasks.  Use <strong>Filter on Server</strong> to constrain search.
+              Step family counts only include displayed steps.  Use <strong>Filter on Server</strong> to constrain search.
             </p>
           </div>
         </script>
 
         <script type="text/template" name="currentFilterTemplate">
           <div class="callout callout-info">
-            Displaying {{#catNames}}<strong>{{ name }}</strong>, {{/catNames}} tasks
-            {{#taskFamily}}of family <strong>{{taskFamily}}</strong>{{/taskFamily}} {{#tableFilter}}filtered by <strong>"{{tableFilter}}"</strong>{{/tableFilter}}.
+            Displaying {{#catNames}}<strong>{{ name }}</strong>, {{/catNames}} steps
+            {{#stepFamily}}of family <strong>{{stepFamily}}</strong>{{/stepFamily}} {{#tableFilter}}filtered by <strong>"{{tableFilter}}"</strong>{{/tableFilter}}.
           </div>
         </script>
 
@@ -394,7 +394,7 @@
 
         <div class="wrapper">
             <div class="main-header">
-                <a class="logo" href="#">Luigi Task Status</a>
+                <a class="logo" href="#">Luigi Step Status</a>
                 <nav class="navbar navbar-static-top">
                     <a href="#" class="sidebar-toggle" data-toggle="offcanvas" role="button">
                         <span class="sr-only">Toggle navigation</span>
@@ -410,7 +410,7 @@
                         </div>
                         <div class="collapse navbar-collapse">
                             <ul class="nav navbar-nav" id="topNavbar">
-                                <li><a class="js-nav-link" href="#tab=tasks" data-tab="taskList">Task List</a></li>
+                                <li><a class="js-nav-link" href="#tab=steps" data-tab="stepList">Step List</a></li>
                                 <li><a class="js-nav-link" href="#tab=graph" data-tab="dependencyGraph">Dependency Graph</a></li>
                                 <li><a class="js-nav-link" href="#tab=workers" data-tab="workerList">Workers</a></li>
                                 <li><a class="js-nav-link" href="#tab=resource" data-tab="resourceList">Resources</a></li>
@@ -431,13 +431,13 @@
           <div class="content">
 
         <div class="tab-content">
-            <section id="taskList" class="container-fluid tab-pane active">
+            <section id="stepList" class="container-fluid tab-pane active">
                 <div class="row">
                   <div class="col-md-3 col-sm-6 col-xs-12">
                     <div class="info-box status-info" data-color='yellow' data-category='PENDING' id="PENDING_info">
                       <span class="info-box-icon bg-yellow"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Pending Tasks</span>
+                        <span class="info-box-text">Pending Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -447,7 +447,7 @@
                     <div class="info-box status-info" data-color='aqua' data-category='RUNNING' id="RUNNING_info">
                       <span class="info-box-icon bg-aqua"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Running Tasks</span>
+                        <span class="info-box-text">Running Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -457,7 +457,7 @@
                     <div class="info-box status-info" data-color='purple' data-category='BATCH_RUNNING' id="BATCH_RUNNING_info">
                       <span class="info-box-icon bg-purple"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Batch Running Tasks</span>
+                        <span class="info-box-text">Batch Running Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -467,7 +467,7 @@
                     <div class="info-box status-info" data-color='green' data-category='DONE' id="DONE_info">
                       <span class="info-box-icon bg-green"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Done Tasks</span>
+                        <span class="info-box-text">Done Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -477,7 +477,7 @@
                     <div class="info-box status-info" data-color='red' data-category='FAILED' id="FAILED_info">
                       <span class="info-box-icon bg-red"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Failed Tasks</span>
+                        <span class="info-box-text">Failed Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -497,7 +497,7 @@
                     <div class="info-box status-info" data-color='gray' data-category='DISABLED' id="DISABLED_info">
                       <span class="info-box-icon bg-gray"><i class="fa fa-spinner fa-pulse"></i></span>
                       <div class="info-box-content">
-                        <span class="info-box-text">Disabled Tasks</span>
+                        <span class="info-box-text">Disabled Steps</span>
                         <span class="info-box-number">?</span>
                       </div><!-- /.info-box-content -->
                     </div><!-- /.info-box -->
@@ -522,7 +522,7 @@
                     <div id="checkboxes"></div>
                 </div>
 
-                <table id="taskTable" class="table table-striped">
+                <table id="stepTable" class="table table-striped">
                   <thead>
                     <th><!-- Category --></th>
                     <th>Name</th>
@@ -538,9 +538,9 @@
             <section id="dependencyGraph" class="tab-pane">
               <div class="container-fluid">
                     <div class="form-group col-md-6 col-sm-4">
-                      <form class="form-inline" id="loadTaskForm">
-                        <input id="js-task-id" type="text" class="search-query form-control" placeholder="TaskId">
-                        <button type="submit" class="btn btn-default form-control">Show task details</button>
+                      <form class="form-inline" id="loadStepForm">
+                        <input id="js-step-id" type="text" class="search-query form-control" placeholder="StepId">
+                        <button type="submit" class="btn btn-default form-control">Show step details</button>
                       </form>
                     </div>
                     <form class="form-inline" id="visForm">

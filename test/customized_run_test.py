@@ -26,12 +26,12 @@ import luigi.scheduler
 import luigi.worker
 
 
-class DummyTask(luigi.Task):
-    task_namespace = 'customized_run'  # to prevent task name coflict between tests
+class DummyStep(luigi.Step):
+    step_namespace = 'customized_run'  # to prevent step name coflict between tests
     n = luigi.Parameter()
 
     def __init__(self, *args, **kwargs):
-        super(DummyTask, self).__init__(*args, **kwargs)
+        super(DummyStep, self).__init__(*args, **kwargs)
         self.has_run = False
 
     def complete(self):
@@ -78,8 +78,8 @@ class CustomizedWorker(luigi.worker.Worker):
         super(CustomizedWorker, self).__init__(*args, **kwargs)
         self.has_run = False
 
-    def _run_task(self, task_id):
-        super(CustomizedWorker, self)._run_task(task_id)
+    def _run_step(self, step_id):
+        super(CustomizedWorker, self)._run_step(step_id)
         self.has_run = True
 
     def complete(self):
@@ -118,7 +118,7 @@ class CustomizedWorkerTest(unittest.TestCase):
         time.time = lambda: t
 
     def test_customized_worker(self):
-        a = DummyTask(3)
+        a = DummyStep(3)
         self.assertFalse(a.complete())
         self.assertFalse(self.worker_scheduler_factory.worker.complete())
         luigi.build([a], worker_scheduler_factory=self.worker_scheduler_factory)
@@ -127,5 +127,5 @@ class CustomizedWorkerTest(unittest.TestCase):
 
     def test_cmdline_custom_worker(self):
         self.assertFalse(self.worker_scheduler_factory.worker.complete())
-        luigi.run(['customized_run.DummyTask', '--n', '4'], worker_scheduler_factory=self.worker_scheduler_factory)
+        luigi.run(['customized_run.DummyStep', '--n', '4'], worker_scheduler_factory=self.worker_scheduler_factory)
         self.assertTrue(self.worker_scheduler_factory.worker.complete())

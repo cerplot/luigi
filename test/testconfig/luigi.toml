@@ -6,5 +6,5 @@ client = "hadoopcli"
 snakebite_autoconfig = false
 namenode_host = "must be overridden in local config"
 
-[SomeTask]
+[SomeStep]
 param = {key1 = "value1", key2 = "value2"}

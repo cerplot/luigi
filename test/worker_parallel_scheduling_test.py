@@ -27,7 +27,7 @@ import psutil
 
 import luigi
 from luigi.worker import Worker
-from luigi.task_status import UNKNOWN
+from luigi.step_status import UNKNOWN
 
 
 def running_children():
@@ -50,13 +50,13 @@ def pause_gc():
         gc.enable()
 
 
-class SlowCompleteWrapper(luigi.WrapperTask):
+class SlowCompleteWrapper(luigi.WrapperStep):
 
     def requires(self):
-        return [SlowCompleteTask(i) for i in range(4)]
+        return [SlowCompleteStep(i) for i in range(4)]
 
 
-class SlowCompleteTask(luigi.Task):
+class SlowCompleteStep(luigi.Step):
     n = luigi.IntParameter()
 
     def complete(self):
@@ -64,7 +64,7 @@ class SlowCompleteTask(luigi.Task):
         return True
 
 
-class OverlappingSelfDependenciesTask(luigi.Task):
+class OverlappingSelfDependenciesStep(luigi.Step):
     n = luigi.IntParameter()
     k = luigi.IntParameter()
 
@@ -72,22 +72,22 @@ class OverlappingSelfDependenciesTask(luigi.Task):
         return self.n < self.k or self.k == 0
 
     def requires(self):
-        return [OverlappingSelfDependenciesTask(self.n - 1, k) for k in range(self.k + 1)]
+        return [OverlappingSelfDependenciesStep(self.n - 1, k) for k in range(self.k + 1)]
 
 
-class ExceptionCompleteTask(luigi.Task):
+class ExceptionCompleteStep(luigi.Step):
 
     def complete(self):
         assert False
 
 
-class ExceptionRequiresTask(luigi.Task):
+class ExceptionRequiresStep(luigi.Step):
 
     def requires(self):
         assert False
 
 
-class UnpicklableExceptionTask(luigi.Task):
+class UnpicklableExceptionStep(luigi.Step):
 
     def complete(self):
         class UnpicklableException(Exception):
@@ -101,15 +101,15 @@ class ParallelSchedulingTest(unittest.TestCase):
         self.sch = mock.Mock()
         self.w = Worker(scheduler=self.sch, worker_id='x')
 
-    def added_tasks(self, status):
-        return [kw['task_id'] for args, kw in self.sch.add_task.call_args_list if kw['status'] == status]
+    def added_steps(self, status):
+        return [kw['step_id'] for args, kw in self.sch.add_step.call_args_list if kw['status'] == status]
 
     def test_number_of_processes(self):
         import multiprocessing
         real_pool = multiprocessing.Pool(1)
         with mock.patch('multiprocessing.Pool') as mocked_pool:
             mocked_pool.return_value = real_pool
-            self.w.add(OverlappingSelfDependenciesTask(n=1, k=1), multiprocess=True, processes=1234)
+            self.w.add(OverlappingSelfDependenciesStep(n=1, k=1), multiprocess=True, processes=1234)
             mocked_pool.assert_called_once_with(processes=1234)
 
     def test_zero_processes(self):
@@ -117,69 +117,69 @@ class ParallelSchedulingTest(unittest.TestCase):
         real_pool = multiprocessing.Pool(1)
         with mock.patch('multiprocessing.Pool') as mocked_pool:
             mocked_pool.return_value = real_pool
-            self.w.add(OverlappingSelfDependenciesTask(n=1, k=1), multiprocess=True, processes=0)
+            self.w.add(OverlappingSelfDependenciesStep(n=1, k=1), multiprocess=True, processes=0)
             mocked_pool.assert_called_once_with(processes=None)
 
     def test_children_terminated(self):
         before_children = running_children()
         with pause_gc():
             self.w.add(
-                OverlappingSelfDependenciesTask(5, 2),
+                OverlappingSelfDependenciesStep(5, 2),
                 multiprocess=True,
             )
             self.assertLessEqual(running_children(), before_children)
 
     def test_multiprocess_scheduling_with_overlapping_dependencies(self):
-        self.w.add(OverlappingSelfDependenciesTask(5, 2), True)
-        self.assertEqual(15, self.sch.add_task.call_count)
+        self.w.add(OverlappingSelfDependenciesStep(5, 2), True)
+        self.assertEqual(15, self.sch.add_step.call_count)
         self.assertEqual(set((
-            OverlappingSelfDependenciesTask(n=1, k=1).task_id,
-            OverlappingSelfDependenciesTask(n=2, k=1).task_id,
-            OverlappingSelfDependenciesTask(n=2, k=2).task_id,
-            OverlappingSelfDependenciesTask(n=3, k=1).task_id,
-            OverlappingSelfDependenciesTask(n=3, k=2).task_id,
-            OverlappingSelfDependenciesTask(n=4, k=1).task_id,
-            OverlappingSelfDependenciesTask(n=4, k=2).task_id,
-            OverlappingSelfDependenciesTask(n=5, k=2).task_id,
-        )), set(self.added_tasks('PENDING')))
+            OverlappingSelfDependenciesStep(n=1, k=1).step_id,
+            OverlappingSelfDependenciesStep(n=2, k=1).step_id,
+            OverlappingSelfDependenciesStep(n=2, k=2).step_id,
+            OverlappingSelfDependenciesStep(n=3, k=1).step_id,
+            OverlappingSelfDependenciesStep(n=3, k=2).step_id,
+            OverlappingSelfDependenciesStep(n=4, k=1).step_id,
+            OverlappingSelfDependenciesStep(n=4, k=2).step_id,
+            OverlappingSelfDependenciesStep(n=5, k=2).step_id,
+        )), set(self.added_steps('PENDING')))
         self.assertEqual(set((
-            OverlappingSelfDependenciesTask(n=0, k=0).task_id,
-            OverlappingSelfDependenciesTask(n=0, k=1).task_id,
-            OverlappingSelfDependenciesTask(n=1, k=0).task_id,
-            OverlappingSelfDependenciesTask(n=1, k=2).task_id,
-            OverlappingSelfDependenciesTask(n=2, k=0).task_id,
-            OverlappingSelfDependenciesTask(n=3, k=0).task_id,
-            OverlappingSelfDependenciesTask(n=4, k=0).task_id,
-        )), set(self.added_tasks('DONE')))
+            OverlappingSelfDependenciesStep(n=0, k=0).step_id,
+            OverlappingSelfDependenciesStep(n=0, k=1).step_id,
+            OverlappingSelfDependenciesStep(n=1, k=0).step_id,
+            OverlappingSelfDependenciesStep(n=1, k=2).step_id,
+            OverlappingSelfDependenciesStep(n=2, k=0).step_id,
+            OverlappingSelfDependenciesStep(n=3, k=0).step_id,
+            OverlappingSelfDependenciesStep(n=4, k=0).step_id,
+        )), set(self.added_steps('DONE')))
 
     @mock.patch('luigi.notifications.send_error_email')
     def test_raise_exception_in_complete(self, send):
-        self.w.add(ExceptionCompleteTask(), multiprocess=True)
+        self.w.add(ExceptionCompleteStep(), multiprocess=True)
         send.check_called_once()
-        self.assertEqual(UNKNOWN, self.sch.add_task.call_args[1]['status'])
-        self.assertFalse(self.sch.add_task.call_args[1]['runnable'])
+        self.assertEqual(UNKNOWN, self.sch.add_step.call_args[1]['status'])
+        self.assertFalse(self.sch.add_step.call_args[1]['runnable'])
         self.assertTrue('assert False' in send.call_args[0][1])
 
     @mock.patch('luigi.notifications.send_error_email')
     def test_raise_unpicklable_exception_in_complete(self, send):
         # verify exception can't be pickled
-        self.assertRaises(Exception, UnpicklableExceptionTask().complete)
+        self.assertRaises(Exception, UnpicklableExceptionStep().complete)
         try:
-            UnpicklableExceptionTask().complete()
+            UnpicklableExceptionStep().complete()
         except Exception as e:
             ex = e
         self.assertRaises((pickle.PicklingError, AttributeError), pickle.dumps, ex)
 
         # verify this can run async
-        self.w.add(UnpicklableExceptionTask(), multiprocess=True)
+        self.w.add(UnpicklableExceptionStep(), multiprocess=True)
         send.check_called_once()
-        self.assertEqual(UNKNOWN, self.sch.add_task.call_args[1]['status'])
-        self.assertFalse(self.sch.add_task.call_args[1]['runnable'])
+        self.assertEqual(UNKNOWN, self.sch.add_step.call_args[1]['status'])
+        self.assertFalse(self.sch.add_step.call_args[1]['runnable'])
         self.assertTrue('raise UnpicklableException()' in send.call_args[0][1])
 
     @mock.patch('luigi.notifications.send_error_email')
     def test_raise_exception_in_requires(self, send):
-        self.w.add(ExceptionRequiresTask(), multiprocess=True)
+        self.w.add(ExceptionRequiresStep(), multiprocess=True)
         send.check_called_once()
-        self.assertEqual(UNKNOWN, self.sch.add_task.call_args[1]['status'])
-        self.assertFalse(self.sch.add_task.call_args[1]['runnable'])
+        self.assertEqual(UNKNOWN, self.sch.add_step.call_args[1]['status'])
+        self.assertFalse(self.sch.add_step.call_args[1]['runnable'])

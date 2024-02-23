@@ -25,7 +25,7 @@ import mock
 import pytest
 
 
-class ListParameterTask(luigi.Task):
+class ListParameterStep(luigi.Step):
     param = luigi.ListParameter()
 
 
@@ -47,12 +47,12 @@ class ListParameterTest(unittest.TestCase):
         self.assertEqual(b_list, a.parse(a.serialize(b_list)))
 
     def test_parse_interface(self):
-        in_parse(["ListParameterTask", "--param", '[1, "one", true]'],
-                 lambda task: self.assertEqual(task.param, tuple(ListParameterTest._list)))
+        in_parse(["ListParameterStep", "--param", '[1, "one", true]'],
+                 lambda step: self.assertEqual(step.param, tuple(ListParameterTest._list)))
 
-    def test_serialize_task(self):
-        t = ListParameterTask(ListParameterTest._list)
-        self.assertEqual(str(t), 'ListParameterTask(param=[1, "one", true])')
+    def test_serialize_step(self):
+        t = ListParameterStep(ListParameterTest._list)
+        self.assertEqual(str(t), 'ListParameterStep(param=[1, "one", true])')
 
     def test_parse_invalid_input(self):
         self.assertRaises(ValueError, lambda: luigi.ListParameter().parse('{"invalid"}'))

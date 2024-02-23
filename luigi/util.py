@@ -19,67 +19,67 @@
 Using ``inherits`` and ``requires`` to ease parameter pain
 ============================================================
 
-Most luigi plumbers will find themselves in an awkward task parameter situation
+Most luigi plumbers will find themselves in an awkward step parameter situation
 at some point or another.  Consider the following "parameter explosion"
 problem:
 
 .. code-block:: python
 
-    class TaskA(luigi.ExternalTask):
+    class StepA(luigi.ExternalStep):
         param_a = luigi.Parameter()
 
         def output(self):
             return luigi.LocalTarget('/tmp/log-{t.param_a}'.format(t=self))
 
-    class TaskB(luigi.Task):
+    class StepB(luigi.Step):
         param_b = luigi.Parameter()
         param_a = luigi.Parameter()
 
         def requires(self):
-            return TaskA(param_a=self.param_a)
+            return StepA(param_a=self.param_a)
 
-    class TaskC(luigi.Task):
+    class StepC(luigi.Step):
         param_c = luigi.Parameter()
         param_b = luigi.Parameter()
         param_a = luigi.Parameter()
 
         def requires(self):
-            return TaskB(param_b=self.param_b, param_a=self.param_a)
+            return StepB(param_b=self.param_b, param_a=self.param_a)
 
 
-In work flows requiring many tasks to be chained together in this manner,
-parameter handling can spiral out of control.  Each downstream task becomes
+In work flows requiring many steps to be chained together in this manner,
+parameter handling can spiral out of control.  Each downstream step becomes
 more burdensome than the last.  Refactoring becomes more difficult.  There
 are several ways one might try and avoid the problem.
 
-**Approach 1**:  Parameters via command line or config instead of :func:`~luigi.task.Task.requires`.
+**Approach 1**:  Parameters via command line or config instead of :func:`~luigi.step.Step.requires`.
 
 .. code-block:: python
 
-    class TaskA(luigi.ExternalTask):
+    class StepA(luigi.ExternalStep):
         param_a = luigi.Parameter()
 
         def output(self):
             return luigi.LocalTarget('/tmp/log-{t.param_a}'.format(t=self))
 
-    class TaskB(luigi.Task):
+    class StepB(luigi.Step):
         param_b = luigi.Parameter()
 
         def requires(self):
-            return TaskA()
+            return StepA()
 
-    class TaskC(luigi.Task):
+    class StepC(luigi.Step):
         param_c = luigi.Parameter()
 
         def requires(self):
-            return TaskB()
+            return StepB()
 
 
 Then run in the shell like so:
 
 .. code-block:: bash
 
-    luigi --module my_tasks TaskC --param-c foo --TaskB-param-b bar --TaskA-param-a baz
+    luigi --module my_steps StepC --param-c foo --StepB-param-b bar --StepA-param-a baz
 
 
 Repetitive parameters have been eliminated, but at the cost of making the job's
@@ -87,8 +87,8 @@ command line interface slightly clunkier.  Often this is a reasonable
 trade-off.
 
 But parameters can't always be refactored out every class.  Downstream
-tasks might also need to use some of those parameters.  For example,
-if ``TaskC`` needs to use ``param_a`` too, then ``param_a`` would still need
+steps might also need to use some of those parameters.  For example,
+if ``StepC`` needs to use ``param_a`` too, then ``param_a`` would still need
 to be repeated.
 
 
@@ -101,26 +101,26 @@ to be repeated.
         param_b = luigi.Parameter()
         param_a = luigi.Parameter()
 
-    class TaskA(Params, luigi.ExternalTask):
+    class StepA(Params, luigi.ExternalStep):
         def output(self):
             return luigi.LocalTarget('/tmp/log-{t.param_a}'.format(t=self))
 
-    class TaskB(Params):
+    class StepB(Params):
         def requires(self):
-            return TaskA()
+            return StepA()
 
-    class TaskB(Params):
+    class StepB(Params):
         def requires(self):
-            return TaskB()
+            return StepB()
 
 
-This looks great at first glance, but a couple of issues lurk. Now ``TaskA``
-and ``TaskB`` have unnecessary significant parameters.  Significant parameters
-help define the identity of a task.  Identical tasks are prevented from
+This looks great at first glance, but a couple of issues lurk. Now ``StepA``
+and ``StepB`` have unnecessary significant parameters.  Significant parameters
+help define the identity of a step.  Identical steps are prevented from
 running at the same time by the central planner.  This helps preserve the
-idempotent and atomic nature of luigi tasks.  Unnecessary significant task
-parameters confuse a task's identity.  Under the right circumstances, task
-identity confusion could lead to that task running when it shouldn't, or
+idempotent and atomic nature of luigi steps.  Unnecessary significant step
+parameters confuse a step's identity.  Under the right circumstances, step
+identity confusion could lead to that step running when it shouldn't, or
 failing to run when it should.
 
 This approach should only be used when all of the parameters of the config
@@ -128,18 +128,18 @@ class, are significant (or all insignificant) for all of its subclasses.
 
 And wait a second... there's a bug in the above code.  See it?
 
-``TaskA`` won't behave as an ``ExternalTask`` because the parent classes are
+``StepA`` won't behave as an ``ExternalStep`` because the parent classes are
 specified in the wrong order.  This contrived example is easy to fix (by
-swapping the ordering of the parents of ``TaskA``), but real world cases can be
+swapping the ordering of the parents of ``StepA``), but real world cases can be
 more difficult to both spot and fix.  Inheriting from multiple classes
-derived from :class:`~luigi.task.Task` should be undertaken with caution and avoided
+derived from :class:`~luigi.step.Step` should be undertaken with caution and avoided
 where possible.
 
 
 **Approach 3**: Use :class:`~luigi.util.inherits` and :class:`~luigi.util.requires`
 
 The :class:`~luigi.util.inherits` class decorator in this module copies parameters (and
-nothing else) from one task class to another, and avoids direct pythonic
+nothing else) from one step class to another, and avoids direct pythonic
 inheritance.
 
 .. code-block:: python
@@ -147,50 +147,50 @@ inheritance.
     import luigi
     from luigi.util import inherits
 
-    class TaskA(luigi.ExternalTask):
+    class StepA(luigi.ExternalStep):
         param_a = luigi.Parameter()
 
         def output(self):
             return luigi.LocalTarget('/tmp/log-{t.param_a}'.format(t=self))
 
-    @inherits(TaskA)
-    class TaskB(luigi.Task):
+    @inherits(StepA)
+    class StepB(luigi.Step):
         param_b = luigi.Parameter()
 
         def requires(self):
-            t = self.clone(TaskA)  # or t = self.clone_parent()
+            t = self.clone(StepA)  # or t = self.clone_parent()
 
             # Wait... whats this clone thingy do?
             #
-            # Pass it a task class.  It calls that task.  And when it does, it
+            # Pass it a step class.  It calls that step.  And when it does, it
             # supplies all parameters (and only those parameters) common to
             # the caller and callee!
             #
             # The call to clone is equivalent to the following (note the
             # fact that clone avoids passing param_b).
             #
-            #   return TaskA(param_a=self.param_a)
+            #   return StepA(param_a=self.param_a)
 
             return t
 
-    @inherits(TaskB)
-    class TaskC(luigi.Task):
+    @inherits(StepB)
+    class StepC(luigi.Step):
         param_c = luigi.Parameter()
 
         def requires(self):
-            return self.clone(TaskB)
+            return self.clone(StepB)
 
 
 This totally eliminates the need to repeat parameters, avoids inheritance
-issues, and keeps the task command line interface as simple (as it can be,
-anyway).  Refactoring task parameters is also much easier.
+issues, and keeps the step command line interface as simple (as it can be,
+anyway).  Refactoring step parameters is also much easier.
 
 The :class:`~luigi.util.requires` helper function can reduce this pattern even further.   It
 does everything :class:`~luigi.util.inherits` does,
 and also attaches a :class:`~luigi.util.requires` method
-to your task (still all without pythonic inheritance).
+to your step (still all without pythonic inheritance).
 
-But how does it know how to invoke the upstream task?  It uses :func:`~luigi.task.Task.clone`
+But how does it know how to invoke the upstream step?  It uses :func:`~luigi.step.Step.clone`
 behind the scenes!
 
 .. code-block:: python
@@ -198,19 +198,19 @@ behind the scenes!
     import luigi
     from luigi.util import inherits, requires
 
-    class TaskA(luigi.ExternalTask):
+    class StepA(luigi.ExternalStep):
         param_a = luigi.Parameter()
 
         def output(self):
             return luigi.LocalTarget('/tmp/log-{t.param_a}'.format(t=self))
 
-    @requires(TaskA)
-    class TaskB(luigi.Task):
+    @requires(StepA)
+    class StepB(luigi.Step):
         param_b = luigi.Parameter()
 
         # The class decorator does this for me!
         # def requires(self):
-        #     return self.clone(TaskA)
+        #     return self.clone(StepA)
 
 Use these helper functions effectively to avoid unnecessary
 repetition and dodge a few potentially nasty workflow pitfalls at the same
@@ -220,33 +220,33 @@ time. Brilliant!
 import datetime
 import logging
 
-from luigi import task
+from luigi import step
 from luigi import parameter
 
 
 logger = logging.getLogger('luigi-interface')
 
 
-def common_params(task_instance, task_cls):
+def common_params(step_instance, step_cls):
     """
-    Grab all the values in task_instance that are found in task_cls.
+    Grab all the values in step_instance that are found in step_cls.
     """
-    if not isinstance(task_cls, task.Register):
-        raise TypeError("task_cls must be an uninstantiated Task")
+    if not isinstance(step_cls, step.Register):
+        raise TypeError("step_cls must be an uninstantiated Step")
 
-    task_instance_param_names = dict(task_instance.get_params()).keys()
-    task_cls_params_dict = dict(task_cls.get_params())
-    task_cls_param_names = task_cls_params_dict.keys()
-    common_param_names = set(task_instance_param_names).intersection(set(task_cls_param_names))
-    common_param_vals = [(key, task_cls_params_dict[key]) for key in common_param_names]
-    common_kwargs = dict((key, task_instance.param_kwargs[key]) for key in common_param_names)
-    vals = dict(task_instance.get_param_values(common_param_vals, [], common_kwargs))
+    step_instance_param_names = dict(step_instance.get_params()).keys()
+    step_cls_params_dict = dict(step_cls.get_params())
+    step_cls_param_names = step_cls_params_dict.keys()
+    common_param_names = set(step_instance_param_names).intersection(set(step_cls_param_names))
+    common_param_vals = [(key, step_cls_params_dict[key]) for key in common_param_names]
+    common_kwargs = dict((key, step_instance.param_kwargs[key]) for key in common_param_names)
+    vals = dict(step_instance.get_param_values(common_param_vals, [], common_kwargs))
     return vals
 
 
 class inherits:
     """
-    Task inheritance.
+    Step inheritance.
 
     *New after Luigi 2.7.6:* multiple arguments support.
 
@@ -254,14 +254,14 @@ class inherits:
 
     .. code-block:: python
 
-        class AnotherTask(luigi.Task):
+        class AnotherStep(luigi.Step):
             m = luigi.IntParameter()
 
-        class YetAnotherTask(luigi.Task):
+        class YetAnotherStep(luigi.Step):
             n = luigi.IntParameter()
 
-        @inherits(AnotherTask)
-        class MyFirstTask(luigi.Task):
+        @inherits(AnotherStep)
+        class MyFirstStep(luigi.Step):
             def requires(self):
                return self.clone_parent()
 
@@ -269,8 +269,8 @@ class inherits:
                print self.m # this will be defined
                # ...
 
-        @inherits(AnotherTask, YetAnotherTask)
-        class MySecondTask(luigi.Task):
+        @inherits(AnotherStep, YetAnotherStep)
+        class MySecondStep(luigi.Step):
             def requires(self):
                return self.clone_parents()
 
@@ -279,49 +279,49 @@ class inherits:
                # ...
     """
 
-    def __init__(self, *tasks_to_inherit, **kw_tasks_to_inherit):
+    def __init__(self, *steps_to_inherit, **kw_steps_to_inherit):
         super(inherits, self).__init__()
-        if not tasks_to_inherit and not kw_tasks_to_inherit:
-            raise TypeError("tasks_to_inherit or kw_tasks_to_inherit must contain at least one task")
-        if tasks_to_inherit and kw_tasks_to_inherit:
-            raise TypeError("Only one of tasks_to_inherit or kw_tasks_to_inherit may be present")
-        self.tasks_to_inherit = tasks_to_inherit
-        self.kw_tasks_to_inherit = kw_tasks_to_inherit
+        if not steps_to_inherit and not kw_steps_to_inherit:
+            raise TypeError("steps_to_inherit or kw_steps_to_inherit must contain at least one step")
+        if steps_to_inherit and kw_steps_to_inherit:
+            raise TypeError("Only one of steps_to_inherit or kw_steps_to_inherit may be present")
+        self.steps_to_inherit = steps_to_inherit
+        self.kw_steps_to_inherit = kw_steps_to_inherit
 
-    def __call__(self, task_that_inherits):
-        # Get all parameter objects from each of the underlying tasks
-        task_iterator = self.tasks_to_inherit or self.kw_tasks_to_inherit.values()
-        for task_to_inherit in task_iterator:
-            for param_name, param_obj in task_to_inherit.get_params():
-                # Check if the parameter exists in the inheriting task
-                if not hasattr(task_that_inherits, param_name):
-                    # If not, add it to the inheriting task
-                    setattr(task_that_inherits, param_name, param_obj)
+    def __call__(self, step_that_inherits):
+        # Get all parameter objects from each of the underlying steps
+        step_iterator = self.steps_to_inherit or self.kw_steps_to_inherit.values()
+        for step_to_inherit in step_iterator:
+            for param_name, param_obj in step_to_inherit.get_params():
+                # Check if the parameter exists in the inheriting step
+                if not hasattr(step_that_inherits, param_name):
+                    # If not, add it to the inheriting step
+                    setattr(step_that_inherits, param_name, param_obj)
 
-        # Modify task_that_inherits by adding methods
+        # Modify step_that_inherits by adding methods
 
-        # Handle unnamed tasks as a list, named as a dictionary
-        if self.tasks_to_inherit:
+        # Handle unnamed steps as a list, named as a dictionary
+        if self.steps_to_inherit:
             def clone_parent(_self, **kwargs):
-                return _self.clone(cls=self.tasks_to_inherit[0], **kwargs)
-            task_that_inherits.clone_parent = clone_parent
+                return _self.clone(cls=self.steps_to_inherit[0], **kwargs)
+            step_that_inherits.clone_parent = clone_parent
 
             def clone_parents(_self, **kwargs):
                 return [
-                    _self.clone(cls=task_to_inherit, **kwargs)
-                    for task_to_inherit in self.tasks_to_inherit
+                    _self.clone(cls=step_to_inherit, **kwargs)
+                    for step_to_inherit in self.steps_to_inherit
                 ]
-            task_that_inherits.clone_parents = clone_parents
-        elif self.kw_tasks_to_inherit:
-            # Even if there is just one named task, return a dictionary
+            step_that_inherits.clone_parents = clone_parents
+        elif self.kw_steps_to_inherit:
+            # Even if there is just one named step, return a dictionary
             def clone_parents(_self, **kwargs):
                 return {
-                    task_name: _self.clone(cls=task_to_inherit, **kwargs)
-                    for task_name, task_to_inherit in self.kw_tasks_to_inherit.items()
+                    step_name: _self.clone(cls=step_to_inherit, **kwargs)
+                    for step_name, step_to_inherit in self.kw_steps_to_inherit.items()
                 }
-            task_that_inherits.clone_parents = clone_parents
+            step_that_inherits.clone_parents = clone_parents
 
-        return task_that_inherits
+        return step_that_inherits
 
 
 class requires:
@@ -332,49 +332,49 @@ class requires:
 
     """
 
-    def __init__(self, *tasks_to_require, **kw_tasks_to_require):
+    def __init__(self, *steps_to_require, **kw_steps_to_require):
         super(requires, self).__init__()
 
-        self.tasks_to_require = tasks_to_require
-        self.kw_tasks_to_require = kw_tasks_to_require
+        self.steps_to_require = steps_to_require
+        self.kw_steps_to_require = kw_steps_to_require
 
-    def __call__(self, task_that_requires):
-        task_that_requires = inherits(*self.tasks_to_require, **self.kw_tasks_to_require)(task_that_requires)
+    def __call__(self, step_that_requires):
+        step_that_requires = inherits(*self.steps_to_require, **self.kw_steps_to_require)(step_that_requires)
 
-        # Modify task_that_requires by adding requires method.
-        # If only one task is required, this single task is returned.
-        # Otherwise, list of tasks is returned
+        # Modify step_that_requires by adding requires method.
+        # If only one step is required, this single step is returned.
+        # Otherwise, list of steps is returned
         def requires(_self):
-            return _self.clone_parent() if len(self.tasks_to_require) == 1 else _self.clone_parents()
-        task_that_requires.requires = requires
+            return _self.clone_parent() if len(self.steps_to_require) == 1 else _self.clone_parents()
+        step_that_requires.requires = requires
 
-        return task_that_requires
+        return step_that_requires
 
 
 class copies:
     """
-    Auto-copies a task.
+    Auto-copies a step.
 
     Usage:
 
     .. code-block:: python
 
-        @copies(MyTask):
-        class CopyOfMyTask(luigi.Task):
+        @copies(MyStep):
+        class CopyOfMyStep(luigi.Step):
             def output(self):
                return LocalTarget(self.date.strftime('/var/xyz/report-%Y-%m-%d'))
     """
 
-    def __init__(self, task_to_copy):
+    def __init__(self, step_to_copy):
         super(copies, self).__init__()
-        self.requires_decorator = requires(task_to_copy)
+        self.requires_decorator = requires(step_to_copy)
 
-    def __call__(self, task_that_copies):
-        task_that_copies = self.requires_decorator(task_that_copies)
+    def __call__(self, step_that_copies):
+        step_that_copies = self.requires_decorator(step_that_copies)
 
-        # Modify task_that_copies by subclassing it and adding methods
-        @task._task_wraps(task_that_copies)
-        class Wrapped(task_that_copies):
+        # Modify step_that_copies by subclassing it and adding methods
+        @step._step_wraps(step_that_copies)
+        class Wrapped(step_that_copies):
 
             def run(_self):
                 i, o = _self.input(), _self.output()
@@ -386,62 +386,62 @@ class copies:
         return Wrapped
 
 
-def delegates(task_that_delegates):
-    """ Lets a task call methods on subtask(s).
+def delegates(step_that_delegates):
+    """ Lets a step call methods on substep(s).
 
-    The way this works is that the subtask is run as a part of the task, but
-    the task itself doesn't have to care about the requirements of the subtasks.
-    The subtask doesn't exist from the scheduler's point of view, and
-    its dependencies are instead required by the main task.
+    The way this works is that the substep is run as a part of the step, but
+    the step itself doesn't have to care about the requirements of the substeps.
+    The substep doesn't exist from the scheduler's point of view, and
+    its dependencies are instead required by the main step.
 
     Example:
 
     .. code-block:: python
 
-        class PowersOfN(luigi.Task):
+        class PowersOfN(luigi.Step):
             n = luigi.IntParameter()
             def f(self, x): return x ** self.n
 
         @delegates
-        class T(luigi.Task):
-            def subtasks(self): return PowersOfN(5)
-            def run(self): print self.subtasks().f(42)
+        class T(luigi.Step):
+            def substeps(self): return PowersOfN(5)
+            def run(self): print self.substeps().f(42)
     """
-    if not hasattr(task_that_delegates, 'subtasks'):
-        # This method can (optionally) define a couple of delegate tasks that
-        # will be accessible as interfaces, meaning that the task can access
-        # those tasks and run methods defined on them, etc
-        raise AttributeError('%s needs to implement the method "subtasks"' % task_that_delegates)
+    if not hasattr(step_that_delegates, 'substeps'):
+        # This method can (optionally) define a couple of delegate steps that
+        # will be accessible as interfaces, meaning that the step can access
+        # those steps and run methods defined on them, etc
+        raise AttributeError('%s needs to implement the method "substeps"' % step_that_delegates)
 
-    @task._task_wraps(task_that_delegates)
-    class Wrapped(task_that_delegates):
+    @step._step_wraps(step_that_delegates)
+    class Wrapped(step_that_delegates):
 
         def deps(self):
             # Overrides method in base class
-            return task.flatten(self.requires()) + task.flatten([t.deps() for t in task.flatten(self.subtasks())])
+            return step.flatten(self.requires()) + step.flatten([t.deps() for t in step.flatten(self.substeps())])
 
         def run(self):
-            for t in task.flatten(self.subtasks()):
+            for t in step.flatten(self.substeps()):
                 t.run()
-            task_that_delegates.run(self)
+            step_that_delegates.run(self)
 
     return Wrapped
 
 
-def previous(task):
+def previous(step):
     """
-    Return a previous Task of the same family.
+    Return a previous Step of the same family.
 
-    By default checks if this task family only has one non-global parameter and if
+    By default checks if this step family only has one non-global parameter and if
     it is a DateParameter, DateHourParameter or DateIntervalParameter in which case
     it returns with the time decremented by 1 (hour, day or interval)
     """
-    params = task.get_params()
+    params = step.get_params()
     previous_params = {}
     previous_date_params = {}
 
     for param_name, param_obj in params:
-        param_value = getattr(task, param_name)
+        param_value = getattr(step, param_name)
 
         if isinstance(param_obj, parameter.DateParameter):
             previous_date_params[param_name] = param_value - datetime.timedelta(days=1)
@@ -459,15 +459,15 @@ def previous(task):
     previous_params.update(previous_date_params)
 
     if len(previous_date_params) == 0:
-        raise NotImplementedError("No task parameter - can't determine previous task")
+        raise NotImplementedError("No step parameter - can't determine previous step")
     elif len(previous_date_params) > 1:
-        raise NotImplementedError("Too many date-related task parameters - can't determine previous task")
+        raise NotImplementedError("Too many date-related step parameters - can't determine previous step")
     else:
-        return task.clone(**previous_params)
+        return step.clone(**previous_params)
 
 
-def get_previous_completed(task, max_steps=10):
-    prev = task
+def get_previous_completed(step, max_steps=10):
+    prev = step
     for _ in range(max_steps):
         prev = previous(prev)
         logger.debug("Checking if %s is complete", prev)

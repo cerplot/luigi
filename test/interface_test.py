@@ -41,11 +41,11 @@ class InterfaceTest(LuigiTestCase):
         self.worker_scheduler_factory.create_local_scheduler = Mock()
         super(InterfaceTest, self).setUp()
 
-        class NoOpTask(luigi.Task):
+        class NoOpStep(luigi.Step):
             param = luigi.Parameter()
 
-        self.task_a = NoOpTask("a")
-        self.task_b = NoOpTask("b")
+        self.step_a = NoOpStep("a")
+        self.step_b = NoOpStep("b")
 
     def _create_summary_dict_with(self, updates={}):
         summary_dict = {
@@ -101,64 +101,64 @@ class InterfaceTest(LuigiTestCase):
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_success(self, fake_summary_dict):
-        # Nothing in failed tasks so, should succeed
+        # Nothing in failed steps so, should succeed
         fake_summary_dict.return_value = self._create_summary_dict_with()
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.SUCCESS)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_success_with_retry(self, fake_summary_dict):
-        # Nothing in failed tasks (only an entry in ever_failed) so, should succeed with retry
+        # Nothing in failed steps (only an entry in ever_failed) so, should succeed with retry
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'ever_failed': [self.task_a]
+            'ever_failed': [self.step_a]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.SUCCESS_WITH_RETRY)
 
     @patch(_summary_dict_module_path())
-    def test_that_status_is_failed_when_there_is_one_failed_task(self, fake_summary_dict):
-        # Should fail because a task failed
+    def test_that_status_is_failed_when_there_is_one_failed_step(self, fake_summary_dict):
+        # Should fail because a step failed
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'ever_failed': [self.task_a],
-            'failed': [self.task_a]
+            'ever_failed': [self.step_a],
+            'failed': [self.step_a]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.FAILED)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_failed_with_scheduling_failure(self, fake_summary_dict):
-        # Failed task and also a scheduling error
+        # Failed step and also a scheduling error
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'ever_failed': [self.task_a],
-            'failed': [self.task_a],
-            'scheduling_error': [self.task_b]
+            'ever_failed': [self.step_a],
+            'failed': [self.step_a],
+            'scheduling_error': [self.step_b]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.FAILED_AND_SCHEDULING_FAILED)
 
     @patch(_summary_dict_module_path())
     def test_that_status_is_scheduling_failed_with_one_scheduling_error(self, fake_summary_dict):
-        # Scheduling error for at least one task
+        # Scheduling error for at least one step
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'scheduling_error': [self.task_b]
+            'scheduling_error': [self.step_b]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.SCHEDULING_FAILED)
 
     @patch(_summary_dict_module_path())
-    def test_that_status_is_not_run_with_one_task_not_run(self, fake_summary_dict):
-        # At least one of the tasks was not run
+    def test_that_status_is_not_run_with_one_step_not_run(self, fake_summary_dict):
+        # At least one of the steps was not run
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'not_run': [self.task_a]
+            'not_run': [self.step_a]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.NOT_RUN)
 
     @patch(_summary_dict_module_path())
-    def test_that_status_is_missing_ext_with_one_task_with_missing_external_dependency(self, fake_summary_dict):
-        # Missing external dependency for at least one task
+    def test_that_status_is_missing_ext_with_one_step_with_missing_external_dependency(self, fake_summary_dict):
+        # Missing external dependency for at least one step
         fake_summary_dict.return_value = self._create_summary_dict_with({
-            'still_pending_ext': [self.task_a]
+            'still_pending_ext': [self.step_a]
         })
         luigi_run_result = self._run_interface(detailed_summary=True)
         self.assertEqual(luigi_run_result.status, LuigiStatusCode.MISSING_EXT)
@@ -180,22 +180,22 @@ class InterfaceTest(LuigiTestCase):
         self.assertRaises(AttributeError, self._run_interface)
         self.assertTrue(worker.__exit__.called)
 
-    def test_just_run_main_task_cls(self):
-        class MyTestTask(luigi.Task):
+    def test_just_run_main_step_cls(self):
+        class MyTestStep(luigi.Step):
             pass
 
-        class MyOtherTestTask(luigi.Task):
+        class MyOtherTestStep(luigi.Step):
             my_param = luigi.Parameter()
 
         with patch.object(sys, 'argv', ['my_module.py', '--no-lock', '--local-scheduler']):
-            luigi.run(main_task_cls=MyTestTask)
+            luigi.run(main_step_cls=MyTestStep)
 
         with patch.object(sys, 'argv', ['my_module.py', '--no-lock', '--my-param', 'my_value', '--local-scheduler']):
-            luigi.run(main_task_cls=MyOtherTestTask)
+            luigi.run(main_step_cls=MyOtherTestStep)
 
     def _run_interface(self, **env_params):
         return luigi.interface.build(
-                                    [self.task_a, self.task_b],
+                                    [self.step_a, self.step_b],
                                     worker_scheduler_factory=self.worker_scheduler_factory,
                                     **env_params)
 

@@ -21,13 +21,13 @@ import signal
 import multiprocessing
 from contextlib import contextmanager
 
-from helpers import unittest, RunOnceTask, with_config, skipOnGithubActions
+from helpers import unittest, RunOnceStep, with_config, skipOnGithubActions
 
 import luigi
 import luigi.server
 
 
-class ResourceTestTask(RunOnceTask):
+class ResourceTestStep(RunOnceStep):
 
     param = luigi.Parameter()
     reduce_foo = luigi.BoolParameter()
@@ -41,17 +41,17 @@ class ResourceTestTask(RunOnceTask):
 
         time.sleep(2)
 
-        super(ResourceTestTask, self).run()
+        super(ResourceTestStep, self).run()
 
 
-class ResourceWrapperTask(RunOnceTask):
+class ResourceWrapperStep(RunOnceStep):
 
-    reduce_foo = ResourceTestTask.reduce_foo
+    reduce_foo = ResourceTestStep.reduce_foo
 
     def requires(self):
         return [
-            ResourceTestTask(param="a", reduce_foo=self.reduce_foo),
-            ResourceTestTask(param="b"),
+            ResourceTestStep(param="a", reduce_foo=self.reduce_foo),
+            ResourceTestStep(param="b"),
         ]
 
 
@@ -59,16 +59,16 @@ class LocalRunningResourcesTest(unittest.TestCase):
 
     def test_resource_reduction(self):
         # trivial resource reduction on local scheduler
-        # test the running_task_resources setter and getter
+        # test the running_step_resources setter and getter
         sch = luigi.scheduler.Scheduler(resources={"foo": 2})
 
         with luigi.worker.Worker(scheduler=sch) as w:
-            task = ResourceTestTask(param="a", reduce_foo=True)
+            step = ResourceTestStep(param="a", reduce_foo=True)
 
-            w.add(task)
+            w.add(step)
             w.run()
 
-            self.assertEqual(sch.get_running_task_resources(task.task_id)["resources"]["foo"], 1)
+            self.assertEqual(sch.get_running_step_resources(step.step_id)["resources"]["foo"], 1)
 
 
 class ConcurrentRunningResourcesTest(unittest.TestCase):
@@ -113,25 +113,25 @@ class ConcurrentRunningResourcesTest(unittest.TestCase):
             if max_duration > 0:
                 self.assertLess(duration, max_duration)
 
-    def test_tasks_serial(self):
+    def test_steps_serial(self):
         # serial test
-        # run two tasks that do not reduce the "foo" resource
-        # as the total foo resource (3) is smaller than the requirement of two tasks (4),
+        # run two steps that do not reduce the "foo" resource
+        # as the total foo resource (3) is smaller than the requirement of two steps (4),
         # the scheduler is forced to run them serially which takes longer than 4 seconds
         with self.worker() as w:
-            w.add(ResourceWrapperTask(reduce_foo=False))
+            w.add(ResourceWrapperStep(reduce_foo=False))
 
             with self.assert_duration(min_duration=4):
                 w.run()
 
     @skipOnGithubActions("Temporary skipping on GH actions")  # TODO: Fix and remove skip
-    def test_tasks_parallel(self):
+    def test_steps_parallel(self):
         # parallel test
-        # run two tasks and the first one lowers its requirement on the "foo" resource, so that
-        # the total "foo" resource (3) is sufficient to run both tasks in parallel shortly after
-        # the first task started, so the entire process should not exceed 4 seconds
+        # run two steps and the first one lowers its requirement on the "foo" resource, so that
+        # the total "foo" resource (3) is sufficient to run both steps in parallel shortly after
+        # the first step started, so the entire process should not exceed 4 seconds
         with self.worker() as w:
-            w.add(ResourceWrapperTask(reduce_foo=True))
+            w.add(ResourceWrapperStep(reduce_foo=True))
 
             with self.assert_duration(max_duration=4):
                 w.run()

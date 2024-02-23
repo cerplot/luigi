@@ -18,7 +18,7 @@
 import luigi
 
 
-class OtherModuleTask(luigi.Task):
+class OtherModuleStep(luigi.Step):
     p = luigi.Parameter()
 
     def output(self):

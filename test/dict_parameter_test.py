@@ -27,7 +27,7 @@ import collections
 import pytest
 
 
-class DictParameterTask(luigi.Task):
+class DictParameterStep(luigi.Step):
     param = luigi.DictParameter()
 
 
@@ -50,12 +50,12 @@ class DictParameterTest(unittest.TestCase):
             self.assertEqual(json_input, luigi.DictParameter().serialize(_dict))
 
     def test_parse_interface(self):
-        in_parse(["DictParameterTask", "--param", '{"username": "me", "password": "secret"}'],
-                 lambda task: self.assertEqual(task.param, DictParameterTest._dict))
+        in_parse(["DictParameterStep", "--param", '{"username": "me", "password": "secret"}'],
+                 lambda step: self.assertEqual(step.param, DictParameterTest._dict))
 
-    def test_serialize_task(self):
-        t = DictParameterTask(DictParameterTest._dict)
-        self.assertEqual(str(t), 'DictParameterTask(param={"username": "me", "password": "secret"})')
+    def test_serialize_step(self):
+        t = DictParameterStep(DictParameterTest._dict)
+        self.assertEqual(str(t), 'DictParameterStep(param={"username": "me", "password": "secret"})')
 
     def test_parse_invalid_input(self):
         self.assertRaises(ValueError, lambda: luigi.DictParameter().parse('{"invalid"}'))

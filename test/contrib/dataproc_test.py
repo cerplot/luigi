@@ -39,12 +39,12 @@ class _DataprocBaseTestCase(unittest.TestCase):
 
 
 @pytest.mark.gcloud
-class DataprocTaskTest(_DataprocBaseTestCase):
+class DataprocStepTest(_DataprocBaseTestCase):
 
     def test_1_create_cluster(self):
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'CreateDataprocClusterTask',
+                             'CreateDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME])
         self.assertTrue(success)
@@ -53,7 +53,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
         job_start = time.time()
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'CreateDataprocClusterTask',
+                             'CreateDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME])
         self.assertTrue(success)
@@ -66,7 +66,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
 
         luigi.run(['--local-scheduler',
                    '--no-lock',
-                   'DataprocSparkTask',
+                   'DataprocSparkStep',
                    '--gcloud-project-id=' + PROJECT_ID,
                    '--dataproc-cluster-name=' + CLUSTER_NAME,
                    '--main-class=my.MinimalMainClass'])
@@ -84,7 +84,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
 
         luigi.run(['--local-scheduler',
                    '--no-lock',
-                   'DataprocSparkTask',
+                   'DataprocSparkStep',
                    '--gcloud-project-id=' + PROJECT_ID,
                    '--dataproc-cluster-name=' + CLUSTER_NAME,
                    '--main-class=my.MainClass',
@@ -106,7 +106,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
 
         luigi.run(['--local-scheduler',
                    '--no-lock',
-                   'DataprocPysparkTask',
+                   'DataprocPysparkStep',
                    '--gcloud-project-id=' + PROJECT_ID,
                    '--dataproc-cluster-name=' + CLUSTER_NAME,
                    '--job-file=main_job.py',
@@ -124,7 +124,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
     def test_6_delete_cluster(self):
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'DeleteDataprocClusterTask',
+                             'DeleteDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME])
         self.assertTrue(success)
@@ -133,7 +133,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
         job_start = time.time()
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'DeleteDataprocClusterTask',
+                             'DeleteDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME])
         self.assertTrue(success)
@@ -142,7 +142,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
     def test_8_create_cluster_image_version(self):
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'CreateDataprocClusterTask',
+                             'CreateDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME + '-' + IMAGE_VERSION,
                              '--image-version=1.0'])
@@ -151,7 +151,7 @@ class DataprocTaskTest(_DataprocBaseTestCase):
     def test_9_delete_cluster_image_version(self):
         success = luigi.run(['--local-scheduler',
                              '--no-lock',
-                             'DeleteDataprocClusterTask',
+                             'DeleteDataprocClusterStep',
                              '--gcloud-project-id=' + PROJECT_ID,
                              '--dataproc-cluster-name=' + CLUSTER_NAME + '-' + IMAGE_VERSION])
         self.assertTrue(success)

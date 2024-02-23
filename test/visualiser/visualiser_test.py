@@ -28,7 +28,7 @@ TEST_TIMEOUT = 40
                      'PhantomJS tests not requested in TEST_VISUALISER')
 class TestVisualiser(ServerTestBase):
     """
-    Builds a medium-sized task tree of MergeSort results then starts
+    Builds a medium-sized step tree of MergeSort results then starts
     phantomjs  as a subprocess to interact with the scheduler.
 
     """
@@ -37,8 +37,8 @@ class TestVisualiser(ServerTestBase):
         super(TestVisualiser, self).setUp()
 
         x = 'I scream for ice cream'
-        task = UberTask(base_task=FailingMergeSort, x=x, copies=4)
-        luigi.build([task], workers=1, scheduler_port=self.get_http_port())
+        step = UberStep(base_step=FailingMergeSort, x=x, copies=4)
+        luigi.build([step], workers=1, scheduler_port=self.get_http_port())
 
         self.done = threading.Event()
 
@@ -85,16 +85,16 @@ class TestVisualiser(ServerTestBase):
             print('PhantomJS return status is {}'.format(status))
             assert status == 0
 
-    # tasks tab tests.
+    # steps tab tests.
     def test_keeps_entries_after_page_refresh(self):
         port = self.get_http_port()
         driver = webdriver.PhantomJS()
 
         driver.get('http://localhost:{}'.format(port))
 
-        length_select = driver.find_element_by_css_selector('select[name="taskTable_length"]')
+        length_select = driver.find_element_by_css_selector('select[name="stepTable_length"]')
         assert length_select.get_attribute('value') == '10'
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 10
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 10
 
         # Now change entries select box and check again.
         clicked = False
@@ -107,15 +107,15 @@ class TestVisualiser(ServerTestBase):
         assert clicked, 'Could not click option with "50" entries.'
 
         assert length_select.get_attribute('value') == '50'
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 50
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 50
 
         # Now refresh page and check. Select box should be 50 and table should contain 50 rows.
         driver.refresh()
 
         # Once page refreshed we have to find all selectors again.
-        length_select = driver.find_element_by_css_selector('select[name="taskTable_length"]')
+        length_select = driver.find_element_by_css_selector('select[name="stepTable_length"]')
         assert length_select.get_attribute('value') == '50'
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 50
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 50
 
     def test_keeps_table_filter_after_page_refresh(self):
         port = self.get_http_port()
@@ -126,21 +126,21 @@ class TestVisualiser(ServerTestBase):
         # Check initial state.
         search_input = driver.find_element_by_css_selector('input[type="search"]')
         assert search_input.get_attribute('value') == ''
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 10
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 10
 
         # Now filter and check filtered table.
         search_input.send_keys('ber')
-        # UberTask only should be displayed.
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 1
+        # UberStep only should be displayed.
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 1
 
         # Now refresh page and check. Filter input should contain 'ber' and table should contain
-        # one row (UberTask).
+        # one row (UberStep).
         driver.refresh()
 
         # Once page refreshed we have to find all selectors again.
         search_input = driver.find_element_by_css_selector('input[type="search"]')
         assert search_input.get_attribute('value') == 'ber'
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 1
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 1
 
     def test_keeps_order_after_page_refresh(self):
         port = self.get_http_port()
@@ -149,28 +149,28 @@ class TestVisualiser(ServerTestBase):
         driver.get('http://localhost:{}'.format(port))
 
         # Order by name (asc).
-        column = driver.find_elements_by_css_selector('#taskTable thead th')[1]
+        column = driver.find_elements_by_css_selector('#stepTable thead th')[1]
         column.click()
 
-        table_body = driver.find_element_by_css_selector('#taskTable tbody')
+        table_body = driver.find_element_by_css_selector('#stepTable tbody')
         assert self._get_cell_value(table_body, 0, 1) == 'FailingMergeSort_0'
 
         # Ordery by name (desc).
         column.click()
-        assert self._get_cell_value(table_body, 0, 1) == 'UberTask'
+        assert self._get_cell_value(table_body, 0, 1) == 'UberStep'
 
         # Now refresh page and check. Table should be ordered by name (desc).
         driver.refresh()
 
         # Once page refreshed we have to find all selectors again.
-        table_body = driver.find_element_by_css_selector('#taskTable tbody')
-        assert self._get_cell_value(table_body, 0, 1) == 'UberTask'
+        table_body = driver.find_element_by_css_selector('#stepTable tbody')
+        assert self._get_cell_value(table_body, 0, 1) == 'UberStep'
 
     def test_keeps_filter_on_server_after_page_refresh(self):
         port = self.get_http_port()
         driver = webdriver.PhantomJS()
 
-        driver.get('http://localhost:{}/static/visualiser/index.html#tab=tasks'.format(port))
+        driver.get('http://localhost:{}/static/visualiser/index.html#tab=steps'.format(port))
 
         # Check initial state.
         checkbox = driver.find_element_by_css_selector('#serverSideCheckbox')
@@ -186,26 +186,26 @@ class TestVisualiser(ServerTestBase):
         checkbox = driver.find_element_by_css_selector('#serverSideCheckbox')
         assert checkbox.is_selected()
 
-    def test_synchronizes_fields_on_tasks_tab(self):
-        # Check fields population if tasks tab was opened by direct link
+    def test_synchronizes_fields_on_steps_tab(self):
+        # Check fields population if steps tab was opened by direct link
         port = self.get_http_port()
         driver = webdriver.PhantomJS()
         url = 'http://localhost:{}/static/visualiser/index.html' \
-              '#tab=tasks&length=50&search__search=er&filterOnServer=1&order=1,desc' \
+              '#tab=steps&length=50&search__search=er&filterOnServer=1&order=1,desc' \
               .format(port)
 
         driver.get(url)
 
-        length_select = driver.find_element_by_css_selector('select[name="taskTable_length"]')
+        length_select = driver.find_element_by_css_selector('select[name="stepTable_length"]')
         assert length_select.get_attribute('value') == '50'
 
         search_input = driver.find_element_by_css_selector('input[type="search"]')
         assert search_input.get_attribute('value') == 'er'
-        assert len(driver.find_elements_by_css_selector('#taskTable tbody tr')) == 50
+        assert len(driver.find_elements_by_css_selector('#stepTable tbody tr')) == 50
 
         # Table is ordered by first column (name)
-        table_body = driver.find_element_by_css_selector('#taskTable tbody')
-        assert self._get_cell_value(table_body, 0, 1) == 'UberTask'
+        table_body = driver.find_element_by_css_selector('#stepTable tbody')
+        assert self._get_cell_value(table_body, 0, 1) == 'UberStep'
 
     # graph tab tests.
 
@@ -229,26 +229,26 @@ class TestVisualiser(ServerTestBase):
         invert_checkbox = driver.find_element_by_css_selector('#invertCheckbox')
         assert invert_checkbox.is_selected()
 
-    def test_keeps_task_id_after_page_refresh(self):
+    def test_keeps_step_id_after_page_refresh(self):
         port = self.get_http_port()
         driver = webdriver.PhantomJS()
 
         driver.get('http://localhost:{}/static/visualiser/index.html#tab=graph'.format(port))
 
         # Check initial state.
-        task_id_input = driver.find_element_by_css_selector('#js-task-id')
-        assert task_id_input.get_attribute('value') == ''
+        step_id_input = driver.find_element_by_css_selector('#js-step-id')
+        assert step_id_input.get_attribute('value') == ''
 
-        # Change task id
-        task_id_input.send_keys('1')
-        driver.find_element_by_css_selector('#loadTaskForm button[type=submit]').click()
+        # Change step id
+        step_id_input.send_keys('1')
+        driver.find_element_by_css_selector('#loadStepForm button[type=submit]').click()
 
-        # Now refresh page and check. Task ID field should contain 1
+        # Now refresh page and check. Step ID field should contain 1
         driver.refresh()
 
         # Once page refreshed we have to find all selectors again.
-        task_id_input = driver.find_element_by_css_selector('#js-task-id')
-        assert task_id_input.get_attribute('value') == '1'
+        step_id_input = driver.find_element_by_css_selector('#js-step-id')
+        assert step_id_input.get_attribute('value') == '1'
 
     def test_keeps_hide_done_after_page_refresh(self):
         port = self.get_http_port()
@@ -292,17 +292,17 @@ class TestVisualiser(ServerTestBase):
         assert d3_radio.is_selected()
 
     def test_synchronizes_fields_on_graph_tab(self):
-        # Check fields population if tasks tab was opened by direct link.
+        # Check fields population if steps tab was opened by direct link.
         port = self.get_http_port()
         driver = webdriver.PhantomJS()
         url = 'http://localhost:{}/static/visualiser/index.html' \
-              '#tab=graph&taskId=1&invert=1&hideDone=1&visType=svg' \
+              '#tab=graph&stepId=1&invert=1&hideDone=1&visType=svg' \
               .format(port)
         driver.get(url)
 
-        # Check task id input
-        task_id_input = driver.find_element_by_css_selector('#js-task-id')
-        assert task_id_input.get_attribute('value') == '1'
+        # Check step id input
+        step_id_input = driver.find_element_by_css_selector('#js-step-id')
+        assert step_id_input.get_attribute('value') == '1'
 
         # Check Show Upstream Dependencies checkbox.
         invert_checkbox = driver.find_element_by_css_selector('#invertCheckbox')
@@ -316,46 +316,46 @@ class TestVisualiser(ServerTestBase):
         assert svg_radio.get_attribute('checked')
 
     def _get_cell_value(self, elem, row, column):
-        tr = elem.find_elements_by_css_selector('#taskTable tbody tr')[row]
+        tr = elem.find_elements_by_css_selector('#stepTable tbody tr')[row]
         td = tr.find_elements_by_css_selector('td')[column]
         return td.text
 
 
 # ---------------------------------------------------------------------------
-# Code for generating a tree of tasks with some failures.
+# Code for generating a tree of steps with some failures.
 
-def generate_task_families(task_class, n):
+def generate_step_families(step_class, n):
     """
-    Generate n copies of a task with different task_family names.
+    Generate n copies of a step with different step_family names.
 
-    :param task_class: a subclass of `luigi.Task`
-    :param n: number of copies of `task_class` to create
-    :return: Dictionary of task_family => task_class
+    :param step_class: a subclass of `luigi.Step`
+    :param n: number of copies of `step_class` to create
+    :return: Dictionary of step_family => step_class
 
     """
     ret = {}
     for i in range(n):
-        class_name = '{}_{}'.format(task_class.task_family, i)
-        ret[class_name] = type(class_name, (task_class,), {})
+        class_name = '{}_{}'.format(step_class.step_family, i)
+        ret[class_name] = type(class_name, (step_class,), {})
 
     return ret
 
 
-class UberTask(luigi.Task):
+class UberStep(luigi.Step):
     """
-    A task which depends on n copies of a configurable subclass.
+    A step which depends on n copies of a configurable subclass.
 
     """
     _done = False
 
-    base_task = luigi.TaskParameter()
+    base_step = luigi.StepParameter()
     x = luigi.Parameter()
     copies = luigi.IntParameter()
 
     def requires(self):
-        task_families = generate_task_families(self.base_task, self.copies)
-        for class_name in task_families:
-            yield task_families[class_name](x=self.x)
+        step_families = generate_step_families(self.base_step, self.copies)
+        for class_name in step_families:
+            yield step_families[class_name](x=self.x)
 
     def complete(self):
         return self._done
@@ -389,7 +389,7 @@ class MemoryTarget(luigi.Target):
         return self.box is not None
 
 
-class MergeSort(luigi.Task):
+class MergeSort(luigi.Step):
     x = luigi.Parameter(description='A string to be sorted')
 
     def __init__(self, *args, **kwargs):
@@ -439,5 +439,5 @@ class FailingMergeSort(MergeSort):
 
 if __name__ == '__main__':
     x = 'I scream for ice cream'
-    task = UberTask(base_task=FailingMergeSort, x=x, copies=4)
-    luigi.build([task], workers=1, scheduler_port=8082)
+    step = UberStep(base_step=FailingMergeSort, x=x, copies=4)
+    luigi.build([step], workers=1, scheduler_port=8082)

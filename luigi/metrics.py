@@ -51,19 +51,19 @@ class MetricsCollector(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def handle_task_started(self, task):
+    def handle_step_started(self, step):
         pass
 
     @abc.abstractmethod
-    def handle_task_failed(self, task):
+    def handle_step_failed(self, step):
         pass
 
     @abc.abstractmethod
-    def handle_task_disabled(self, task, config):
+    def handle_step_disabled(self, step, config):
         pass
 
     @abc.abstractmethod
-    def handle_task_done(self, task):
+    def handle_step_done(self, step):
         pass
 
     def generate_latest(self):
@@ -80,14 +80,14 @@ class NoMetricsCollector(MetricsCollector):
     def __init__(self):
         pass
 
-    def handle_task_started(self, task):
+    def handle_step_started(self, step):
         pass
 
-    def handle_task_failed(self, task):
+    def handle_step_failed(self, step):
         pass
 
-    def handle_task_disabled(self, task, config):
+    def handle_step_disabled(self, step, config):
         pass
 
-    def handle_task_done(self, task):
+    def handle_step_done(self, step):
         pass

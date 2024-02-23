@@ -23,7 +23,7 @@ import luigi.interface
 from luigi.mock import MockTarget
 
 
-class Popularity(luigi.Task):
+class Popularity(luigi.Step):
     date = luigi.DateParameter(default=datetime.date.today() - datetime.timedelta(1))
 
     def output(self):

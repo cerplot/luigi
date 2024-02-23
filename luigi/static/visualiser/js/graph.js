@@ -10,7 +10,7 @@ Graph = (function() {
         "TRUNCATED":"#FF00FF"
     };
 
-    /* Line height for items in task status legend */
+    /* Line height for items in step status legend */
     var legendLineHeight = 20;
 
     /* Height of vertical space between nodes */
@@ -29,17 +29,17 @@ Graph = (function() {
 
     var legendWidth = 110;
 
-    function nodeFromTask(task) {
-        var deps = task.deps;
+    function nodeFromStep(step) {
+        var deps = step.deps;
         deps.sort();
         return {
-            name: task.name,
-            taskId: task.taskId,
-            status: task.status,
-            trackingUrl: this.hashBase + task.taskId,
+            name: step.name,
+            stepId: step.stepId,
+            status: step.status,
+            trackingUrl: this.hashBase + step.stepId,
             deps: deps,
-            params: task.params,
-            priority: task.priority,
+            params: step.params,
+            priority: step.priority,
             depth: -1
         };
     }
@@ -56,11 +56,11 @@ Graph = (function() {
     /* Create edges between the supplied node using the deps property of each node */
     function createDependencyEdges(nodes, nodeIndex) {
         var edges = [];
-        $.each(nodes, function(i, task) {
-            $.each(task.deps, function(j, dep) {
+        $.each(nodes, function(i, step) {
+            $.each(step.deps, function(j, dep) {
                 if (nodeIndex[dep]) {
                     edges.push({
-                        source: nodes[nodeIndex[task.taskId]],
+                        source: nodes[nodeIndex[step.stepId]],
                         target: nodes[nodeIndex[dep]]
                     });
                 }
@@ -89,32 +89,32 @@ Graph = (function() {
         return selfDependencies
     }
 
-    /* Group tasks, so all tasks with the same name appear at the same depth. */
-    function groupTasks(nodes) {
+    /* Group steps, so all steps with the same name appear at the same depth. */
+    function groupSteps(nodes) {
 
         // compute average assigned depth
-        var taskDepths = {};
+        var stepDepths = {};
         $.each(nodes, function(i, n) {
-            if (taskDepths[n.name] === undefined) {
-                taskDepths[n.name] = [n.depth];
+            if (stepDepths[n.name] === undefined) {
+                stepDepths[n.name] = [n.depth];
             } else {
-                taskDepths[n.name].push(n.depth);
+                stepDepths[n.name].push(n.depth);
             }
         });
         var averages = [];
-        $.each(taskDepths, function(key, array) {
+        $.each(stepDepths, function(key, array) {
             var total = 0;
             for (var i in array) total += array[i];
             var mean = total / array.length;
             averages.push([key, mean]);
         });
 
-        // sort tasks
+        // sort steps
         averages.sort( function(first, second) {
             return first[1] - second[1];
         });
 
-        // reassign task depths and node depths
+        // reassign step depths and node depths
         var classDepths = {}
         $.each(averages, function(i, a) {
             classDepths[a[0]] = i;
@@ -132,7 +132,7 @@ Graph = (function() {
         var selfDependencies = computeDepth(nodes, nodeIndex)
 
         if (!selfDependencies) {
-            var classDepths = groupTasks(nodes)
+            var classDepths = groupSteps(nodes)
         }
 
         var rowSizes = [];
@@ -186,13 +186,13 @@ Graph = (function() {
         });
     }
 
-    /* Parses a list of tasks to a graph format */
-    function createGraph(tasks, hashBase) {
-        if (tasks.length === 0) return {nodes: [], links: []};
+    /* Parses a list of steps to a graph format */
+    function createGraph(steps, hashBase) {
+        if (steps.length === 0) return {nodes: [], links: []};
 
         this.hashBase = hashBase;
-        var nodes = $.map(tasks, nodeFromTask);
-        var nodeIndex = uniqueIndexByProperty(nodes, "taskId");
+        var nodes = $.map(steps, nodeFromStep);
+        var nodeIndex = uniqueIndexByProperty(nodes, "stepId");
 
         var rowSizes = computeRows(nodes, nodeIndex);
 
@@ -201,7 +201,7 @@ Graph = (function() {
         layoutNodes(nodes, rowSizes);
 
         // We need to re-index nodes after filtering
-        nodeIndex = uniqueIndexByProperty(nodes, "taskId");
+        nodeIndex = uniqueIndexByProperty(nodes, "stepId");
         var edges = createDependencyEdges(nodes, nodeIndex);
 
         return {
@@ -272,8 +272,8 @@ Graph = (function() {
                     .text(escapeHtml(node.name))
                     .attr("y", 3))
                 .attr("class","graph-node-a")
-                .attr("data-task-status", node.status)
-                .attr("data-task-id", node.taskId)
+                .attr("data-step-status", node.status)
+                .attr("data-step-id", node.stepId)
                 .appendTo(g);
 
             var titleText = node.name;
@@ -288,7 +288,7 @@ Graph = (function() {
                 });
         });
 
-        // Legend for Task status
+        // Legend for Step status
         var legend = $(svgElement("g"))
                 .addClass("legend")
                 .appendTo(self.svg);
@@ -322,9 +322,9 @@ Graph = (function() {
         });
     };
 
-    DependencyGraph.prototype.updateData = function(taskList, hashBase) {
+    DependencyGraph.prototype.updateData = function(stepList, hashBase) {
         $('.popover').popover('destroy');
-        this.graph = createGraph(taskList, hashBase);
+        this.graph = createGraph(stepList, hashBase);
         bounds = findBounds(this.graph.nodes);
         this.renderGraph();
         this.svg.attr("height", bounds.y+10);
@@ -336,7 +336,7 @@ Graph = (function() {
     return {
         DependencyGraph: DependencyGraph,
         testableMethods: {
-            nodeFromTask: nodeFromTask,
+            nodeFromStep: nodeFromStep,
             uniqueIndexByProperty: uniqueIndexByProperty,
             createDependencyEdges: createDependencyEdges,
             computeDepth: computeDepth,

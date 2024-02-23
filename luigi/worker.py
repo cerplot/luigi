@@ -17,8 +17,8 @@
 """
 The worker communicates with the scheduler and does two things:
 
-1. Sends all tasks that has to be run
-2. Gets tasks from the scheduler that should be run
+1. Sends all steps that has to be run
+2. Gets steps from the scheduler that should be run
 
 When running in local mode, the worker talks directly to a :py:class:`~luigi.scheduler.Scheduler` instance.
 When you run a central server, the worker will talk to the scheduler using a :py:class:`~luigi.rpc.RemoteScheduler` instance.
@@ -51,13 +51,13 @@ import traceback
 
 from luigi import notifications
 from luigi.event import Event
-from luigi.task_register import load_task
+from luigi.step_register import load_step
 from luigi.scheduler import DISABLED, DONE, FAILED, PENDING, UNKNOWN, Scheduler, RetryPolicy
 from luigi.scheduler import WORKER_STATE_ACTIVE, WORKER_STATE_DISABLED
 from luigi.target import Target
-from luigi.task import Task, Config, DynamicRequirements
-from luigi.task_register import TaskClassException
-from luigi.task_status import RUNNING
+from luigi.step import Step, Config, DynamicRequirements
+from luigi.step_register import StepClassException
+from luigi.step_status import RUNNING
 from luigi.parameter import BoolParameter, FloatParameter, IntParameter, OptionalParameter, Parameter, TimeDeltaParameter
 
 import json
@@ -78,35 +78,35 @@ fork_lock = threading.Lock()
 _WAIT_INTERVAL_EPS = 0.00001
 
 
-def _is_external(task):
-    return task.run is None or task.run == NotImplemented
+def _is_external(step):
+    return step.run is None or step.run == NotImplemented
 
 
-def _get_retry_policy_dict(task):
-    return RetryPolicy(task.retry_count, task.disable_hard_timeout, task.disable_window)._asdict()
+def _get_retry_policy_dict(step):
+    return RetryPolicy(step.retry_count, step.disable_hard_timeout, step.disable_window)._asdict()
 
 
-class TaskException(Exception):
+class StepException(Exception):
     pass
 
 
 GetWorkResponse = collections.namedtuple('GetWorkResponse', (
-    'task_id',
-    'running_tasks',
-    'n_pending_tasks',
+    'step_id',
+    'running_steps',
+    'n_pending_steps',
     'n_unique_pending',
     'n_pending_last_scheduled',
     'worker_state',
 ))
 
 
-class TaskProcess(multiprocessing.Process):
+class StepProcess(multiprocessing.Process):
 
-    """ Wrap all task execution in this class.
+    """ Wrap all step execution in this class.
 
     Mainly for convenience since this is run in a separate process. """
 
-    # mapping of status_reporter attributes to task attributes that are added to tasks
+    # mapping of status_reporter attributes to step attributes that are added to steps
     # before they actually run, and removed afterwards
     forward_reporter_attributes = {
         "update_tracking_url": "set_tracking_url",
@@ -116,37 +116,37 @@ class TaskProcess(multiprocessing.Process):
         "scheduler_messages": "scheduler_messages",
     }
 
-    def __init__(self, task, worker_id, result_queue, status_reporter,
+    def __init__(self, step, worker_id, result_queue, status_reporter,
                  use_multiprocessing=False, worker_timeout=0, check_unfulfilled_deps=True,
-                 check_complete_on_run=False, task_completion_cache=None):
-        super(TaskProcess, self).__init__()
-        self.task = task
+                 check_complete_on_run=False, step_completion_cache=None):
+        super(StepProcess, self).__init__()
+        self.step = step
         self.worker_id = worker_id
         self.result_queue = result_queue
         self.status_reporter = status_reporter
-        self.worker_timeout = task.worker_timeout if task.worker_timeout is not None else worker_timeout
+        self.worker_timeout = step.worker_timeout if step.worker_timeout is not None else worker_timeout
         self.timeout_time = time.time() + self.worker_timeout if self.worker_timeout else None
         self.use_multiprocessing = use_multiprocessing or self.timeout_time is not None
         self.check_unfulfilled_deps = check_unfulfilled_deps
         self.check_complete_on_run = check_complete_on_run
-        self.task_completion_cache = task_completion_cache
+        self.step_completion_cache = step_completion_cache
 
         # completeness check using the cache
-        self.check_complete = functools.partial(check_complete_cached, completion_cache=task_completion_cache)
+        self.check_complete = functools.partial(check_complete_cached, completion_cache=step_completion_cache)
 
     def _run_get_new_deps(self):
-        task_gen = self.task.run()
+        step_gen = self.step.run()
 
-        if not isinstance(task_gen, collections.abc.Generator):
+        if not isinstance(step_gen, collections.abc.Generator):
             return None
 
         next_send = None
         while True:
             try:
                 if next_send is None:
-                    requires = next(task_gen)
+                    requires = next(step_gen)
                 else:
-                    requires = task_gen.send(next_send)
+                    requires = step_gen.send(next_send)
             except StopIteration:
                 return None
 
@@ -156,7 +156,7 @@ class TaskProcess(multiprocessing.Process):
 
             if not requires.complete(self.check_complete):
                 # not all requirements are complete, return them which adds them to the tree
-                new_deps = [(t.task_module, t.task_family, t.to_str_params())
+                new_deps = [(t.step_module, t.step_family, t.to_str_params())
                             for t in requires.flat_requirements]
                 return new_deps
 
@@ -164,7 +164,7 @@ class TaskProcess(multiprocessing.Process):
             next_send = requires.paths
 
     def run(self):
-        logger.info('[pid %s] Worker %s running   %s', os.getpid(), self.worker_id, self.task)
+        logger.info('[pid %s] Worker %s running   %s', os.getpid(), self.worker_id, self.step)
 
         if self.use_multiprocessing:
             # Need to have different random seeds if running in separate processes
@@ -177,33 +177,33 @@ class TaskProcess(multiprocessing.Process):
         missing = []
         new_deps = []
         try:
-            # Verify that all the tasks are fulfilled! For external tasks we
+            # Verify that all the steps are fulfilled! For external steps we
             # don't care about unfulfilled dependencies, because we are just
-            # checking completeness of self.task so outputs of dependencies are
+            # checking completeness of self.step so outputs of dependencies are
             # irrelevant.
-            if self.check_unfulfilled_deps and not _is_external(self.task):
+            if self.check_unfulfilled_deps and not _is_external(self.step):
                 missing = []
-                for dep in self.task.deps():
+                for dep in self.step.deps():
                     if not self.check_complete(dep):
                         nonexistent_outputs = [output for output in dep.output() if not output.exists()]
                         if nonexistent_outputs:
-                            missing.append(f'{dep.task_id} ({", ".join(map(str, nonexistent_outputs))})')
+                            missing.append(f'{dep.step_id} ({", ".join(map(str, nonexistent_outputs))})')
                         else:
-                            missing.append(dep.task_id)
+                            missing.append(dep.step_id)
                 if missing:
                     deps = 'dependency' if len(missing) == 1 else 'dependencies'
                     raise RuntimeError('Unfulfilled %s at run time: %s' % (deps, ', '.join(missing)))
-            self.task.trigger_event(Event.START, self.task)
+            self.step.trigger_event(Event.START, self.step)
             t0 = time.time()
             status = None
 
-            if _is_external(self.task):
-                # External task
-                if self.check_complete(self.task):
+            if _is_external(self.step):
+                # External step
+                if self.check_complete(self.step):
                     status = DONE
                 else:
                     status = FAILED
-                    expl = 'Task is an external data dependency ' \
+                    expl = 'Step is an external data dependency ' \
                         'and data does not exist (yet?).'
             else:
                 with self._forward_attributes():
@@ -211,27 +211,27 @@ class TaskProcess(multiprocessing.Process):
                 if not new_deps:
                     if not self.check_complete_on_run:
                         # update the cache
-                        if self.task_completion_cache is not None:
-                            self.task_completion_cache[self.task.task_id] = True
+                        if self.step_completion_cache is not None:
+                            self.step_completion_cache[self.step.step_id] = True
                         status = DONE
-                    elif self.check_complete(self.task):
+                    elif self.check_complete(self.step):
                         status = DONE
                     else:
-                        raise TaskException("Task finished running, but complete() is still returning false.")
+                        raise StepException("Step finished running, but complete() is still returning false.")
                 else:
                     status = PENDING
 
             if new_deps:
                 logger.info(
                     '[pid %s] Worker %s new requirements      %s',
-                    os.getpid(), self.worker_id, self.task)
+                    os.getpid(), self.worker_id, self.step)
             elif status == DONE:
-                self.task.trigger_event(
-                    Event.PROCESSING_TIME, self.task, time.time() - t0)
-                expl = self.task.on_success()
+                self.step.trigger_event(
+                    Event.PROCESSING_TIME, self.step, time.time() - t0)
+                expl = self.step.on_success()
                 logger.info('[pid %s] Worker %s done      %s', os.getpid(),
-                            self.worker_id, self.task)
-                self.task.trigger_event(Event.SUCCESS, self.task)
+                            self.worker_id, self.step)
+                self.step.trigger_event(Event.SUCCESS, self.step)
 
         except KeyboardInterrupt:
             raise
@@ -241,12 +241,12 @@ class TaskProcess(multiprocessing.Process):
 
         finally:
             self.result_queue.put(
-                (self.task.task_id, status, expl, missing, new_deps))
+                (self.step.step_id, status, expl, missing, new_deps))
 
     def _handle_run_exception(self, ex):
-        logger.exception("[pid %s] Worker %s failed    %s", os.getpid(), self.worker_id, self.task)
-        self.task.trigger_event(Event.FAILURE, self.task, ex)
-        return self.task.on_failure(ex)
+        logger.exception("[pid %s] Worker %s failed    %s", os.getpid(), self.worker_id, self.step)
+        self.step.trigger_event(Event.FAILURE, self.step, ex)
+        return self.step.on_failure(ex)
 
     def _recursive_terminate(self):
         import psutil
@@ -256,7 +256,7 @@ class TaskProcess(multiprocessing.Process):
             children = parent.children(recursive=True)
 
             # terminate parent. Give it a chance to clean up
-            super(TaskProcess, self).terminate()
+            super(StepProcess, self).terminate()
             parent.wait()
 
             # terminate children
@@ -274,26 +274,26 @@ class TaskProcess(multiprocessing.Process):
         try:
             return self._recursive_terminate()
         except ImportError:
-            return super(TaskProcess, self).terminate()
+            return super(StepProcess, self).terminate()
 
     @contextlib.contextmanager
     def _forward_attributes(self):
-        # forward configured attributes to the task
-        for reporter_attr, task_attr in self.forward_reporter_attributes.items():
-            setattr(self.task, task_attr, getattr(self.status_reporter, reporter_attr))
+        # forward configured attributes to the step
+        for reporter_attr, step_attr in self.forward_reporter_attributes.items():
+            setattr(self.step, step_attr, getattr(self.status_reporter, reporter_attr))
         try:
             yield self
         finally:
             # reset attributes again
-            for reporter_attr, task_attr in self.forward_reporter_attributes.items():
-                setattr(self.task, task_attr, None)
+            for reporter_attr, step_attr in self.forward_reporter_attributes.items():
+                setattr(self.step, step_attr, None)
 
 
-# This code and the task_process_context config key currently feels a bit ad-hoc.
+# This code and the step_process_context config key currently feels a bit ad-hoc.
 # Discussion on generalizing it into a plugin system: https://github.com/spotify/luigi/issues/1897
-class ContextManagedTaskProcess(TaskProcess):
+class ContextManagedStepProcess(StepProcess):
     def __init__(self, context, *args, **kwargs):
-        super(ContextManagedTaskProcess, self).__init__(*args, **kwargs)
+        super(ContextManagedStepProcess, self).__init__(*args, **kwargs)
         self.context = context
 
     def run(self):
@@ -304,53 +304,53 @@ class ContextManagedTaskProcess(TaskProcess):
             cls = getattr(module, class_name)
 
             with cls(self):
-                super(ContextManagedTaskProcess, self).run()
+                super(ContextManagedStepProcess, self).run()
         else:
-            super(ContextManagedTaskProcess, self).run()
+            super(ContextManagedStepProcess, self).run()
 
 
-class TaskStatusReporter:
+class StepStatusReporter:
     """
-    Reports task status information to the scheduler.
+    Reports step status information to the scheduler.
 
-    This object must be pickle-able for passing to `TaskProcess` on systems
+    This object must be pickle-able for passing to `StepProcess` on systems
     where fork method needs to pickle the process object (e.g.  Windows).
     """
-    def __init__(self, scheduler, task_id, worker_id, scheduler_messages):
-        self._task_id = task_id
+    def __init__(self, scheduler, step_id, worker_id, scheduler_messages):
+        self._step_id = step_id
         self._worker_id = worker_id
         self._scheduler = scheduler
         self.scheduler_messages = scheduler_messages
 
     def update_tracking_url(self, tracking_url):
-        self._scheduler.add_task(
-            task_id=self._task_id,
+        self._scheduler.add_step(
+            step_id=self._step_id,
             worker=self._worker_id,
             status=RUNNING,
             tracking_url=tracking_url
         )
 
     def update_status_message(self, message):
-        self._scheduler.set_task_status_message(self._task_id, message)
+        self._scheduler.set_step_status_message(self._step_id, message)
 
     def update_progress_percentage(self, percentage):
-        self._scheduler.set_task_progress_percentage(self._task_id, percentage)
+        self._scheduler.set_step_progress_percentage(self._step_id, percentage)
 
     def decrease_running_resources(self, decrease_resources):
-        self._scheduler.decrease_running_task_resources(self._task_id, decrease_resources)
+        self._scheduler.decrease_running_step_resources(self._step_id, decrease_resources)
 
 
 class SchedulerMessage:
     """
     Message object that is build by the the :py:class:`Worker` when a message from the scheduler is
-    received and passed to the message queue of a :py:class:`Task`.
+    received and passed to the message queue of a :py:class:`Step`.
     """
 
-    def __init__(self, scheduler, task_id, message_id, content, **payload):
+    def __init__(self, scheduler, step_id, message_id, content, **payload):
         super(SchedulerMessage, self).__init__()
 
         self._scheduler = scheduler
-        self._task_id = task_id
+        self._step_id = step_id
         self._message_id = message_id
 
         self.content = content
@@ -363,7 +363,7 @@ class SchedulerMessage:
         return self.content == other
 
     def respond(self, response):
-        self._scheduler.add_scheduler_message_response(self._task_id, self._message_id, response)
+        self._scheduler.add_scheduler_message_response(self._step_id, self._message_id, response)
 
 
 class SingleProcessPool:
@@ -416,14 +416,14 @@ class TracebackWrapper:
         self.trace = trace
 
 
-def check_complete_cached(task, completion_cache=None):
+def check_complete_cached(step, completion_cache=None):
     # check if cached and complete
-    cache_key = task.task_id
+    cache_key = step.step_id
     if completion_cache is not None and completion_cache.get(cache_key):
         return True
 
     # (re-)check the status
-    is_complete = task.complete()
+    is_complete = step.complete()
 
     # tell the cache when complete
     if completion_cache is not None and is_complete:
@@ -432,16 +432,16 @@ def check_complete_cached(task, completion_cache=None):
     return is_complete
 
 
-def check_complete(task, out_queue, completion_cache=None):
+def check_complete(step, out_queue, completion_cache=None):
     """
-    Checks if task is complete, puts the result to out_queue, optionally using the completion cache.
+    Checks if step is complete, puts the result to out_queue, optionally using the completion cache.
     """
-    logger.debug("Checking if %s is complete", task)
+    logger.debug("Checking if %s is complete", step)
     try:
-        is_complete = check_complete_cached(task, completion_cache)
+        is_complete = check_complete_cached(step, completion_cache)
     except Exception:
         is_complete = TracebackWrapper(traceback.format_exc())
-    out_queue.put((task, is_complete))
+    out_queue.put((step, is_complete))
 
 
 class worker(Config):
@@ -456,11 +456,11 @@ class worker(Config):
     count_uniques = BoolParameter(default=False,
                                   config_path=dict(section='core', name='worker-count-uniques'),
                                   description='worker-count-uniques means that we will keep a '
-                                  'worker alive only if it has a unique pending task, as '
+                                  'worker alive only if it has a unique pending step, as '
                                   'well as having keep-alive true')
     count_last_scheduled = BoolParameter(default=False,
                                          description='Keep a worker alive only if there are '
-                                                     'pending tasks which it was the last to '
+                                                     'pending steps which it was the last to '
                                                      'schedule.')
     wait_interval = FloatParameter(default=1.0,
                                    config_path=dict(section='core', name='worker-wait-interval'))
@@ -472,11 +472,11 @@ class worker(Config):
                                    config_path=dict(section='core', name='worker-max-reschedules'))
     timeout = IntParameter(default=0,
                            config_path=dict(section='core', name='worker-timeout'))
-    task_limit = IntParameter(default=None,
-                              config_path=dict(section='core', name='worker-task-limit'))
-    retry_external_tasks = BoolParameter(default=False,
-                                         config_path=dict(section='core', name='retry-external-tasks'),
-                                         description='If true, incomplete external tasks will be '
+    step_limit = IntParameter(default=None,
+                              config_path=dict(section='core', name='worker-step-limit'))
+    retry_external_steps = BoolParameter(default=False,
+                                         config_path=dict(section='core', name='retry-external-steps'),
+                                         description='If true, incomplete external steps will be '
                                          'retested for completion while Luigi is running.')
     send_failure_email = BoolParameter(default=True,
                                        description='If true, send e-mails directly from the worker'
@@ -486,23 +486,23 @@ class worker(Config):
                                                 'NOT be install on the worker')
     check_unfulfilled_deps = BoolParameter(default=True,
                                            description='If true, check for completeness of '
-                                           'dependencies before running a task')
+                                           'dependencies before running a step')
     check_complete_on_run = BoolParameter(default=False,
-                                          description='If true, only mark tasks as done after running if they are complete. '
+                                          description='If true, only mark steps as done after running if they are complete. '
                                           'Regardless of this setting, the worker will always check if external '
-                                          'tasks are complete before marking them as done.')
+                                          'steps are complete before marking them as done.')
     force_multiprocessing = BoolParameter(default=False,
                                           description='If true, use multiprocessing also when '
                                           'running with 1 worker')
-    task_process_context = OptionalParameter(default=None,
+    step_process_context = OptionalParameter(default=None,
                                              description='If set to a fully qualified class name, the class will '
-                                             'be instantiated with a TaskProcess as its constructor parameter and '
+                                             'be instantiated with a StepProcess as its constructor parameter and '
                                              'applied as a context manager around its run() call, so this can be '
                                              'used for obtaining high level customizable monitoring or logging of '
-                                             'each individual Task run.')
-    cache_task_completion = BoolParameter(default=False,
+                                             'each individual Step run.')
+    cache_step_completion = BoolParameter(default=False,
                                           description='If true, cache the response of successful completion checks '
-                                          'of tasks assigned to a worker. This can especially speed up tasks with '
+                                          'of steps assigned to a worker. This can especially speed up steps with '
                                           'dynamic dependencies but assumes that the completion status does not change '
                                           'after it was true the first time.')
 
@@ -577,12 +577,12 @@ class Worker:
         self._stop_requesting_work = False
 
         self.host = socket.gethostname()
-        self._scheduled_tasks = {}
-        self._suspended_tasks = {}
-        self._batch_running_tasks = {}
+        self._scheduled_steps = {}
+        self._suspended_steps = {}
+        self._batch_running_steps = {}
         self._batch_families_sent = set()
 
-        self._first_task = None
+        self._first_step = None
 
         self.add_succeeded = True
         self.run_succeeded = True
@@ -598,43 +598,43 @@ class Worker:
             except AttributeError:
                 pass
 
-        # Keep info about what tasks are running (could be in other processes)
-        self._task_result_queue = multiprocessing.Queue()
-        self._running_tasks = {}
+        # Keep info about what steps are running (could be in other processes)
+        self._step_result_queue = multiprocessing.Queue()
+        self._running_steps = {}
         self._idle_since = None
 
-        # mp-safe dictionary for caching completation checks across task processes
-        self._task_completion_cache = None
-        if self._config.cache_task_completion:
-            self._task_completion_cache = multiprocessing.Manager().dict()
+        # mp-safe dictionary for caching completation checks across step processes
+        self._step_completion_cache = None
+        if self._config.cache_step_completion:
+            self._step_completion_cache = multiprocessing.Manager().dict()
 
         # Stuff for execution_summary
-        self._add_task_history = []
+        self._add_step_history = []
         self._get_work_response_history = []
 
-    def _add_task(self, *args, **kwargs):
+    def _add_step(self, *args, **kwargs):
         """
-        Call ``self._scheduler.add_task``, but store the values too so we can
+        Call ``self._scheduler.add_step``, but store the values too so we can
         implement :py:func:`luigi.execution_summary.summary`.
         """
-        task_id = kwargs['task_id']
+        step_id = kwargs['step_id']
         status = kwargs['status']
         runnable = kwargs['runnable']
-        task = self._scheduled_tasks.get(task_id)
-        if task:
-            self._add_task_history.append((task, status, runnable))
-            kwargs['owners'] = task._owner_list()
+        step = self._scheduled_steps.get(step_id)
+        if step:
+            self._add_step_history.append((step, status, runnable))
+            kwargs['owners'] = step._owner_list()
 
-        if task_id in self._batch_running_tasks:
-            for batch_task in self._batch_running_tasks.pop(task_id):
-                self._add_task_history.append((batch_task, status, True))
+        if step_id in self._batch_running_steps:
+            for batch_step in self._batch_running_steps.pop(step_id):
+                self._add_step_history.append((batch_step, status, True))
 
-        if task and kwargs.get('params'):
-            kwargs['param_visibilities'] = task._get_param_visibilities()
+        if step and kwargs.get('params'):
+            kwargs['param_visibilities'] = step._get_param_visibilities()
 
-        self._scheduler.add_task(*args, **kwargs)
+        self._scheduler.add_step(*args, **kwargs)
 
-        logger.info('Informed scheduler that task   %s   has status   %s', task_id, status)
+        logger.info('Informed scheduler that step   %s   has status   %s', step_id, status)
 
     def __enter__(self):
         """
@@ -649,14 +649,14 @@ class Worker:
 
     def __exit__(self, type, value, traceback):
         """
-        Stop the KeepAliveThread and kill still running tasks.
+        Stop the KeepAliveThread and kill still running steps.
         """
         self._keep_alive_thread.stop()
         self._keep_alive_thread.join()
-        for task in self._running_tasks.values():
-            if task.is_alive():
-                task.terminate()
-        self._task_result_queue.close()
+        for step in self._running_steps.values():
+            if step.is_alive():
+                step.terminate()
+        self._step_result_queue.close()
         return False  # Don't suppress exception
 
     def _generate_worker_info(self):
@@ -688,103 +688,103 @@ class Worker:
         worker_info_str = ', '.join(['{}={}'.format(k, v) for k, v in worker_info])
         return 'Worker({})'.format(worker_info_str)
 
-    def _validate_task(self, task):
-        if not isinstance(task, Task):
-            raise TaskException('Can not schedule non-task %s' % task)
+    def _validate_step(self, step):
+        if not isinstance(step, Step):
+            raise StepException('Can not schedule non-step %s' % step)
 
-        if not task.initialized():
+        if not step.initialized():
             # we can't get the repr of it since it's not initialized...
-            raise TaskException('Task of class %s not initialized. Did you override __init__ and forget to call super(...).__init__?' % task.__class__.__name__)
+            raise StepException('Step of class %s not initialized. Did you override __init__ and forget to call super(...).__init__?' % step.__class__.__name__)
 
-    def _log_complete_error(self, task, tb):
-        log_msg = "Will not run {task} or any dependencies due to error in complete() method:\n{tb}".format(task=task, tb=tb)
+    def _log_complete_error(self, step, tb):
+        log_msg = "Will not run {step} or any dependencies due to error in complete() method:\n{tb}".format(step=step, tb=tb)
         logger.warning(log_msg)
 
-    def _log_dependency_error(self, task, tb):
-        log_msg = "Will not run {task} or any dependencies due to error in deps() method:\n{tb}".format(task=task, tb=tb)
+    def _log_dependency_error(self, step, tb):
+        log_msg = "Will not run {step} or any dependencies due to error in deps() method:\n{tb}".format(step=step, tb=tb)
         logger.warning(log_msg)
 
-    def _log_unexpected_error(self, task):
-        logger.exception("Luigi unexpected framework error while scheduling %s", task)  # needs to be called from within except clause
+    def _log_unexpected_error(self, step):
+        logger.exception("Luigi unexpected framework error while scheduling %s", step)  # needs to be called from within except clause
 
-    def _announce_scheduling_failure(self, task, expl):
+    def _announce_scheduling_failure(self, step, expl):
         try:
             self._scheduler.announce_scheduling_failure(
                 worker=self._id,
-                task_name=str(task),
-                family=task.task_family,
-                params=task.to_str_params(only_significant=True),
+                step_name=str(step),
+                family=step.step_family,
+                params=step.to_str_params(only_significant=True),
                 expl=expl,
-                owners=task._owner_list(),
+                owners=step._owner_list(),
             )
         except Exception:
             formatted_traceback = traceback.format_exc()
-            self._email_unexpected_error(task, formatted_traceback)
+            self._email_unexpected_error(step, formatted_traceback)
             raise
 
-    def _email_complete_error(self, task, formatted_traceback):
-        self._announce_scheduling_failure(task, formatted_traceback)
+    def _email_complete_error(self, step, formatted_traceback):
+        self._announce_scheduling_failure(step, formatted_traceback)
         if self._config.send_failure_email:
-            self._email_error(task, formatted_traceback,
-                              subject="Luigi: {task} failed scheduling. Host: {host}",
-                              headline="Will not run {task} or any dependencies due to error in complete() method",
+            self._email_error(step, formatted_traceback,
+                              subject="Luigi: {step} failed scheduling. Host: {host}",
+                              headline="Will not run {step} or any dependencies due to error in complete() method",
                               )
 
-    def _email_dependency_error(self, task, formatted_traceback):
-        self._announce_scheduling_failure(task, formatted_traceback)
+    def _email_dependency_error(self, step, formatted_traceback):
+        self._announce_scheduling_failure(step, formatted_traceback)
         if self._config.send_failure_email:
-            self._email_error(task, formatted_traceback,
-                              subject="Luigi: {task} failed scheduling. Host: {host}",
-                              headline="Will not run {task} or any dependencies due to error in deps() method",
+            self._email_error(step, formatted_traceback,
+                              subject="Luigi: {step} failed scheduling. Host: {host}",
+                              headline="Will not run {step} or any dependencies due to error in deps() method",
                               )
 
-    def _email_unexpected_error(self, task, formatted_traceback):
+    def _email_unexpected_error(self, step, formatted_traceback):
         # this sends even if failure e-mails are disabled, as they may indicate
         # a more severe failure that may not reach other alerting methods such
         # as scheduler batch notification
-        self._email_error(task, formatted_traceback,
-                          subject="Luigi: Framework error while scheduling {task}. Host: {host}",
+        self._email_error(step, formatted_traceback,
+                          subject="Luigi: Framework error while scheduling {step}. Host: {host}",
                           headline="Luigi framework error",
                           )
 
-    def _email_task_failure(self, task, formatted_traceback):
+    def _email_step_failure(self, step, formatted_traceback):
         if self._config.send_failure_email:
-            self._email_error(task, formatted_traceback,
-                              subject="Luigi: {task} FAILED. Host: {host}",
-                              headline="A task failed when running. Most likely run() raised an exception.",
+            self._email_error(step, formatted_traceback,
+                              subject="Luigi: {step} FAILED. Host: {host}",
+                              headline="A step failed when running. Most likely run() raised an exception.",
                               )
 
-    def _email_error(self, task, formatted_traceback, subject, headline):
-        formatted_subject = subject.format(task=task, host=self.host)
-        formatted_headline = headline.format(task=task, host=self.host)
+    def _email_error(self, step, formatted_traceback, subject, headline):
+        formatted_subject = subject.format(step=step, host=self.host)
+        formatted_headline = headline.format(step=step, host=self.host)
         command = subprocess.list2cmdline(sys.argv)
-        message = notifications.format_task_error(
-            formatted_headline, task, command, formatted_traceback)
-        notifications.send_error_email(formatted_subject, message, task.owner_email)
+        message = notifications.format_step_error(
+            formatted_headline, step, command, formatted_traceback)
+        notifications.send_error_email(formatted_subject, message, step.owner_email)
 
-    def _handle_task_load_error(self, exception, task_ids):
-        msg = 'Cannot find task(s) sent by scheduler: {}'.format(','.join(task_ids))
+    def _handle_step_load_error(self, exception, step_ids):
+        msg = 'Cannot find step(s) sent by scheduler: {}'.format(','.join(step_ids))
         logger.exception(msg)
         subject = 'Luigi: {}'.format(msg)
         error_message = notifications.wrap_traceback(exception)
-        for task_id in task_ids:
-            self._add_task(
+        for step_id in step_ids:
+            self._add_step(
                 worker=self._id,
-                task_id=task_id,
+                step_id=step_id,
                 status=FAILED,
                 runnable=False,
                 expl=error_message,
             )
         notifications.send_error_email(subject, error_message)
 
-    def add(self, task, multiprocess=False, processes=0):
+    def add(self, step, multiprocess=False, processes=0):
         """
-        Add a Task for the worker to check and possibly schedule and run.
+        Add a Step for the worker to check and possibly schedule and run.
 
-        Returns True if task and its dependencies were successfully scheduled or completed before.
+        Returns True if step and its dependencies were successfully scheduled or completed before.
         """
-        if self._first_task is None and hasattr(task, 'task_id'):
-            self._first_task = task.task_id
+        if self._first_step is None and hasattr(step, 'step_id'):
+            self._first_step = step.step_id
         self.add_succeeded = True
         if multiprocess:
             queue = multiprocessing.Manager().Queue()
@@ -792,54 +792,54 @@ class Worker:
         else:
             queue = DequeQueue()
             pool = SingleProcessPool()
-        self._validate_task(task)
-        pool.apply_async(check_complete, [task, queue, self._task_completion_cache])
+        self._validate_step(step)
+        pool.apply_async(check_complete, [step, queue, self._step_completion_cache])
 
         # we track queue size ourselves because len(queue) won't work for multiprocessing
         queue_size = 1
         try:
-            seen = {task.task_id}
+            seen = {step.step_id}
             while queue_size:
                 current = queue.get()
                 queue_size -= 1
                 item, is_complete = current
                 for next in self._add(item, is_complete):
-                    if next.task_id not in seen:
-                        self._validate_task(next)
-                        seen.add(next.task_id)
-                        pool.apply_async(check_complete, [next, queue, self._task_completion_cache])
+                    if next.step_id not in seen:
+                        self._validate_step(next)
+                        seen.add(next.step_id)
+                        pool.apply_async(check_complete, [next, queue, self._step_completion_cache])
                         queue_size += 1
-        except (KeyboardInterrupt, TaskException):
+        except (KeyboardInterrupt, StepException):
             raise
         except Exception as ex:
             self.add_succeeded = False
             formatted_traceback = traceback.format_exc()
-            self._log_unexpected_error(task)
-            task.trigger_event(Event.BROKEN_TASK, task, ex)
-            self._email_unexpected_error(task, formatted_traceback)
+            self._log_unexpected_error(step)
+            step.trigger_event(Event.BROKEN_STEP, step, ex)
+            self._email_unexpected_error(step, formatted_traceback)
             raise
         finally:
             pool.close()
             pool.join()
         return self.add_succeeded
 
-    def _add_task_batcher(self, task):
-        family = task.task_family
+    def _add_step_batcher(self, step):
+        family = step.step_family
         if family not in self._batch_families_sent:
-            task_class = type(task)
-            batch_param_names = task_class.batch_param_names()
+            step_class = type(step)
+            batch_param_names = step_class.batch_param_names()
             if batch_param_names:
-                self._scheduler.add_task_batcher(
+                self._scheduler.add_step_batcher(
                     worker=self._id,
-                    task_family=family,
+                    step_family=family,
                     batched_args=batch_param_names,
-                    max_batch_size=task.max_batch_size,
+                    max_batch_size=step.max_batch_size,
                 )
             self._batch_families_sent.add(family)
 
-    def _add(self, task, is_complete):
-        if self._config.task_limit is not None and len(self._scheduled_tasks) >= self._config.task_limit:
-            logger.warning('Will not run %s or any dependencies due to exceeded task-limit of %d', task, self._config.task_limit)
+    def _add(self, step, is_complete):
+        if self._config.step_limit is not None and len(self._scheduled_steps) >= self._config.step_limit:
+            logger.warning('Will not run %s or any dependencies due to exceeded step-limit of %d', step, self._config.step_limit)
             deps = None
             status = UNKNOWN
             runnable = False
@@ -857,9 +857,9 @@ class Worker:
 
             if formatted_traceback is not None:
                 self.add_succeeded = False
-                self._log_complete_error(task, formatted_traceback)
-                task.trigger_event(Event.DEPENDENCY_MISSING, task)
-                self._email_complete_error(task, formatted_traceback)
+                self._log_complete_error(step, formatted_traceback)
+                step.trigger_event(Event.DEPENDENCY_MISSING, step)
+                self._email_complete_error(step, formatted_traceback)
                 deps = None
                 status = UNKNOWN
                 runnable = False
@@ -868,27 +868,27 @@ class Worker:
                 deps = None
                 status = DONE
                 runnable = False
-                task.trigger_event(Event.DEPENDENCY_PRESENT, task)
+                step.trigger_event(Event.DEPENDENCY_PRESENT, step)
 
-            elif _is_external(task):
+            elif _is_external(step):
                 deps = None
                 status = PENDING
-                runnable = self._config.retry_external_tasks
-                task.trigger_event(Event.DEPENDENCY_MISSING, task)
-                logger.warning('Data for %s does not exist (yet?). The task is an '
+                runnable = self._config.retry_external_steps
+                step.trigger_event(Event.DEPENDENCY_MISSING, step)
+                logger.warning('Data for %s does not exist (yet?). The step is an '
                                'external data dependency, so it cannot be run from'
-                               ' this luigi process.', task)
+                               ' this luigi process.', step)
 
             else:
                 try:
-                    deps = task.deps()
-                    self._add_task_batcher(task)
+                    deps = step.deps()
+                    self._add_step_batcher(step)
                 except Exception as ex:
                     formatted_traceback = traceback.format_exc()
                     self.add_succeeded = False
-                    self._log_dependency_error(task, formatted_traceback)
-                    task.trigger_event(Event.BROKEN_TASK, task, ex)
-                    self._email_dependency_error(task, formatted_traceback)
+                    self._log_dependency_error(step, formatted_traceback)
+                    step.trigger_event(Event.BROKEN_STEP, step, ex)
+                    self._email_dependency_error(step, formatted_traceback)
                     deps = None
                     status = UNKNOWN
                     runnable = False
@@ -896,94 +896,94 @@ class Worker:
                     status = PENDING
                     runnable = True
 
-            if task.disabled:
+            if step.disabled:
                 status = DISABLED
 
             if deps:
                 for d in deps:
                     self._validate_dependency(d)
-                    task.trigger_event(Event.DEPENDENCY_DISCOVERED, task, d)
-                    yield d  # return additional tasks to add
+                    step.trigger_event(Event.DEPENDENCY_DISCOVERED, step, d)
+                    yield d  # return additional steps to add
 
-                deps = [d.task_id for d in deps]
+                deps = [d.step_id for d in deps]
 
-        self._scheduled_tasks[task.task_id] = task
-        self._add_task(
+        self._scheduled_steps[step.step_id] = step
+        self._add_step(
             worker=self._id,
-            task_id=task.task_id,
+            step_id=step.step_id,
             status=status,
             deps=deps,
             runnable=runnable,
-            priority=task.priority,
-            resources=task.process_resources(),
-            params=task.to_str_params(),
-            family=task.task_family,
-            module=task.task_module,
-            batchable=task.batchable,
-            retry_policy_dict=_get_retry_policy_dict(task),
-            accepts_messages=task.accepts_messages,
+            priority=step.priority,
+            resources=step.process_resources(),
+            params=step.to_str_params(),
+            family=step.step_family,
+            module=step.step_module,
+            batchable=step.batchable,
+            retry_policy_dict=_get_retry_policy_dict(step),
+            accepts_messages=step.accepts_messages,
         )
 
     def _validate_dependency(self, dependency):
         if isinstance(dependency, Target):
-            raise Exception('requires() can not return Target objects. Wrap it in an ExternalTask class')
-        elif not isinstance(dependency, Task):
-            raise Exception('requires() must return Task objects but {} is a {}'.format(dependency, type(dependency)))
+            raise Exception('requires() can not return Target objects. Wrap it in an ExternalStep class')
+        elif not isinstance(dependency, Step):
+            raise Exception('requires() must return Step objects but {} is a {}'.format(dependency, type(dependency)))
 
     def _check_complete_value(self, is_complete):
         if is_complete not in (True, False):
             if isinstance(is_complete, TracebackWrapper):
                 raise AsyncCompletionException(is_complete.trace)
-            raise Exception("Return value of Task.complete() must be boolean (was %r)" % is_complete)
+            raise Exception("Return value of Step.complete() must be boolean (was %r)" % is_complete)
 
     def _add_worker(self):
-        self._worker_info.append(('first_task', self._first_task))
+        self._worker_info.append(('first_step', self._first_step))
         self._scheduler.add_worker(self._id, self._worker_info)
 
-    def _log_remote_tasks(self, get_work_response):
+    def _log_remote_steps(self, get_work_response):
         logger.debug("Done")
-        logger.debug("There are no more tasks to run at this time")
-        if get_work_response.running_tasks:
-            for r in get_work_response.running_tasks:
-                logger.debug('%s is currently run by worker %s', r['task_id'], r['worker'])
-        elif get_work_response.n_pending_tasks:
+        logger.debug("There are no more steps to run at this time")
+        if get_work_response.running_steps:
+            for r in get_work_response.running_steps:
+                logger.debug('%s is currently run by worker %s', r['step_id'], r['worker'])
+        elif get_work_response.n_pending_steps:
             logger.debug(
-                "There are %s pending tasks possibly being run by other workers",
-                get_work_response.n_pending_tasks)
+                "There are %s pending steps possibly being run by other workers",
+                get_work_response.n_pending_steps)
             if get_work_response.n_unique_pending:
                 logger.debug(
-                    "There are %i pending tasks unique to this worker",
+                    "There are %i pending steps unique to this worker",
                     get_work_response.n_unique_pending)
             if get_work_response.n_pending_last_scheduled:
                 logger.debug(
-                    "There are %i pending tasks last scheduled by this worker",
+                    "There are %i pending steps last scheduled by this worker",
                     get_work_response.n_pending_last_scheduled)
 
-    def _get_work_task_id(self, get_work_response):
-        if get_work_response.get('task_id') is not None:
-            return get_work_response['task_id']
+    def _get_work_step_id(self, get_work_response):
+        if get_work_response.get('step_id') is not None:
+            return get_work_response['step_id']
         elif 'batch_id' in get_work_response:
             try:
-                task = load_task(
-                    module=get_work_response.get('task_module'),
-                    task_name=get_work_response['task_family'],
-                    params_str=get_work_response['task_params'],
+                step = load_step(
+                    module=get_work_response.get('step_module'),
+                    step_name=get_work_response['step_family'],
+                    params_str=get_work_response['step_params'],
                 )
             except Exception as ex:
-                self._handle_task_load_error(ex, get_work_response['batch_task_ids'])
+                self._handle_step_load_error(ex, get_work_response['batch_step_ids'])
                 self.run_succeeded = False
                 return None
 
-            self._scheduler.add_task(
+            self._scheduler.add_step(
                 worker=self._id,
-                task_id=task.task_id,
-                module=get_work_response.get('task_module'),
-                family=get_work_response['task_family'],
-                params=task.to_str_params(),
+                step_id=step.step_id,
+                module=get_work_response.get('step_module'),
+                family=get_work_response['step_family'],
+                params=step.to_str_params(),
                 status=RUNNING,
                 batch_id=get_work_response['batch_id'],
             )
-            return task.task_id
+            return step.step_id
         else:
             return None
 
@@ -997,43 +997,43 @@ class Worker:
                 worker=self._id,
                 host=self.host,
                 assistant=self._assistant,
-                current_tasks=list(self._running_tasks.keys()),
+                current_steps=list(self._running_steps.keys()),
             )
         else:
-            logger.debug("Checking if tasks are still pending")
+            logger.debug("Checking if steps are still pending")
             r = self._scheduler.count_pending(worker=self._id)
 
-        running_tasks = r['running_tasks']
-        task_id = self._get_work_task_id(r)
+        running_steps = r['running_steps']
+        step_id = self._get_work_step_id(r)
 
         self._get_work_response_history.append({
-            'task_id': task_id,
-            'running_tasks': running_tasks,
+            'step_id': step_id,
+            'running_steps': running_steps,
         })
 
-        if task_id is not None and task_id not in self._scheduled_tasks:
-            logger.info('Did not schedule %s, will load it dynamically', task_id)
+        if step_id is not None and step_id not in self._scheduled_steps:
+            logger.info('Did not schedule %s, will load it dynamically', step_id)
 
             try:
                 # TODO: we should obtain the module name from the server!
-                self._scheduled_tasks[task_id] = \
-                    load_task(module=r.get('task_module'),
-                              task_name=r['task_family'],
-                              params_str=r['task_params'])
-            except TaskClassException as ex:
-                self._handle_task_load_error(ex, [task_id])
-                task_id = None
+                self._scheduled_steps[step_id] = \
+                    load_step(module=r.get('step_module'),
+                              step_name=r['step_family'],
+                              params_str=r['step_params'])
+            except StepClassException as ex:
+                self._handle_step_load_error(ex, [step_id])
+                step_id = None
                 self.run_succeeded = False
 
-        if task_id is not None and 'batch_task_ids' in r:
-            batch_tasks = filter(None, [
-                self._scheduled_tasks.get(batch_id) for batch_id in r['batch_task_ids']])
-            self._batch_running_tasks[task_id] = batch_tasks
+        if step_id is not None and 'batch_step_ids' in r:
+            batch_steps = filter(None, [
+                self._scheduled_steps.get(batch_id) for batch_id in r['batch_step_ids']])
+            self._batch_running_steps[step_id] = batch_steps
 
         return GetWorkResponse(
-            task_id=task_id,
-            running_tasks=running_tasks,
-            n_pending_tasks=r['n_pending_tasks'],
+            step_id=step_id,
+            running_steps=running_steps,
+            n_pending_steps=r['n_pending_steps'],
             n_unique_pending=r['n_unique_pending'],
 
             # TODO: For a tiny amount of time (a month?) we'll keep forwards compatibility
@@ -1042,37 +1042,37 @@ class Worker:
             worker_state=r.get('worker_state', WORKER_STATE_ACTIVE),
         )
 
-    def _run_task(self, task_id):
-        if task_id in self._running_tasks:
-            logger.debug('Got already running task id {} from scheduler, taking a break'.format(task_id))
+    def _run_step(self, step_id):
+        if step_id in self._running_steps:
+            logger.debug('Got already running step id {} from scheduler, taking a break'.format(step_id))
             next(self._sleeper())
             return
 
-        task = self._scheduled_tasks[task_id]
+        step = self._scheduled_steps[step_id]
 
-        task_process = self._create_task_process(task)
+        step_process = self._create_step_process(step)
 
-        self._running_tasks[task_id] = task_process
+        self._running_steps[step_id] = step_process
 
-        if task_process.use_multiprocessing:
+        if step_process.use_multiprocessing:
             with fork_lock:
-                task_process.start()
+                step_process.start()
         else:
             # Run in the same process
-            task_process.run()
+            step_process.run()
 
-    def _create_task_process(self, task):
-        message_queue = multiprocessing.Queue() if task.accepts_messages else None
-        reporter = TaskStatusReporter(self._scheduler, task.task_id, self._id, message_queue)
+    def _create_step_process(self, step):
+        message_queue = multiprocessing.Queue() if step.accepts_messages else None
+        reporter = StepStatusReporter(self._scheduler, step.step_id, self._id, message_queue)
         use_multiprocessing = self._config.force_multiprocessing or bool(self.worker_processes > 1)
-        return ContextManagedTaskProcess(
-            self._config.task_process_context,
-            task, self._id, self._task_result_queue, reporter,
+        return ContextManagedStepProcess(
+            self._config.step_process_context,
+            step, self._id, self._step_result_queue, reporter,
             use_multiprocessing=use_multiprocessing,
             worker_timeout=self._config.timeout,
             check_unfulfilled_deps=self._config.check_unfulfilled_deps,
             check_complete_on_run=self._config.check_complete_on_run,
-            task_completion_cache=self._task_completion_cache,
+            step_completion_cache=self._step_completion_cache,
         )
 
     def _purge_children(self):
@@ -1081,26 +1081,26 @@ class Worker:
 
         :return:
         """
-        for task_id, p in self._running_tasks.items():
+        for step_id, p in self._running_steps.items():
             if not p.is_alive() and p.exitcode:
-                error_msg = 'Task {} died unexpectedly with exit code {}'.format(task_id, p.exitcode)
-                p.task.trigger_event(Event.PROCESS_FAILURE, p.task, error_msg)
+                error_msg = 'Step {} died unexpectedly with exit code {}'.format(step_id, p.exitcode)
+                p.step.trigger_event(Event.PROCESS_FAILURE, p.step, error_msg)
             elif p.timeout_time is not None and time.time() > float(p.timeout_time) and p.is_alive():
                 p.terminate()
-                error_msg = 'Task {} timed out after {} seconds and was terminated.'.format(task_id, p.worker_timeout)
-                p.task.trigger_event(Event.TIMEOUT, p.task, error_msg)
+                error_msg = 'Step {} timed out after {} seconds and was terminated.'.format(step_id, p.worker_timeout)
+                p.step.trigger_event(Event.TIMEOUT, p.step, error_msg)
             else:
                 continue
 
             logger.info(error_msg)
-            self._task_result_queue.put((task_id, FAILED, error_msg, [], []))
+            self._step_result_queue.put((step_id, FAILED, error_msg, [], []))
 
-    def _handle_next_task(self):
+    def _handle_next_step(self):
         """
-        We have to catch three ways a task can be "done":
+        We have to catch three ways a step can be "done":
 
-        1. normal execution: the task runs/fails and puts a result back on the queue,
-        2. new dependencies: the task yielded new deps that were not complete and
+        1. normal execution: the step runs/fails and puts a result back on the queue,
+        2. new dependencies: the step yielded new deps that were not complete and
            will be rescheduled and dependencies added,
         3. child process dies: we need to catch this separately.
         """
@@ -1109,58 +1109,58 @@ class Worker:
             self._purge_children()  # Deal with subprocess failures
 
             try:
-                task_id, status, expl, missing, new_requirements = (
-                    self._task_result_queue.get(
+                step_id, status, expl, missing, new_requirements = (
+                    self._step_result_queue.get(
                         timeout=self._config.wait_interval))
             except Queue.Empty:
                 return
 
-            task = self._scheduled_tasks[task_id]
-            if not task or task_id not in self._running_tasks:
+            step = self._scheduled_steps[step_id]
+            if not step or step_id not in self._running_steps:
                 continue
-                # Not a running task. Probably already removed.
+                # Not a running step. Probably already removed.
                 # Maybe it yielded something?
 
-            # external task if run not implemented, retry-able if config option is enabled.
-            external_task_retryable = _is_external(task) and self._config.retry_external_tasks
-            if status == FAILED and not external_task_retryable:
-                self._email_task_failure(task, expl)
+            # external step if run not implemented, retry-able if config option is enabled.
+            external_step_retryable = _is_external(step) and self._config.retry_external_steps
+            if status == FAILED and not external_step_retryable:
+                self._email_step_failure(step, expl)
 
             new_deps = []
             if new_requirements:
-                new_req = [load_task(module, name, params)
+                new_req = [load_step(module, name, params)
                            for module, name, params in new_requirements]
                 for t in new_req:
                     self.add(t)
-                new_deps = [t.task_id for t in new_req]
+                new_deps = [t.step_id for t in new_req]
 
-            self._add_task(worker=self._id,
-                           task_id=task_id,
+            self._add_step(worker=self._id,
+                           step_id=step_id,
                            status=status,
                            expl=json.dumps(expl),
-                           resources=task.process_resources(),
+                           resources=step.process_resources(),
                            runnable=None,
-                           params=task.to_str_params(),
-                           family=task.task_family,
-                           module=task.task_module,
+                           params=step.to_str_params(),
+                           family=step.step_family,
+                           module=step.step_module,
                            new_deps=new_deps,
                            assistant=self._assistant,
-                           retry_policy_dict=_get_retry_policy_dict(task))
+                           retry_policy_dict=_get_retry_policy_dict(step))
 
-            self._running_tasks.pop(task_id)
+            self._running_steps.pop(step_id)
 
-            # re-add task to reschedule missing dependencies
+            # re-add step to reschedule missing dependencies
             if missing:
                 reschedule = True
 
                 # keep out of infinite loops by not rescheduling too many times
-                for task_id in missing:
-                    self.unfulfilled_counts[task_id] += 1
-                    if (self.unfulfilled_counts[task_id] >
+                for step_id in missing:
+                    self.unfulfilled_counts[step_id] += 1
+                    if (self.unfulfilled_counts[step_id] >
                             self._config.max_reschedules):
                         reschedule = False
                 if reschedule:
-                    self.add(task)
+                    self.add(step)
 
             self.run_succeeded &= (status == DONE) or (len(new_deps) > 0)
             return
@@ -1180,10 +1180,10 @@ class Worker:
 
         If worker-keep-alive is not set, this will always return false.
         For an assistant, it will always return the value of worker-keep-alive.
-        Otherwise, it will return true for nonzero n_pending_tasks.
+        Otherwise, it will return true for nonzero n_pending_steps.
 
         If worker-count-uniques is true, it will also
-        require that one of the tasks is unique to this worker.
+        require that one of the steps is unique to this worker.
         """
         if not self._config.keep_alive:
             return False
@@ -1193,7 +1193,7 @@ class Worker:
             return get_work_response.n_pending_last_scheduled > 0
         elif self._config.count_uniques:
             return get_work_response.n_unique_pending > 0
-        elif get_work_response.n_pending_tasks == 0:
+        elif get_work_response.n_pending_steps == 0:
             return False
         elif not self._config.max_keep_alive_idle_duration:
             return True
@@ -1214,14 +1214,14 @@ class Worker:
     def _start_phasing_out(self):
         """
         Go into a mode where we dont ask for more work and quit once existing
-        tasks are done.
+        steps are done.
         """
         self._config.keep_alive = False
         self._stop_requesting_work = True
 
     def run(self):
         """
-        Returns True if all scheduled tasks were executed successfully.
+        Returns True if all scheduled steps were executed successfully.
         """
         logger.info('Running Worker with %d processes', self.worker_processes)
 
@@ -1231,19 +1231,19 @@ class Worker:
         self._add_worker()
 
         while True:
-            while len(self._running_tasks) >= self.worker_processes > 0:
-                logger.debug('%d running tasks, waiting for next task to finish', len(self._running_tasks))
-                self._handle_next_task()
+            while len(self._running_steps) >= self.worker_processes > 0:
+                logger.debug('%d running steps, waiting for next step to finish', len(self._running_steps))
+                self._handle_next_step()
 
             get_work_response = self._get_work()
 
             if get_work_response.worker_state == WORKER_STATE_DISABLED:
                 self._start_phasing_out()
 
-            if get_work_response.task_id is None:
+            if get_work_response.step_id is None:
                 if not self._stop_requesting_work:
-                    self._log_remote_tasks(get_work_response)
-                if len(self._running_tasks) == 0:
+                    self._log_remote_steps(get_work_response)
+                if len(self._running_steps) == 0:
                     self._idle_since = self._idle_since or datetime.datetime.now()
                     if self._keep_alive(get_work_response):
                         next(sleeper)
@@ -1251,16 +1251,16 @@ class Worker:
                     else:
                         break
                 else:
-                    self._handle_next_task()
+                    self._handle_next_step()
                     continue
 
-            # task_id is not None:
-            logger.debug("Pending tasks: %s", get_work_response.n_pending_tasks)
-            self._run_task(get_work_response.task_id)
+            # step_id is not None:
+            logger.debug("Pending steps: %s", get_work_response.n_pending_steps)
+            self._run_step(get_work_response.step_id)
 
-        while len(self._running_tasks):
-            logger.debug('Shut down Worker, %d more tasks to go', len(self._running_tasks))
-            self._handle_next_task()
+        while len(self._running_steps):
+            logger.debug('Shut down Worker, %d more steps to go', len(self._running_steps))
+            self._handle_next_step()
 
         return self.run_succeeded
 
@@ -1292,10 +1292,10 @@ class Worker:
         self._scheduler.add_worker(self._id, {'workers': self.worker_processes})
 
     @rpc_message_callback
-    def dispatch_scheduler_message(self, task_id, message_id, content, **kwargs):
-        task_id = str(task_id)
-        if task_id in self._running_tasks:
-            task_process = self._running_tasks[task_id]
-            if task_process.status_reporter.scheduler_messages:
-                message = SchedulerMessage(self._scheduler, task_id, message_id, content, **kwargs)
-                task_process.status_reporter.scheduler_messages.put(message)
+    def dispatch_scheduler_message(self, step_id, message_id, content, **kwargs):
+        step_id = str(step_id)
+        if step_id in self._running_steps:
+            step_process = self._running_steps[step_id]
+            if step_process.status_reporter.scheduler_messages:
+                message = SchedulerMessage(self._scheduler, step_id, message_id, content, **kwargs)
+                step_process.status_reporter.scheduler_messages.put(message)

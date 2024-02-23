@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 """
-Example Kubernetes Job Task.
+Example Kubernetes Job Step.
 
 Requires:
 
@@ -39,10 +39,10 @@ access the local cluster.
 
 # import os
 # import luigi
-from luigi.contrib.kubernetes import KubernetesJobTask
+from luigi.contrib.kubernetes import KubernetesJobStep
 
 
-class PerlPi(KubernetesJobTask):
+class PerlPi(KubernetesJobStep):
 
     name = "pi"
     max_retrials = 3

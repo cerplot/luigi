@@ -1,10 +1,10 @@
-"""Specialized tasks for handling Avro data in BigQuery from GCS.
+"""Specialized steps for handling Avro data in BigQuery from GCS.
 """
 import logging
 
-from luigi.contrib.bigquery import BigQueryLoadTask, SourceFormat
+from luigi.contrib.bigquery import BigQueryLoadStep, SourceFormat
 from luigi.contrib.gcs import GCSClient
-from luigi.task import flatten
+from luigi.step import flatten
 
 logger = logging.getLogger('luigi-interface')
 
@@ -13,16 +13,16 @@ try:
     import avro.datafile
 except ImportError:
     logger.warning('bigquery_avro module imported, but avro is not installed. Any '
-                   'BigQueryLoadAvro task will fail to propagate schema documentation')
+                   'BigQueryLoadAvro step will fail to propagate schema documentation')
 
 
-class BigQueryLoadAvro(BigQueryLoadTask):
+class BigQueryLoadAvro(BigQueryLoadStep):
     """A helper for loading specifically Avro data into BigQuery from GCS.
 
     Copies table level description from Avro schema doc,
     BigQuery internally will copy field-level descriptions to the table.
 
-    Suitable for use via subclassing: override requires() to return Task(s) that output
+    Suitable for use via subclassing: override requires() to return Step(s) that output
     to GCS Targets; their paths are expected to be URIs of .avro files or URI prefixes
     (GCS "directories") containing one or many .avro files.
 

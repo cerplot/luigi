@@ -37,7 +37,7 @@ from luigi import configuration
 logger = logging.getLogger('luigi-interface')
 
 
-class PigJobTask(luigi.Task):
+class PigJobStep(luigi.Step):
 
     def pig_home(self):
         return configuration.get_config().get('pig', 'home', '/usr/share/pig')

@@ -16,16 +16,16 @@
 #
 import luigi
 from luigi.contrib.s3 import S3Target
-from luigi.contrib.spark import SparkSubmitTask, PySparkTask
+from luigi.contrib.spark import SparkSubmitStep, PySparkStep
 
 
-class InlinePySparkWordCount(PySparkTask):
+class InlinePySparkWordCount(PySparkStep):
     """
-    This task runs a :py:class:`luigi.contrib.spark.PySparkTask` task
+    This step runs a :py:class:`luigi.contrib.spark.PySparkStep` step
     over the target data in :py:meth:`wordcount.input` (a file in S3) and
     writes the result into its :py:meth:`wordcount.output` target (a file in S3).
 
-    This class uses :py:meth:`luigi.contrib.spark.PySparkTask.main`.
+    This class uses :py:meth:`luigi.contrib.spark.PySparkStep.main`.
 
     Example luigi configuration::
 
@@ -52,16 +52,16 @@ class InlinePySparkWordCount(PySparkTask):
           .saveAsTextFile(self.output().path)
 
 
-class PySparkWordCount(SparkSubmitTask):
+class PySparkWordCount(SparkSubmitStep):
     """
-    This task is the same as :py:class:`InlinePySparkWordCount` above but uses
+    This step is the same as :py:class:`InlinePySparkWordCount` above but uses
     an external python driver file specified in :py:meth:`app`
 
-    It runs a :py:class:`luigi.contrib.spark.SparkSubmitTask` task
+    It runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
     over the target data in :py:meth:`wordcount.input` (a file in S3) and
     writes the result into its :py:meth:`wordcount.output` target (a file in S3).
 
-    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitTask.run`.
+    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitStep.run`.
 
     Example luigi configuration::
 

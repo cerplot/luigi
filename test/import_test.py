@@ -53,7 +53,7 @@ class ImportTest(unittest.TestCase):
         expected = [
             luigi.Event,
             luigi.Config,
-            luigi.Task, luigi.ExternalTask, luigi.WrapperTask,
+            luigi.Step, luigi.ExternalStep, luigi.WrapperStep,
             luigi.Target, luigi.LocalTarget,
             luigi.namespace,
             luigi.RemoteScheduler,

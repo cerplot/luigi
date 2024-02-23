@@ -28,7 +28,7 @@ import unittest
 import pytest
 
 
-class MyScaldingTask(scalding.ScaldingJobTask):
+class MyScaldingStep(scalding.ScaldingJobStep):
     scala_source = luigi.Parameter()
 
     def source(self):
@@ -60,6 +60,6 @@ class ScaldingTest(unittest.TestCase):
     @mock.patch('subprocess.check_call')
     @mock.patch('luigi.contrib.hadoop.run_and_track_hadoop_job')
     def test_scalding(self, check_call, track_job):
-        success = luigi.run(['MyScaldingTask', '--scala-source', self.scala_source, '--local-scheduler', '--no-lock'])
+        success = luigi.run(['MyScaldingStep', '--scala-source', self.scala_source, '--local-scheduler', '--no-lock'])
         self.assertTrue(success)
         # TODO: check more stuff

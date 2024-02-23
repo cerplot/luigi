@@ -24,17 +24,17 @@ class DatadogMetricTest(unittest.TestCase):
         if time.time != self.time:
             time.time = self.time
 
-    def startTask(self, scheduler=None):
+    def startStep(self, scheduler=None):
         if scheduler:
             s = scheduler
         else:
             s = self.s
 
-        s.add_task(worker=WORKER, task_id='DDTaskID', family='DDTaskName')
-        task = s._state.get_task('DDTaskID')
+        s.add_step(worker=WORKER, step_id='DDStepID', family='DDStepName')
+        step = s._state.get_step('DDStepID')
 
-        task.time_running = 0
-        return task
+        step.time_running = 0
+        return step
 
     def mockDatadog(self):
         self.create_patcher = mock.patch('datadog.api.Event.create')
@@ -54,98 +54,98 @@ class DatadogMetricTest(unittest.TestCase):
     def setTime(self, t):
         time.time = lambda: t
 
-    def test_send_event_on_task_started(self):
-        task = self.startTask()
-        self.collector.handle_task_started(task)
+    def test_send_event_on_step_started(self):
+        step = self.startStep()
+        self.collector.handle_step_started(step)
 
         self.mock_create.assert_called_once_with(alert_type='info',
                                                  priority='low',
-                                                 tags=['task_name:DDTaskName',
-                                                       'task_state:STARTED',
+                                                 tags=['step_name:DDStepName',
+                                                       'step_state:STARTED',
                                                        'environment:development',
                                                        'application:luigi'],
-                                                 text='A task has been started in the pipeline named: DDTaskName',
-                                                 title='Luigi: A task has been started!')
+                                                 text='A step has been started in the pipeline named: DDStepName',
+                                                 title='Luigi: A step has been started!')
 
-    def test_send_increment_on_task_started(self):
-        task = self.startTask()
-        self.collector.handle_task_started(task)
+    def test_send_increment_on_step_started(self):
+        step = self.startStep()
+        self.collector.handle_step_started(step)
 
-        self.mock_increment.assert_called_once_with('luigi.task.started', 1, tags=['task_name:DDTaskName',
+        self.mock_increment.assert_called_once_with('luigi.step.started', 1, tags=['step_name:DDStepName',
                                                                                    'environment:development',
                                                                                    'application:luigi'])
 
-    def test_send_event_on_task_failed(self):
-        task = self.startTask()
-        self.collector.handle_task_failed(task)
+    def test_send_event_on_step_failed(self):
+        step = self.startStep()
+        self.collector.handle_step_failed(step)
 
         self.mock_create.assert_called_once_with(alert_type='error',
                                                  priority='normal',
-                                                 tags=['task_name:DDTaskName',
-                                                       'task_state:FAILED',
+                                                 tags=['step_name:DDStepName',
+                                                       'step_state:FAILED',
                                                        'environment:development',
                                                        'application:luigi'],
-                                                 text='A task has failed in the pipeline named: DDTaskName',
-                                                 title='Luigi: A task has failed!')
+                                                 text='A step has failed in the pipeline named: DDStepName',
+                                                 title='Luigi: A step has failed!')
 
-    def test_send_increment_on_task_failed(self):
-        task = self.startTask()
-        self.collector.handle_task_failed(task)
+    def test_send_increment_on_step_failed(self):
+        step = self.startStep()
+        self.collector.handle_step_failed(step)
 
-        self.mock_increment.assert_called_once_with('luigi.task.failed', 1, tags=['task_name:DDTaskName',
+        self.mock_increment.assert_called_once_with('luigi.step.failed', 1, tags=['step_name:DDStepName',
                                                                                   'environment:development',
                                                                                   'application:luigi'])
 
-    def test_send_event_on_task_disabled(self):
+    def test_send_event_on_step_disabled(self):
         s = Scheduler(metrics_collector=MetricsCollectors.datadog, disable_persist=10, retry_count=2, disable_window=2)
-        task = self.startTask(scheduler=s)
-        self.collector.handle_task_disabled(task, s._config)
+        step = self.startStep(scheduler=s)
+        self.collector.handle_step_disabled(step, s._config)
 
         self.mock_create.assert_called_once_with(alert_type='error',
                                                  priority='normal',
-                                                 tags=['task_name:DDTaskName',
-                                                       'task_state:DISABLED',
+                                                 tags=['step_name:DDStepName',
+                                                       'step_state:DISABLED',
                                                        'environment:development',
                                                        'application:luigi'],
-                                                 text='A task has been disabled in the pipeline named: DDTaskName. ' +
-                                                      'The task has failed 2 times in the last 2 seconds' +
+                                                 text='A step has been disabled in the pipeline named: DDStepName. ' +
+                                                      'The step has failed 2 times in the last 2 seconds' +
                                                       ', so it is being disabled for 10 seconds.',
-                                                 title='Luigi: A task has been disabled!')
+                                                 title='Luigi: A step has been disabled!')
 
-    def test_send_increment_on_task_disabled(self):
-        task = self.startTask()
-        self.collector.handle_task_disabled(task, self.s._config)
+    def test_send_increment_on_step_disabled(self):
+        step = self.startStep()
+        self.collector.handle_step_disabled(step, self.s._config)
 
-        self.mock_increment.assert_called_once_with('luigi.task.disabled', 1, tags=['task_name:DDTaskName',
+        self.mock_increment.assert_called_once_with('luigi.step.disabled', 1, tags=['step_name:DDStepName',
                                                                                     'environment:development',
                                                                                     'application:luigi'])
 
-    def test_send_event_on_task_done(self):
-        task = self.startTask()
-        self.collector.handle_task_done(task)
+    def test_send_event_on_step_done(self):
+        step = self.startStep()
+        self.collector.handle_step_done(step)
 
         self.mock_create.assert_called_once_with(alert_type='info',
                                                  priority='low',
-                                                 tags=['task_name:DDTaskName',
-                                                       'task_state:DONE',
+                                                 tags=['step_name:DDStepName',
+                                                       'step_state:DONE',
                                                        'environment:development',
                                                        'application:luigi'],
-                                                 text='A task has completed in the pipeline named: DDTaskName',
-                                                 title='Luigi: A task has been completed!')
+                                                 text='A step has completed in the pipeline named: DDStepName',
+                                                 title='Luigi: A step has been completed!')
 
-    def test_send_increment_on_task_done(self):
-        task = self.startTask()
-        self.collector.handle_task_done(task)
+    def test_send_increment_on_step_done(self):
+        step = self.startStep()
+        self.collector.handle_step_done(step)
 
-        self.mock_increment.assert_called_once_with('luigi.task.done', 1, tags=['task_name:DDTaskName',
+        self.mock_increment.assert_called_once_with('luigi.step.done', 1, tags=['step_name:DDStepName',
                                                                                 'environment:development',
                                                                                 'application:luigi'])
 
-    def test_send_gauge_on_task_done(self):
+    def test_send_gauge_on_step_done(self):
         self.setTime(0)
-        task = self.startTask()
-        self.collector.handle_task_done(task)
+        step = self.startStep()
+        self.collector.handle_step_done(step)
 
-        self.mock_gauge.assert_called_once_with('luigi.task.execution_time', 0, tags=['task_name:DDTaskName',
+        self.mock_gauge.assert_called_once_with('luigi.step.execution_time', 0, tags=['step_name:DDStepName',
                                                                                       'environment:development',
                                                                                       'application:luigi'])

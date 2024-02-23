@@ -30,7 +30,7 @@ import luigi
 import luigi.contrib.hadoop
 from luigi.contrib.hdfs import get_autoconfig_client
 from luigi.target import FileAlreadyExists, FileSystemTarget
-from luigi.task import flatten
+from luigi.step import flatten
 
 logger = logging.getLogger('luigi-interface')
 
@@ -338,13 +338,13 @@ def get_default_client():
 client = get_default_client()
 
 
-class HiveQueryTask(luigi.contrib.hadoop.BaseHadoopJobTask):
+class HiveQueryStep(luigi.contrib.hadoop.BaseHadoopJobStep):
     """
-    Task to run a hive query.
+    Step to run a hive query.
     """
 
     # by default, we let hive figure these out.
-    n_reduce_tasks = None
+    n_reduce_steps = None
     bytes_per_reducer = None
     reducers_max = None
 
@@ -376,17 +376,17 @@ class HiveQueryTask(luigi.contrib.hadoop.BaseHadoopJobTask):
         """
         Returns a dict of key=value settings to be passed along
         to the hive command line via --hiveconf. By default, sets
-        mapred.job.name to task_id and if not None, sets:
+        mapred.job.name to step_id and if not None, sets:
 
-        * mapred.reduce.tasks (n_reduce_tasks)
+        * mapred.reduce.steps (n_reduce_steps)
         * mapred.fairscheduler.pool (pool) or mapred.job.queue.name (pool)
         * hive.exec.reducers.bytes.per.reducer (bytes_per_reducer)
         * hive.exec.reducers.max (reducers_max)
         """
         jcs = {}
-        jcs['mapred.job.name'] = "'" + self.task_id + "'"
-        if self.n_reduce_tasks is not None:
-            jcs['mapred.reduce.tasks'] = self.n_reduce_tasks
+        jcs['mapred.job.name'] = "'" + self.step_id + "'"
+        if self.n_reduce_steps is not None:
+            jcs['mapred.reduce.steps'] = self.n_reduce_steps
         if self.pool is not None:
             # Supporting two schedulers: fair (default) and capacity using the same option
             scheduler_type = luigi.configuration.get_config().get('hadoop', 'scheduler', 'fair')
@@ -406,7 +406,7 @@ class HiveQueryTask(luigi.contrib.hadoop.BaseHadoopJobTask):
 
 class HiveQueryRunner(luigi.contrib.hadoop.JobRunner):
     """
-    Runs a HiveQueryTask by shelling out to hive.
+    Runs a HiveQueryStep by shelling out to hive.
     """
 
     def prepare_outputs(self, job):
@@ -449,7 +449,7 @@ class HiveQueryRunner(luigi.contrib.hadoop.JobRunner):
 
     def run_job(self, job, tracking_url_callback=None):
         if tracking_url_callback is not None:
-            warnings.warn("tracking_url_callback argument is deprecated, task.set_tracking_url is "
+            warnings.warn("tracking_url_callback argument is deprecated, step.set_tracking_url is "
                           "used instead.", DeprecationWarning)
 
         self.prepare_outputs(job)
@@ -539,9 +539,9 @@ class HiveTableTarget(HivePartitionTarget):
         )
 
 
-class ExternalHiveTask(luigi.ExternalTask):
+class ExternalHiveStep(luigi.ExternalStep):
     """
-    External task that depends on a Hive table/partition.
+    External step that depends on a Hive table/partition.
     """
     database = luigi.Parameter(default='default')
     table = luigi.Parameter()

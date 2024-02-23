@@ -24,14 +24,14 @@ From the AWS website:
   container management service that supports Docker containers and allows you
   to easily run applications on a managed cluster of Amazon EC2 instances.
 
-To use ECS, you create a taskDefinition_ JSON that defines the `docker run`_
-command for one or more containers in a task or service, and then submit this
-JSON to the API to run the task.
+To use ECS, you create a stepDefinition_ JSON that defines the `docker run`_
+command for one or more containers in a step or service, and then submit this
+JSON to the API to run the step.
 
-This `boto3-powered`_ wrapper allows you to create Luigi Tasks to submit ECS
-``taskDefinition`` s. You can either pass a dict (mapping directly to the
-``taskDefinition`` JSON) OR an Amazon Resource Name (arn) for a previously
-registered ``taskDefinition``.
+This `boto3-powered`_ wrapper allows you to create Luigi Steps to submit ECS
+``stepDefinition`` s. You can either pass a dict (mapping directly to the
+``stepDefinition`` JSON) OR an Amazon Resource Name (arn) for a previously
+registered ``stepDefinition``.
 
 Requires:
 
@@ -43,7 +43,7 @@ Requires:
 Written and maintained by Jake Feala (@jfeala) for Outlier Bio (@outlierbio)
 
 .. _`docker run`: https://docs.docker.com/reference/commandline/run
-.. _taskDefinition: http://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_defintions.html
+.. _stepDefinition: http://docs.aws.amazon.com/AmazonECS/latest/developerguide/step_defintions.html
 .. _`boto3-powered`: https://boto3.readthedocs.io
 .. _awscli: https://aws.amazon.com/cli
 .. _`ECS Get Started`: http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_GetStarted.html
@@ -61,18 +61,18 @@ try:
     import boto3
     client = boto3.client('ecs')
 except ImportError:
-    logger.warning('boto3 is not installed. ECSTasks require boto3')
+    logger.warning('boto3 is not installed. ECSSteps require boto3')
 
 POLL_TIME = 2
 
 
-def _get_task_statuses(task_ids, cluster):
+def _get_step_statuses(step_ids, cluster):
     """
-    Retrieve task statuses from ECS API
+    Retrieve step statuses from ECS API
 
-    Returns list of {RUNNING|PENDING|STOPPED} for each id in task_ids
+    Returns list of {RUNNING|PENDING|STOPPED} for each id in step_ids
     """
-    response = client.describe_tasks(tasks=task_ids, cluster=cluster)
+    response = client.describe_steps(steps=step_ids, cluster=cluster)
 
     # Error checking
     if response['failures'] != []:
@@ -80,42 +80,42 @@ def _get_task_statuses(task_ids, cluster):
             response['failures']))
     status_code = response['ResponseMetadata']['HTTPStatusCode']
     if status_code != 200:
-        msg = 'Task status request received status code {0}:\n{1}'
+        msg = 'Step status request received status code {0}:\n{1}'
         raise Exception(msg.format(status_code, response))
 
-    return [t['lastStatus'] for t in response['tasks']]
+    return [t['lastStatus'] for t in response['steps']]
 
 
-def _track_tasks(task_ids, cluster):
-    """Poll task status until STOPPED"""
+def _track_steps(step_ids, cluster):
+    """Poll step status until STOPPED"""
     while True:
-        statuses = _get_task_statuses(task_ids, cluster)
+        statuses = _get_step_statuses(step_ids, cluster)
         if all([status == 'STOPPED' for status in statuses]):
-            logger.info('ECS tasks {0} STOPPED'.format(','.join(task_ids)))
+            logger.info('ECS steps {0} STOPPED'.format(','.join(step_ids)))
             break
         time.sleep(POLL_TIME)
-        logger.debug('ECS task status for tasks {0}: {1}'.format(task_ids, statuses))
+        logger.debug('ECS step status for steps {0}: {1}'.format(step_ids, statuses))
 
 
-class ECSTask(luigi.Task):
+class ECSStep(luigi.Step):
 
     """
-    Base class for an Amazon EC2 Container Service Task
+    Base class for an Amazon EC2 Container Service Step
 
-    Amazon ECS requires you to register "tasks", which are JSON descriptions
-    for how to issue the ``docker run`` command. This Luigi Task can either
-    run a pre-registered ECS taskDefinition, OR register the task on the fly
+    Amazon ECS requires you to register "steps", which are JSON descriptions
+    for how to issue the ``docker run`` command. This Luigi Step can either
+    run a pre-registered ECS stepDefinition, OR register the step on the fly
     from a Python dict.
 
-    :param task_def_arn: pre-registered task definition ARN (Amazon Resource
+    :param step_def_arn: pre-registered step definition ARN (Amazon Resource
         Name), of the form::
 
-            arn:aws:ecs:<region>:<user_id>:task-definition/<family>:<tag>
+            arn:aws:ecs:<region>:<user_id>:step-definition/<family>:<tag>
 
-    :param task_def: dict describing task in taskDefinition JSON format, for
+    :param step_def: dict describing step in stepDefinition JSON format, for
         example::
 
-            task_def = {
+            step_def = {
                 'family': 'hello-world',
                 'volumes': [],
                 'containerDefinitions': [
@@ -134,15 +134,15 @@ class ECSTask(luigi.Task):
 
     """
 
-    task_def_arn = luigi.OptionalParameter(default=None)
-    task_def = luigi.OptionalParameter(default=None)
+    step_def_arn = luigi.OptionalParameter(default=None)
+    step_def = luigi.OptionalParameter(default=None)
     cluster = luigi.Parameter(default='default')
 
     @property
-    def ecs_task_ids(self):
-        """Expose the ECS task ID"""
-        if hasattr(self, '_task_ids'):
-            return self._task_ids
+    def ecs_step_ids(self):
+        """Expose the ECS step ID"""
+        if hasattr(self, '_step_ids'):
+            return self._step_ids
 
     @property
     def command(self):
@@ -152,7 +152,7 @@ class ECSTask(luigi.Task):
         Override to return list of dicts with keys 'name' and 'command',
         describing the container names and commands to pass to the container.
         These values will be specified in the `containerOverrides` property of
-        the `overrides` parameter passed to the runTask API.
+        the `overrides` parameter passed to the runStep API.
 
         Example::
 
@@ -188,10 +188,10 @@ class ECSTask(luigi.Task):
         Return single dict combining any provided `overrides` parameters.
 
         This is used to allow custom `overrides` parameters to be specified in
-        `self.run_task_kwargs` while ensuring that the values specified in
+        `self.run_step_kwargs` while ensuring that the values specified in
         `self.command` are honored in `containerOverrides`.
         """
-        overrides = copy.deepcopy(self.run_task_kwargs.get('overrides', {}))
+        overrides = copy.deepcopy(self.run_step_kwargs.get('overrides', {}))
         if self.command:
             if 'containerOverrides' in overrides:
                 for command in self.command:
@@ -201,16 +201,16 @@ class ECSTask(luigi.Task):
         return overrides
 
     @property
-    def run_task_kwargs(self):
+    def run_step_kwargs(self):
         """
-        Additional keyword arguments to be provided to ECS runTask API.
+        Additional keyword arguments to be provided to ECS runStep API.
 
         Override this property in a subclass to provide additional parameters
         such as `network_configuration`, `launchType`, etc.
 
         If the returned `dict` includes an `overrides` value with a nested
         `containerOverrides` array defining one or more container `command`
-        values, prior to calling `run_task` they will be combined with and
+        values, prior to calling `run_step` they will be combined with and
         superseded by any colliding values specified separately in the
         `command` property.
 
@@ -241,31 +241,31 @@ class ECSTask(luigi.Task):
         return {}
 
     def run(self):
-        if (not self.task_def and not self.task_def_arn) or \
-                (self.task_def and self.task_def_arn):
-            raise ValueError(('Either (but not both) a task_def (dict) or'
-                              'task_def_arn (string) must be assigned'))
-        if not self.task_def_arn:
-            # Register the task and get assigned taskDefinition ID (arn)
-            response = client.register_task_definition(**self.task_def)
-            self.task_def_arn = response['taskDefinition']['taskDefinitionArn']
+        if (not self.step_def and not self.step_def_arn) or \
+                (self.step_def and self.step_def_arn):
+            raise ValueError(('Either (but not both) a step_def (dict) or'
+                              'step_def_arn (string) must be assigned'))
+        if not self.step_def_arn:
+            # Register the step and get assigned stepDefinition ID (arn)
+            response = client.register_step_definition(**self.step_def)
+            self.step_def_arn = response['stepDefinition']['stepDefinitionArn']
 
-        run_task_kwargs = self.run_task_kwargs
-        run_task_kwargs.update({
-            'taskDefinition': self.task_def_arn,
+        run_step_kwargs = self.run_step_kwargs
+        run_step_kwargs.update({
+            'stepDefinition': self.step_def_arn,
             'cluster': self.cluster,
             'overrides': self.combined_overrides,
         })
 
-        # Submit the task to AWS ECS and get assigned task ID
+        # Submit the step to AWS ECS and get assigned step ID
         # (list containing 1 string)
-        response = client.run_task(**run_task_kwargs)
+        response = client.run_step(**run_step_kwargs)
 
         if response['failures']:
-            raise Exception(", ".join(["fail to run task {0} reason: {1}".format(failure['arn'], failure['reason'])
+            raise Exception(", ".join(["fail to run step {0} reason: {1}".format(failure['arn'], failure['reason'])
                                        for failure in response['failures']]))
 
-        self._task_ids = [task['taskArn'] for task in response['tasks']]
+        self._step_ids = [step['stepArn'] for step in response['steps']]
 
-        # Wait on task completion
-        _track_tasks(self._task_ids, self.cluster)
+        # Wait on step completion
+        _track_steps(self._step_ids, self.cluster)

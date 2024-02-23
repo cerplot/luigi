@@ -21,7 +21,7 @@ import luigi
 from luigi.contrib.esindex import CopyToIndex
 
 
-class FakeDocuments(luigi.Task):
+class FakeDocuments(luigi.Step):
     """
     Generates a local file containing 5 elements of data in JSON format.
     """
@@ -31,7 +31,7 @@ class FakeDocuments(luigi.Task):
 
     def run(self):
         """
-        Writes data in JSON format into the task's output target.
+        Writes data in JSON format into the step's output target.
 
         The data objects have the following attributes:
 
@@ -49,10 +49,10 @@ class FakeDocuments(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.LocalTarget(path='/tmp/_docs-%s.ldj' % self.date)
@@ -60,13 +60,13 @@ class FakeDocuments(luigi.Task):
 
 class IndexDocuments(CopyToIndex):
     """
-    This task loads JSON data contained in a :py:class:`luigi.target.Target` into an ElasticSearch index.
+    This step loads JSON data contained in a :py:class:`luigi.target.Target` into an ElasticSearch index.
 
-    This task's input will the target returned by :py:meth:`~.FakeDocuments.output`.
+    This step's input will the target returned by :py:meth:`~.FakeDocuments.output`.
 
     This class uses :py:meth:`luigi.contrib.esindex.CopyToIndex.run`.
 
-    After running this task you can run:
+    After running this step you can run:
 
     .. code-block:: console
 
@@ -88,7 +88,7 @@ class IndexDocuments(CopyToIndex):
         $ curl -XDELETE "localhost:9200/update_log/_query?q=target_index:example_index"
 
     """
-    #: date task parameter (default = today)
+    #: date step parameter (default = today)
     date = luigi.DateParameter(default=datetime.date.today())
 
     #: the name of the index in ElasticSearch to be updated.
@@ -102,11 +102,11 @@ class IndexDocuments(CopyToIndex):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.FakeDocuments`
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
         return FakeDocuments()
 

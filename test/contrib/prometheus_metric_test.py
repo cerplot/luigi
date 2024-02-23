@@ -13,8 +13,8 @@ except ImportError:
 
 
 WORKER = 'myworker'
-TASK_ID = 'TaskID'
-TASK_FAMILY = 'TaskFamily'
+STEP_ID = 'StepID'
+STEP_FAMILY = 'StepFamily'
 
 
 @pytest.mark.contrib
@@ -22,59 +22,59 @@ class PrometheusMetricTest(unittest.TestCase):
     def setUp(self):
         self.collector = PrometheusMetricsCollector()
         self.s = Scheduler(metrics_collector=MetricsCollectors.prometheus)
-        self.gauge_name = 'luigi_task_execution_time_seconds'
-        self.labels = {'family': TASK_FAMILY}
+        self.gauge_name = 'luigi_step_execution_time_seconds'
+        self.labels = {'family': STEP_FAMILY}
 
-    def startTask(self):
-        self.s.add_task(worker=WORKER, task_id=TASK_ID, family=TASK_FAMILY)
-        task = self.s._state.get_task(TASK_ID)
-        task.time_running = 0
-        task.updated = 5
-        return task
+    def startStep(self):
+        self.s.add_step(worker=WORKER, step_id=STEP_ID, family=STEP_FAMILY)
+        step = self.s._state.get_step(STEP_ID)
+        step.time_running = 0
+        step.updated = 5
+        return step
 
-    def test_handle_task_started(self):
-        task = self.startTask()
-        self.collector.handle_task_started(task)
+    def test_handle_step_started(self):
+        step = self.startStep()
+        self.collector.handle_step_started(step)
 
-        counter_name = 'luigi_task_started_total'
+        counter_name = 'luigi_step_started_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
         assert self.collector.registry.get_sample_value(counter_name, labels=self.labels) == 1
         assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == 0
 
-    def test_handle_task_failed(self):
-        task = self.startTask()
-        self.collector.handle_task_failed(task)
+    def test_handle_step_failed(self):
+        step = self.startStep()
+        self.collector.handle_step_failed(step)
 
-        counter_name = 'luigi_task_failed_total'
+        counter_name = 'luigi_step_failed_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
         assert self.collector.registry.get_sample_value(counter_name, labels=labels) == 1
-        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == task.updated - task.time_running
+        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == step.updated - step.time_running
 
-    def test_handle_task_disabled(self):
-        task = self.startTask()
-        self.collector.handle_task_disabled(task, self.s._config)
+    def test_handle_step_disabled(self):
+        step = self.startStep()
+        self.collector.handle_step_disabled(step, self.s._config)
 
-        counter_name = 'luigi_task_disabled_total'
+        counter_name = 'luigi_step_disabled_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
         assert self.collector.registry.get_sample_value(counter_name, labels=labels) == 1
-        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == task.updated - task.time_running
+        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == step.updated - step.time_running
 
-    def test_handle_task_done(self):
-        task = self.startTask()
-        self.collector.handle_task_done(task)
+    def test_handle_step_done(self):
+        step = self.startStep()
+        self.collector.handle_step_done(step)
 
-        counter_name = 'luigi_task_done_total'
+        counter_name = 'luigi_step_done_total'
         gauge_name = self.gauge_name
         labels = self.labels
 
         assert self.collector.registry.get_sample_value(counter_name, labels=labels) == 1
-        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == task.updated - task.time_running
+        assert self.collector.registry.get_sample_value(gauge_name, labels=labels) == step.updated - step.time_running
 
     def test_configure_http_handler(self):
         mock_http_handler = mock.MagicMock()

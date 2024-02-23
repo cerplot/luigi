@@ -156,13 +156,13 @@ class MySqlTarget(luigi.Target):
 
 class CopyToTable(rdbms.CopyToTable):
     """
-    Template task for inserting a data set into MySQL
+    Template step for inserting a data set into MySQL
 
     Usage:
     Subclass and override the required `host`, `database`, `user`,
     `password`, `table` and `columns` attributes.
 
-    To customize how to access data from an input task, override the `rows` method
+    To customize how to access data from an input step, override the `rows` method
     with a generator that yields each row as a tuple with fields ordered according to `columns`.
     """
 

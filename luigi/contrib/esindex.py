@@ -17,7 +17,7 @@
 """
 Support for Elasticsearch (1.0.0 or newer).
 
-Provides an :class:`ElasticsearchTarget` and a :class:`CopyToIndex` template task.
+Provides an :class:`ElasticsearchTarget` and a :class:`CopyToIndex` template step.
 
 Modeled after :class:`luigi.contrib.rdbms.CopyToTable`.
 
@@ -32,8 +32,8 @@ A minimal example (assuming elasticsearch is running on localhost:9200):
             return [{'_id': 1, 'title': 'An example document.'}]
 
     if __name__ == '__main__':
-        task = ExampleIndex()
-        luigi.build([task], local_scheduler=True)
+        step = ExampleIndex()
+        luigi.build([step], local_scheduler=True)
 
 All options:
 
@@ -51,8 +51,8 @@ All options:
             return [{'_id': 1, 'title': 'An example document.'}]
 
     if __name__ == '__main__':
-        task = ExampleIndex()
-        luigi.build([task], local_scheduler=True)
+        step = ExampleIndex()
+        luigi.build([step], local_scheduler=True)
 
 `Host`, `port`, `index`, `doc_type` parameters are standard elasticsearch.
 
@@ -66,8 +66,8 @@ index:
 * 1 to only remember the most recent update to the index.
 
 This can be useful, if an index needs to recreated, even though
-the corresponding indexing task has been run sometime in the past - but
-a later indexing task might have altered the index in the meantime.
+the corresponding indexing step has been run sometime in the past - but
+a later indexing step might have altered the index in the meantime.
 
 There are a two luigi `luigi.cfg` configuration options:
 
@@ -183,7 +183,7 @@ class ElasticsearchTarget(luigi.Target):
 
     def exists(self):
         """
-        Test, if this task has been run.
+        Test, if this step has been run.
         """
         try:
             self.es.get(index=self.marker_index, doc_type=self.marker_doc_type, id=self.marker_index_document_id())
@@ -196,7 +196,7 @@ class ElasticsearchTarget(luigi.Target):
 
     def create_marker_index(self):
         """
-        Create the index that will keep track of the tasks if necessary.
+        Create the index that will keep track of the steps if necessary.
         """
         if not self.es.indices.exists(index=self.marker_index):
             self.es.indices.create(index=self.marker_index)
@@ -222,9 +222,9 @@ class ElasticsearchTarget(luigi.Target):
         self.es.indices.flush(index=self.marker_index)
 
 
-class CopyToIndex(luigi.Task):
+class CopyToIndex(luigi.Step):
     """
-    Template task for inserting a data set into Elasticsearch.
+    Template step for inserting a data set into Elasticsearch.
 
     Usage:
 
@@ -410,9 +410,9 @@ class CopyToIndex(luigi.Task):
 
     def update_id(self):
         """
-        This id will be a unique identifier for this indexing task.
+        This id will be a unique identifier for this indexing step.
         """
-        return self.task_id
+        return self.step_id
 
     def output(self):
         """
@@ -434,7 +434,7 @@ class CopyToIndex(luigi.Task):
 
     def run(self):
         """
-        Run task, namely:
+        Run step, namely:
 
         * purge existing index, if requested (`purge_existing_index`),
         * create the index, if missing,

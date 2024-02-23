@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 """
-Possible values for a Task's status in the Scheduler
+Possible values for a Step's status in the Scheduler
 """
 
 PENDING = 'PENDING'

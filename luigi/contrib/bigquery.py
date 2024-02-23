@@ -37,7 +37,7 @@ try:
     from googleapiclient import http
 except ImportError:
     logger.warning('BigQuery module imported, but google-api-python-client is '
-                   'not installed. Any BigQuery task will fail')
+                   'not installed. Any BigQuery step will fail')
 else:
     RETRYABLE_ERRORS = (httplib2.HttpLib2Error, IOError, TimeoutError, BrokenPipeError)
 
@@ -367,7 +367,7 @@ class BigQueryClient:
         """Runs a BigQuery "job". See the documentation for the format of body.
 
            .. note::
-               You probably don't need to use this directly. Use the tasks defined below.
+               You probably don't need to use this directly. Use the steps defined below.
 
            :param dataset:
            :type dataset: BQDataset
@@ -455,36 +455,36 @@ class BigQueryTarget(luigi.target.Target):
 class MixinBigQueryBulkComplete:
     """
     Allows to efficiently check if a range of BigQueryTargets are complete.
-    This enables scheduling tasks with luigi range tools.
+    This enables scheduling steps with luigi range tools.
 
-    If you implement a custom Luigi task with a BigQueryTarget output, make sure to also inherit
+    If you implement a custom Luigi step with a BigQueryTarget output, make sure to also inherit
     from this mixin to enable range support.
     """
 
     @classmethod
     def bulk_complete(cls, parameter_tuples):
-        # Instantiate the tasks to inspect them
-        tasks_with_params = [(cls(p), p) for p in parameter_tuples]
-        if not tasks_with_params:
+        # Instantiate the steps to inspect them
+        steps_with_params = [(cls(p), p) for p in parameter_tuples]
+        if not steps_with_params:
             return
 
         # Grab the set of BigQuery datasets we are interested in
-        datasets = {t.output().table.dataset for t, p in tasks_with_params}
+        datasets = {t.output().table.dataset for t, p in steps_with_params}
         logger.info('Checking datasets %s for available tables', datasets)
 
         # Query the available tables for all datasets
-        client = tasks_with_params[0][0].output().client
+        client = steps_with_params[0][0].output().client
         available_datasets = filter(client.dataset_exists, datasets)
         available_tables = {d: set(client.list_tables(d)) for d in available_datasets}
 
         # Return parameter_tuples belonging to available tables
-        for t, p in tasks_with_params:
+        for t, p in steps_with_params:
             table = t.output().table
             if table.table_id in available_tables.get(table.dataset, []):
                 yield p
 
 
-class BigQueryLoadTask(MixinBigQueryBulkComplete, luigi.Task):
+class BigQueryLoadStep(MixinBigQueryBulkComplete, luigi.Step):
     """Load data into BigQuery from GCS."""
     @property
     def source_format(self):
@@ -526,7 +526,7 @@ class BigQueryLoadTask(MixinBigQueryBulkComplete, luigi.Task):
         """The fully-qualified URIs that point to your data in Google Cloud Storage.
 
         Each URI can contain one '*' wildcard character and it must come after the 'bucket' name."""
-        return [x.path for x in luigi.task.flatten(self.input())]
+        return [x.path for x in luigi.step.flatten(self.input())]
 
     @property
     def skip_leading_rows(self):
@@ -565,7 +565,7 @@ class BigQueryLoadTask(MixinBigQueryBulkComplete, luigi.Task):
     def configure_job(self, configuration):
         """Set additional job configuration.
 
-        This allows to specify job configuration parameters that are not exposed via Task properties.
+        This allows to specify job configuration parameters that are not exposed via Step properties.
 
         :param configuration: Current configuration.
         :return: New or updated configuration.
@@ -615,7 +615,7 @@ class BigQueryLoadTask(MixinBigQueryBulkComplete, luigi.Task):
         bq_client.run_job(output.table.project_id, job, dataset=output.table.dataset)
 
 
-class BigQueryRunQueryTask(MixinBigQueryBulkComplete, luigi.Task):
+class BigQueryRunQueryStep(MixinBigQueryBulkComplete, luigi.Step):
 
     @property
     def write_disposition(self):
@@ -660,7 +660,7 @@ class BigQueryRunQueryTask(MixinBigQueryBulkComplete, luigi.Task):
     def configure_job(self, configuration):
         """Set additional job configuration.
 
-        This allows to specify job configuration parameters that are not exposed via Task properties.
+        This allows to specify job configuration parameters that are not exposed via Step properties.
 
         :param configuration: Current configuration.
         :return: New or updated configuration.
@@ -705,11 +705,11 @@ class BigQueryRunQueryTask(MixinBigQueryBulkComplete, luigi.Task):
         bq_client.run_job(output.table.project_id, job, dataset=output.table.dataset)
 
 
-class BigQueryCreateViewTask(luigi.Task):
+class BigQueryCreateViewStep(luigi.Step):
     """
     Creates (or updates) a view in BigQuery.
 
-    The output of this task needs to be a BigQueryTarget.
+    The output of this step needs to be a BigQueryTarget.
     Instances of this class should specify the view SQL in the view property.
 
     If a view already exist in BigQuery at output(), it will be updated.
@@ -744,18 +744,18 @@ class BigQueryCreateViewTask(luigi.Task):
         output.client.update_view(output.table, view)
 
 
-class ExternalBigQueryTask(MixinBigQueryBulkComplete, luigi.ExternalTask):
+class ExternalBigQueryStep(MixinBigQueryBulkComplete, luigi.ExternalStep):
     """
-    An external task for a BigQuery target.
+    An external step for a BigQuery target.
     """
     pass
 
 
-class BigQueryExtractTask(luigi.Task):
+class BigQueryExtractStep(luigi.Step):
     """
     Extracts (unloads) a table from BigQuery to GCS.
 
-    This tasks requires the input to be exactly one BigQueryTarget while the
+    This steps requires the input to be exactly one BigQueryTarget while the
     output should be one or more GCSTargets from luigi.contrib.gcs depending on
     the use of destinationUris property.
     """
@@ -771,7 +771,7 @@ class BigQueryExtractTask(luigi.Task):
         pass wildcarded destinationUris be sure to overwrite this property to
         suppress the warning.
         """
-        return [x.path for x in luigi.task.flatten(self.output())]
+        return [x.path for x in luigi.step.flatten(self.output())]
 
     @property
     def print_header(self):
@@ -801,7 +801,7 @@ class BigQueryExtractTask(luigi.Task):
     def configure_job(self, configuration):
         """Set additional job configuration.
 
-        This allows to specify job configuration parameters that are not exposed via Task properties.
+        This allows to specify job configuration parameters that are not exposed via Step properties.
 
         :param configuration: Current configuration.
         :return: New or updated configuration.
@@ -809,7 +809,7 @@ class BigQueryExtractTask(luigi.Task):
         return configuration
 
     def run(self):
-        input = luigi.task.flatten(self.input())[0]
+        input = luigi.step.flatten(self.input())[0]
         assert (
             isinstance(input, BigQueryTarget) or
             (len(input) == 1 and isinstance(input[0], BigQueryTarget))), \
@@ -856,10 +856,10 @@ class BigQueryExtractTask(luigi.Task):
 BigqueryClient = BigQueryClient
 BigqueryTarget = BigQueryTarget
 MixinBigqueryBulkComplete = MixinBigQueryBulkComplete
-BigqueryLoadTask = BigQueryLoadTask
-BigqueryRunQueryTask = BigQueryRunQueryTask
-BigqueryCreateViewTask = BigQueryCreateViewTask
-ExternalBigqueryTask = ExternalBigQueryTask
+BigqueryLoadStep = BigQueryLoadStep
+BigqueryRunQueryStep = BigQueryRunQueryStep
+BigqueryCreateViewStep = BigQueryCreateViewStep
+ExternalBigqueryStep = ExternalBigQueryStep
 
 
 class BigQueryExecutionError(Exception):

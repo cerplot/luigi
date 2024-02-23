@@ -22,7 +22,7 @@ There is a corresponding :class:`luigi.parameter.DateIntervalParameter` that you
 
 Example::
 
-    class MyTask(luigi.Task):
+    class MyStep(luigi.Step):
         date_interval = luigi.DateIntervalParameter()
 
 Now, you can launch this from the command line using

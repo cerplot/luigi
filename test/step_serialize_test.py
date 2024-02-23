@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 """
-We want to test that task_id is consistent when generated from:
+We want to test that step_id is consistent when generated from:
 
- 1. A real task instance
- 2. The task_family and a dictionary of parameter values (as strings)
+ 1. A real step instance
+ 2. The step_family and a dictionary of parameter values (as strings)
  3. A json representation of #2
 
 We use the hypothesis package to do property-based tests.
@@ -49,8 +49,8 @@ def _mk_param_strategy(param_cls, param_value_strat, with_default=None):
                                  default=default)
 
 
-def _mk_task(name, params):
-    return type(name, (luigi.Task, ), params)
+def _mk_step(name, params):
+    return type(name, (luigi.Step, ), params)
 
 
 # identifiers must be str not unicode in Python2
@@ -69,60 +69,60 @@ any_default_parameters = hyp.strategies.one_of(
     parameters_def, int_parameters_def, float_parameters_def, bool_parameters_def, date_parameters_def
 )
 
-# Tasks with up to 3 random parameters
-tasks_with_defaults = hyp.strategies.builds(
-    _mk_task,
+# Steps with up to 3 random parameters
+steps_with_defaults = hyp.strategies.builds(
+    _mk_step,
     name=identifiers,
     params=hyp.strategies.dictionaries(identifiers, any_default_parameters, max_size=3)
 )
 
 
-def _task_to_dict(task):
+def _step_to_dict(step):
     # Generate the parameter value dictionary.  Use each parameter's serialize() method
     param_dict = {}
-    for key, param in task.get_params():
-        param_dict[key] = param.serialize(getattr(task, key))
+    for key, param in step.get_params():
+        param_dict[key] = param.serialize(getattr(step, key))
 
     return param_dict
 
 
-def _task_from_dict(task_cls, param_dict):
-    # Regenerate the task from the dictionary
-    task_params = {}
-    for key, param in task_cls.get_params():
-        task_params[key] = param.parse(param_dict[key])
+def _step_from_dict(step_cls, param_dict):
+    # Regenerate the step from the dictionary
+    step_params = {}
+    for key, param in step_cls.get_params():
+        step_params[key] = param.parse(param_dict[key])
 
-    return task_cls(**task_params)
-
-
-@hyp.given(tasks_with_defaults)
-def test_serializable(task_cls):
-    task = task_cls()
-
-    param_dict = _task_to_dict(task)
-    task2 = _task_from_dict(task_cls, param_dict)
-
-    assert task.task_id == task2.task_id
+    return step_cls(**step_params)
 
 
-@hyp.given(tasks_with_defaults)
-def test_json_serializable(task_cls):
-    task = task_cls()
+@hyp.given(steps_with_defaults)
+def test_serializable(step_cls):
+    step = step_cls()
 
-    param_dict = _task_to_dict(task)
+    param_dict = _step_to_dict(step)
+    step2 = _step_from_dict(step_cls, param_dict)
+
+    assert step.step_id == step2.step_id
+
+
+@hyp.given(steps_with_defaults)
+def test_json_serializable(step_cls):
+    step = step_cls()
+
+    param_dict = _step_to_dict(step)
 
     param_dict = json.loads(json.dumps(param_dict))
-    task2 = _task_from_dict(task_cls, param_dict)
+    step2 = _step_from_dict(step_cls, param_dict)
 
-    assert task.task_id == task2.task_id
+    assert step.step_id == step2.step_id
 
 
-@hyp.given(tasks_with_defaults)
-def test_task_id_alphanumeric(task_cls):
-    task = task_cls()
-    task_id = task.task_id
+@hyp.given(steps_with_defaults)
+def test_step_id_alphanumeric(step_cls):
+    step = step_cls()
+    step_id = step.step_id
     valid = string.ascii_letters + string.digits + '_'
 
-    assert [x for x in task_id if x not in valid] == []
+    assert [x for x in step_id if x not in valid] == []
 
 # TODO : significant an non-significant parameters

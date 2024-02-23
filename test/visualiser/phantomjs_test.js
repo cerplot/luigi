@@ -120,7 +120,7 @@ def_test('upstream_failure_info_test', function () {
 
 
 def_test('result_count_test', function () {
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 117 entries/)) {
         return true;
     }
@@ -135,7 +135,7 @@ def_test('filtered_result_count_test1', function () {
 
     target.click();
 
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 29 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -153,7 +153,7 @@ def_test('filtered_result_count_test2', function () {
     var target = $('#FAILED_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 4 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -172,7 +172,7 @@ def_test('filtered_result_count_test3', function () {
     var target = $('#PENDING_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 0 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -191,7 +191,7 @@ def_test('filtered_result_count_test4', function () {
     var target = $('#RUNNING_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 0 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -210,7 +210,7 @@ def_test('filtered_result_count_test5', function () {
     var target = $('#DONE_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 68 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -229,7 +229,7 @@ def_test('filtered_result_count_test5', function () {
     var target = $('#DISABLED_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 0 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -247,7 +247,7 @@ def_test('filtered_result_count_test5', function () {
     var target = $('#UPSTREAM_DISABLED_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 0 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -266,7 +266,7 @@ def_test('filtered_result_count_test5', function () {
     var target = $('#UPSTREAM_FAILED_info').first();
 
     target.click();
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 45 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -281,12 +281,12 @@ def_test('filtered_result_count_test5', function () {
 
 def_test('searched_result_count_test1', function () {
     var ret;
-    var dt = $('#taskTable').DataTable();
+    var dt = $('#stepTable').DataTable();
 
     dt.search('FailingMergeSort_1').draw();
 
 
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 29 entries.*from 117 total entries/)) {
         ret = true;
     }
@@ -302,13 +302,13 @@ def_test('searched_result_count_test1', function () {
 def_test('searched_result_count_test1', function () {
     var ret;
     var target = $('#serverSide label').first();
-    var dt = $('#taskTable').DataTable();
+    var dt = $('#stepTable').DataTable();
 
     target.click();
     dt.search('FailingMergeSort_1').draw();
 
 
-    var el = $('#taskTable_info')[0];
+    var el = $('#stepTable_info')[0];
     if (el.textContent.match(/Showing \d+ to \d+ of 29 entries.*from 117 total entries/)) {
         ret = true;
     }

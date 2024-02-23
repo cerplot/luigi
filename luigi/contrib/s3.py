@@ -36,7 +36,7 @@ from luigi import configuration
 from luigi.format import get_default_format
 from luigi.parameter import OptionalParameter, Parameter
 from luigi.target import FileAlreadyExists, FileSystem, FileSystemException, FileSystemTarget, AtomicLocalFile, MissingParentDirectory
-from luigi.task import ExternalTask
+from luigi.step import ExternalStep
 
 logger = logging.getLogger('luigi-interface')
 
@@ -732,9 +732,9 @@ class S3EmrTarget(S3FlagTarget):
         super(S3EmrTarget, self).__init__(*args, **kwargs)
 
 
-class S3PathTask(ExternalTask):
+class S3PathStep(ExternalStep):
     """
-    A external task that to require existence of a path in S3.
+    A external step that to require existence of a path in S3.
     """
     path = Parameter()
 
@@ -742,9 +742,9 @@ class S3PathTask(ExternalTask):
         return S3Target(self.path)
 
 
-class S3EmrTask(ExternalTask):
+class S3EmrStep(ExternalStep):
     """
-    An external task that requires the existence of EMR output in S3.
+    An external step that requires the existence of EMR output in S3.
     """
     path = Parameter()
 
@@ -752,9 +752,9 @@ class S3EmrTask(ExternalTask):
         return S3EmrTarget(self.path)
 
 
-class S3FlagTask(ExternalTask):
+class S3FlagStep(ExternalStep):
     """
-    An external task that requires the existence of EMR output in S3.
+    An external step that requires the existence of EMR output in S3.
     """
     path = Parameter()
     flag = OptionalParameter(default=None)

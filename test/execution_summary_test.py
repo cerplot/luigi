@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-from helpers import LuigiTestCase, RunOnceTask, with_config
+from helpers import LuigiTestCase, RunOnceStep, with_config
 
 import luigi
 import luigi.worker
@@ -33,8 +33,8 @@ class ExecutionSummaryTest(LuigiTestCase):
         self.scheduler = luigi.scheduler.Scheduler(prune_on_get_work=False)
         self.worker = luigi.worker.Worker(scheduler=self.scheduler)
 
-    def run_task(self, task):
-        self.worker.add(task)  # schedule
+    def run_step(self, step):
+        self.worker.add(step)  # schedule
         self.worker.run()  # run
 
     def summary_dict(self):
@@ -44,7 +44,7 @@ class ExecutionSummaryTest(LuigiTestCase):
         return luigi.execution_summary.summary(self.worker)
 
     def test_all_statuses(self):
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             num = luigi.IntParameter()
 
             def run(self):
@@ -56,12 +56,12 @@ class ExecutionSummaryTest(LuigiTestCase):
                     return True
                 return False
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(5):
                     yield Bar(i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Bar(num=1)}, d['already_done'])
         self.assertEqual({Bar(num=2), Bar(num=3), Bar(num=4)}, d['completed'])
@@ -75,7 +75,7 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 6 tasks of which:',
+                    'Scheduled 6 steps of which:',
                     '* 1 complete ones were encountered:',
                     '    - 1 Bar(num=1)',
                     '* 3 ran successfully:',
@@ -86,7 +86,7 @@ class ExecutionSummaryTest(LuigiTestCase):
                     '    * 1 had failed dependencies:',
                     '        - 1 Foo()',
                     '',
-                    'This progress looks :( because there were failed tasks',
+                    'This progress looks :( because there were failed steps',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -96,35 +96,35 @@ class ExecutionSummaryTest(LuigiTestCase):
             self.assertEqual(line, expected[i])
 
     def test_batch_complete(self):
-        ran_tasks = set()
+        ran_steps = set()
 
-        class MaxBatchTask(luigi.Task):
+        class MaxBatchStep(luigi.Step):
             param = luigi.IntParameter(batch_method=max)
 
             def run(self):
-                ran_tasks.add(self.param)
+                ran_steps.add(self.param)
 
             def complete(self):
-                return any(self.param <= ran_param for ran_param in ran_tasks)
+                return any(self.param <= ran_param for ran_param in ran_steps)
 
-        class MaxBatches(luigi.WrapperTask):
+        class MaxBatches(luigi.WrapperStep):
             def requires(self):
-                return map(MaxBatchTask, range(5))
+                return map(MaxBatchStep, range(5))
 
-        self.run_task(MaxBatches())
+        self.run_step(MaxBatches())
         d = self.summary_dict()
         expected_completed = {
-            MaxBatchTask(0),
-            MaxBatchTask(1),
-            MaxBatchTask(2),
-            MaxBatchTask(3),
-            MaxBatchTask(4),
+            MaxBatchStep(0),
+            MaxBatchStep(1),
+            MaxBatchStep(2),
+            MaxBatchStep(3),
+            MaxBatchStep(4),
             MaxBatches(),
         }
         self.assertEqual(expected_completed, d['completed'])
 
     def test_batch_fail(self):
-        class MaxBatchFailTask(luigi.Task):
+        class MaxBatchFailStep(luigi.Step):
             param = luigi.IntParameter(batch_method=max)
 
             def run(self):
@@ -133,23 +133,23 @@ class ExecutionSummaryTest(LuigiTestCase):
             def complete(self):
                 return False
 
-        class MaxBatches(luigi.WrapperTask):
+        class MaxBatches(luigi.WrapperStep):
             def requires(self):
-                return map(MaxBatchFailTask, range(5))
+                return map(MaxBatchFailStep, range(5))
 
-        self.run_task(MaxBatches())
+        self.run_step(MaxBatches())
         d = self.summary_dict()
         expected_failed = {
-            MaxBatchFailTask(0),
-            MaxBatchFailTask(1),
-            MaxBatchFailTask(2),
-            MaxBatchFailTask(3),
-            MaxBatchFailTask(4),
+            MaxBatchFailStep(0),
+            MaxBatchFailStep(1),
+            MaxBatchFailStep(2),
+            MaxBatchFailStep(3),
+            MaxBatchFailStep(4),
         }
         self.assertEqual(expected_failed, d['failed'])
 
     def test_check_complete_error(self):
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             def run(self):
                 pass
 
@@ -157,11 +157,11 @@ class ExecutionSummaryTest(LuigiTestCase):
                 raise Exception
                 return True
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield Bar()
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Foo()}, d['still_pending_not_ext'])
         self.assertEqual({Foo()}, d['upstream_scheduling_error'])
@@ -178,15 +178,15 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 2 tasks of which:',
+                    'Scheduled 2 steps of which:',
                     '* 1 failed scheduling:',
                     '    - 1 Bar()',
                     '* 1 were left pending, among these:',
                     "    * 1 had dependencies whose scheduling failed:",
                     '        - 1 Foo()',
                     '',
-                    'Did not run any tasks',
-                    'This progress looks :( because there were tasks whose scheduling failed',
+                    'Did not run any steps',
+                    'This progress looks :( because there were steps whose scheduling failed',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -196,19 +196,19 @@ class ExecutionSummaryTest(LuigiTestCase):
             self.assertEqual(line, expected[i])
 
     def test_not_run_error(self):
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             def complete(self):
                 return True
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield Bar()
 
         def new_func(*args, **kwargs):
             return None
 
-        with mock.patch('luigi.scheduler.Scheduler.add_task', new_func):
-            self.run_task(Foo())
+        with mock.patch('luigi.scheduler.Scheduler.add_step', new_func):
+            self.run_step(Foo())
 
         d = self.summary_dict()
         self.assertEqual({Foo()}, d['still_pending_not_ext'])
@@ -226,15 +226,15 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 2 tasks of which:',
+                    'Scheduled 2 steps of which:',
                     '* 1 complete ones were encountered:',
                     '    - 1 Bar()',
                     '* 1 were left pending, among these:',
                     "    * 1 was not granted run permission by the scheduler:",
                     '        - 1 Foo()',
                     '',
-                    'Did not run any tasks',
-                    'This progress looks :| because there were tasks that were not granted run permission by the scheduler',
+                    'Did not run any steps',
+                    'This progress looks :| because there were steps that were not granted run permission by the scheduler',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -244,19 +244,19 @@ class ExecutionSummaryTest(LuigiTestCase):
             self.assertEqual(line, expected[i])
 
     def test_deps_error(self):
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             def run(self):
                 pass
 
             def complete(self):
                 return True
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 raise Exception
                 yield Bar()
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Foo()}, d['scheduling_error'])
         self.assertFalse(d['upstream_scheduling_error'])
@@ -272,12 +272,12 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 1 tasks of which:',
+                    'Scheduled 1 steps of which:',
                     '* 1 failed scheduling:',
                     '    - 1 Foo()',
                     '',
-                    'Did not run any tasks',
-                    'This progress looks :( because there were tasks whose scheduling failed',
+                    'Did not run any steps',
+                    'This progress looks :( because there were steps whose scheduling failed',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -288,7 +288,7 @@ class ExecutionSummaryTest(LuigiTestCase):
 
     @with_config({'execution_summary': {'summary_length': '1'}})
     def test_config_summary_limit(self):
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             num = luigi.IntParameter()
 
             def run(self):
@@ -306,7 +306,7 @@ class ExecutionSummaryTest(LuigiTestCase):
         class Wut(Bar):
             pass
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield Bat(1)
                 yield Wut(1)
@@ -317,7 +317,7 @@ class ExecutionSummaryTest(LuigiTestCase):
             def complete(self):
                 return False
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Bat(1), Wut(1), Biz(1), Bar(0), Bar(1), Bar(2), Bar(3)}, d['already_done'])
         self.assertEqual({Foo()}, d['completed'])
@@ -330,14 +330,14 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 8 tasks of which:',
+                    'Scheduled 8 steps of which:',
                     '* 7 complete ones were encountered:',
                     '    - 4 Bar(num=0...3)',
                     '    ...',
                     '* 1 ran successfully:',
                     '    - 1 Foo()',
                     '',
-                    'This progress looks :) because there were no failed tasks or missing dependencies',
+                    'This progress looks :) because there were no failed steps or missing dependencies',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -347,7 +347,7 @@ class ExecutionSummaryTest(LuigiTestCase):
             self.assertEqual(line, expected[i])
 
     def test_upstream_not_running(self):
-        class ExternalBar(luigi.ExternalTask):
+        class ExternalBar(luigi.ExternalStep):
             num = luigi.IntParameter()
 
             def complete(self):
@@ -355,20 +355,20 @@ class ExecutionSummaryTest(LuigiTestCase):
                     return True
                 return False
 
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             num = luigi.IntParameter()
 
             def run(self):
                 if self.num == 0:
                     raise ValueError()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(5):
                     yield ExternalBar(i)
                     yield Bar(i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({ExternalBar(num=1)}, d['already_done'])
         self.assertEqual({Bar(num=1), Bar(num=2), Bar(num=3), Bar(num=4)}, d['completed'])
@@ -386,19 +386,19 @@ class ExecutionSummaryTest(LuigiTestCase):
                       '        - 1 Foo()\n'
                       '    * 1 had missing dependencies:\n'
                       '        - 1 Foo()\n\n'
-                      'This progress looks :( because there were failed tasks\n', s)
+                      'This progress looks :( because there were failed steps\n', s)
         self.assertNotIn('\n\n\n', s)
 
     def test_already_running(self):
         lock1 = threading.Lock()
         lock2 = threading.Lock()
 
-        class ParentTask(RunOnceTask):
+        class ParentStep(RunOnceStep):
 
             def requires(self):
-                yield LockTask()
+                yield LockStep()
 
-        class LockTask(RunOnceTask):
+        class LockStep(RunOnceStep):
             def run(self):
                 lock2.release()
                 lock1.acquire()
@@ -407,37 +407,37 @@ class ExecutionSummaryTest(LuigiTestCase):
         lock1.acquire()
         lock2.acquire()
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
-        other_worker.add(ParentTask())
+        other_worker.add(ParentStep())
         t1 = threading.Thread(target=other_worker.run)
         t1.start()
         lock2.acquire()
-        self.run_task(ParentTask())
+        self.run_step(ParentStep())
         lock1.release()
         t1.join()
         d = self.summary_dict()
-        self.assertEqual({LockTask()}, d['run_by_other_worker'])
-        self.assertEqual({ParentTask()}, d['upstream_run_by_other_worker'])
+        self.assertEqual({LockStep()}, d['run_by_other_worker'])
+        self.assertEqual({ParentStep()}, d['upstream_run_by_other_worker'])
         s = self.summary()
-        self.assertIn('\nScheduled 2 tasks of which:\n'
+        self.assertIn('\nScheduled 2 steps of which:\n'
                       '* 2 were left pending, among these:\n'
                       '    * 1 were being run by another worker:\n'
-                      '        - 1 LockTask()\n'
+                      '        - 1 LockStep()\n'
                       '    * 1 had dependencies that were being run by other worker:\n'
-                      '        - 1 ParentTask()\n', s)
+                      '        - 1 ParentStep()\n', s)
         self.assertIn('\n\nThe other workers were:\n'
-                      '    - other_worker ran 1 tasks\n\n'
-                      'Did not run any tasks\n'
+                      '    - other_worker ran 1 steps\n\n'
+                      'Did not run any steps\n'
                       'This progress looks :) because there were no failed '
-                      'tasks or missing dependencies\n', s)
+                      'steps or missing dependencies\n', s)
         self.assertNotIn('\n\n\n', s)
 
     def test_already_running_2(self):
-        class AlreadyRunningTask(luigi.Task):
+        class AlreadyRunningStep(luigi.Step):
             def run(self):
                 pass
 
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
-        other_worker.add(AlreadyRunningTask())  # This also registers this worker
+        other_worker.add(AlreadyRunningStep())  # This also registers this worker
         old_func = luigi.scheduler.Scheduler.get_work
 
         def new_func(*args, **kwargs):
@@ -447,52 +447,52 @@ class ExecutionSummaryTest(LuigiTestCase):
             return old_func(*args, **kwargs)
 
         with mock.patch('luigi.scheduler.Scheduler.get_work', new_func):
-            self.run_task(AlreadyRunningTask())
+            self.run_step(AlreadyRunningStep())
 
         d = self.summary_dict()
         self.assertFalse(d['already_done'])
         self.assertFalse(d['completed'])
         self.assertFalse(d['not_run'])
-        self.assertEqual({AlreadyRunningTask()}, d['run_by_other_worker'])
+        self.assertEqual({AlreadyRunningStep()}, d['run_by_other_worker'])
 
     def test_not_run(self):
-        class AlreadyRunningTask(luigi.Task):
+        class AlreadyRunningStep(luigi.Step):
             def run(self):
                 pass
 
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
-        other_worker.add(AlreadyRunningTask())  # This also registers this worker
+        other_worker.add(AlreadyRunningStep())  # This also registers this worker
         old_func = luigi.scheduler.Scheduler.get_work
 
         def new_func(*args, **kwargs):
-            kwargs['current_tasks'] = None
+            kwargs['current_steps'] = None
             old_func(*args, **kwargs)
             return old_func(*args, **kwargs)
 
         with mock.patch('luigi.scheduler.Scheduler.get_work', new_func):
-            self.run_task(AlreadyRunningTask())
+            self.run_step(AlreadyRunningStep())
 
         d = self.summary_dict()
         self.assertFalse(d['already_done'])
         self.assertFalse(d['completed'])
         self.assertFalse(d['run_by_other_worker'])
-        self.assertEqual({AlreadyRunningTask()}, d['not_run'])
+        self.assertEqual({AlreadyRunningStep()}, d['not_run'])
 
         s = self.summary()
-        self.assertIn('\nScheduled 1 tasks of which:\n'
+        self.assertIn('\nScheduled 1 steps of which:\n'
                       '* 1 were left pending, among these:\n'
                       '    * 1 was not granted run permission by the scheduler:\n'
-                      '        - 1 AlreadyRunningTask()\n', s)
+                      '        - 1 AlreadyRunningStep()\n', s)
         self.assertNotIn('\n\n\n', s)
 
-    def test_somebody_else_finish_task(self):
-        class SomeTask(RunOnceTask):
+    def test_somebody_else_finish_step(self):
+        class SomeStep(RunOnceStep):
             pass
 
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
 
-        self.worker.add(SomeTask())
-        other_worker.add(SomeTask())
+        self.worker.add(SomeStep())
+        other_worker.add(SomeStep())
         other_worker.run()
         self.worker.run()
 
@@ -500,10 +500,10 @@ class ExecutionSummaryTest(LuigiTestCase):
         self.assertFalse(d['already_done'])
         self.assertFalse(d['completed'])
         self.assertFalse(d['run_by_other_worker'])
-        self.assertEqual({SomeTask()}, d['not_run'])
+        self.assertEqual({SomeStep()}, d['not_run'])
 
-    def test_somebody_else_disables_task(self):
-        class SomeTask(luigi.Task):
+    def test_somebody_else_disables_step(self):
+        class SomeStep(luigi.Step):
             def complete(self):
                 return False
 
@@ -512,8 +512,8 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
 
-        self.worker.add(SomeTask())
-        other_worker.add(SomeTask())
+        self.worker.add(SomeStep())
+        other_worker.add(SomeStep())
         other_worker.run()  # Assuming it is disabled for a while after this
         self.worker.run()
 
@@ -521,15 +521,15 @@ class ExecutionSummaryTest(LuigiTestCase):
         self.assertFalse(d['already_done'])
         self.assertFalse(d['completed'])
         self.assertFalse(d['run_by_other_worker'])
-        self.assertEqual({SomeTask()}, d['not_run'])
+        self.assertEqual({SomeStep()}, d['not_run'])
 
     def test_larger_tree(self):
 
-        class Dog(RunOnceTask):
+        class Dog(RunOnceStep):
             def requires(self):
                 yield Cat(2)
 
-        class Cat(luigi.Task):
+        class Cat(luigi.Step):
             num = luigi.IntParameter()
 
             def __init__(self, *args, **kwargs):
@@ -547,7 +547,7 @@ class ExecutionSummaryTest(LuigiTestCase):
                 else:
                     return self.comp
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num = luigi.IntParameter()
 
             def requires(self):
@@ -560,17 +560,17 @@ class ExecutionSummaryTest(LuigiTestCase):
                 if self.num == 2:
                     yield Dog()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(3):
                     yield Bar(i)
 
-        class ExternalBar(luigi.ExternalTask):
+        class ExternalBar(luigi.ExternalStep):
 
             def complete(self):
                 return False
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
 
         self.assertEqual({Cat(num=1)}, d['already_done'])
@@ -588,23 +588,23 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         start = datetime.date(1998, 3, 23)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             date = luigi.DateParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(10):
                     new_date = start + datetime.timedelta(days=i)
                     yield Bar(date=new_date)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(start + datetime.timedelta(days=i)) for i in range(10)}
         exp_set.add(Foo())
         self.assertEqual(exp_set, d['completed'])
         s = self.summary()
         self.assertIn('date=1998-0', s)
-        self.assertIn('Scheduled 11 tasks', s)
+        self.assertIn('Scheduled 11 steps', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('00:00:00', s)
         self.assertNotIn('\n\n\n', s)
@@ -613,16 +613,16 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         start = datetime.datetime(1998, 3, 23, 1, 50)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             time = luigi.DateMinuteParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(300):
                     new_time = start + datetime.timedelta(minutes=i)
                     yield Bar(time=new_time)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(start + datetime.timedelta(minutes=i)) for i in range(300)}
         exp_set.add(Foo())
@@ -633,15 +633,15 @@ class ExecutionSummaryTest(LuigiTestCase):
 
     def test_with_ranges_one_param(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(11):
                     yield Bar(i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(i) for i in range(11)}
         exp_set.add(Foo())
@@ -652,17 +652,17 @@ class ExecutionSummaryTest(LuigiTestCase):
 
     def test_with_ranges_multiple_params(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num1 = luigi.IntParameter()
             num2 = luigi.IntParameter()
             num3 = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(5):
                     yield Bar(5, i, 25)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(5, i, 25) for i in range(5)}
         exp_set.add(Foo())
@@ -671,18 +671,18 @@ class ExecutionSummaryTest(LuigiTestCase):
         self.assertIn('- 5 Bar(num1=5, num2=0...4, num3=25)', s)
         self.assertNotIn('\n\n\n', s)
 
-    def test_with_two_tasks(self):
+    def test_with_two_steps(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num = luigi.IntParameter()
             num2 = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(2):
                     yield Bar(i, 2 * i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Foo(), Bar(num=0, num2=0), Bar(num=1, num2=2)}, d['completed'])
 
@@ -691,12 +691,12 @@ class ExecutionSummaryTest(LuigiTestCase):
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 3 tasks of which:',
+                    'Scheduled 3 steps of which:',
                     '* 3 ran successfully:',
                     '    - 2 Bar(num=0, num2=0) and Bar(num=1, num2=2)',
                     '    - 1 Foo()',
                     '',
-                    'This progress looks :) because there were no failed tasks or missing dependencies',
+                    'This progress looks :) because there were no failed steps or missing dependencies',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -707,43 +707,43 @@ class ExecutionSummaryTest(LuigiTestCase):
 
     def test_really_long_param_name(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             This_is_a_really_long_parameter_that_we_should_not_print_out_because_people_will_get_annoyed = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield Bar(0)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         s = self.summary()
         self.assertIn('Bar(...)', s)
-        self.assertNotIn("Did not run any tasks", s)
+        self.assertNotIn("Did not run any steps", s)
         self.assertNotIn('\n\n\n', s)
 
-    def test_multiple_params_multiple_same_task_family(self):
+    def test_multiple_params_multiple_same_step_family(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num = luigi.IntParameter()
             num2 = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(4):
                     yield Bar(i, 2 * i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         summary = self.summary()
 
         result = summary.split('\n')
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 5 tasks of which:',
+                    'Scheduled 5 steps of which:',
                     '* 5 ran successfully:',
                     '    - 4 Bar(num=0, num2=0) ...',
                     '    - 1 Foo()',
                     '',
-                    'This progress looks :) because there were no failed tasks or missing dependencies',
+                    'This progress looks :) because there were no failed steps or missing dependencies',
                     '',
                     '===== Luigi Execution Summary =====',
                     '']
@@ -754,31 +754,31 @@ class ExecutionSummaryTest(LuigiTestCase):
 
     def test_happy_smiley_face_normal(self):
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             num = luigi.IntParameter()
             num2 = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(4):
                     yield Bar(i, 2 * i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         s = self.summary()
-        self.assertIn('\nThis progress looks :) because there were no failed tasks or missing dependencies', s)
-        self.assertNotIn("Did not run any tasks", s)
+        self.assertIn('\nThis progress looks :) because there were no failed steps or missing dependencies', s)
+        self.assertNotIn("Did not run any steps", s)
         self.assertNotIn('\n\n\n', s)
 
     def test_happy_smiley_face_other_workers(self):
         lock1 = threading.Lock()
         lock2 = threading.Lock()
 
-        class ParentTask(RunOnceTask):
+        class ParentStep(RunOnceStep):
 
             def requires(self):
-                yield LockTask()
+                yield LockStep()
 
-        class LockTask(RunOnceTask):
+        class LockStep(RunOnceStep):
 
             def run(self):
                 lock2.release()
@@ -788,62 +788,62 @@ class ExecutionSummaryTest(LuigiTestCase):
         lock1.acquire()
         lock2.acquire()
         other_worker = luigi.worker.Worker(scheduler=self.scheduler, worker_id="other_worker")
-        other_worker.add(ParentTask())
+        other_worker.add(ParentStep())
         t1 = threading.Thread(target=other_worker.run)
         t1.start()
         lock2.acquire()
-        self.run_task(ParentTask())
+        self.run_step(ParentStep())
         lock1.release()
         t1.join()
         s = self.summary()
-        self.assertIn('\nThis progress looks :) because there were no failed tasks or missing dependencies', s)
+        self.assertIn('\nThis progress looks :) because there were no failed steps or missing dependencies', s)
         self.assertNotIn('\n\n\n', s)
 
     def test_sad_smiley_face(self):
 
-        class ExternalBar(luigi.ExternalTask):
+        class ExternalBar(luigi.ExternalStep):
 
             def complete(self):
                 return False
 
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             num = luigi.IntParameter()
 
             def run(self):
                 if self.num == 0:
                     raise ValueError()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(5):
                     yield Bar(i)
                 yield ExternalBar()
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         s = self.summary()
-        self.assertIn('\nThis progress looks :( because there were failed tasks', s)
-        self.assertNotIn("Did not run any tasks", s)
+        self.assertIn('\nThis progress looks :( because there were failed steps', s)
+        self.assertNotIn("Did not run any steps", s)
         self.assertNotIn('\n\n\n', s)
 
     def test_neutral_smiley_face(self):
 
-        class ExternalBar(luigi.ExternalTask):
+        class ExternalBar(luigi.ExternalStep):
 
             def complete(self):
                 return False
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield ExternalBar()
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         s = self.summary()
         self.assertIn('\nThis progress looks :| because there were missing external dependencies', s)
         self.assertNotIn('\n\n\n', s)
 
-    def test_did_not_run_any_tasks(self):
+    def test_did_not_run_any_steps(self):
 
-        class ExternalBar(luigi.ExternalTask):
+        class ExternalBar(luigi.ExternalStep):
             num = luigi.IntParameter()
 
             def complete(self):
@@ -851,36 +851,36 @@ class ExecutionSummaryTest(LuigiTestCase):
                     return True
                 return False
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
 
             def requires(self):
                 for i in range(10):
                     yield ExternalBar(i)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({ExternalBar(5)}, d['already_done'])
         self.assertEqual({ExternalBar(i) for i in range(10) if i != 5}, d['still_pending_ext'])
         self.assertEqual({Foo()}, d['upstream_missing_dependency'])
         s = self.summary()
-        self.assertIn('\n\nDid not run any tasks\nThis progress looks :| because there were missing external dependencies', s)
+        self.assertIn('\n\nDid not run any steps\nThis progress looks :| because there were missing external dependencies', s)
         self.assertNotIn('\n\n\n', s)
 
     def test_example(self):
 
-        class MyExternal(luigi.ExternalTask):
+        class MyExternal(luigi.ExternalStep):
 
             def complete(self):
                 return False
 
-        class Boom(luigi.Task):
+        class Boom(luigi.Step):
             this_is_a_really_long_I_mean_way_too_long_and_annoying_parameter = luigi.IntParameter()
 
             def requires(self):
                 for i in range(5, 200):
                     yield Bar(i)
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             num = luigi.IntParameter()
             num2 = luigi.IntParameter()
 
@@ -888,13 +888,13 @@ class ExecutionSummaryTest(LuigiTestCase):
                 yield MyExternal()
                 yield Boom(0)
 
-        class Bar(luigi.Task):
+        class Bar(luigi.Step):
             num = luigi.IntParameter()
 
             def complete(self):
                 return True
 
-        class DateTask(luigi.Task):
+        class DateStep(luigi.Step):
             date = luigi.DateParameter()
             num = luigi.IntParameter()
 
@@ -902,21 +902,21 @@ class ExecutionSummaryTest(LuigiTestCase):
                 yield MyExternal()
                 yield Boom(0)
 
-        class EntryPoint(luigi.Task):
+        class EntryPoint(luigi.Step):
 
             def requires(self):
                 for i in range(10):
                     yield Foo(100, 2 * i)
                 for i in range(10):
-                    yield DateTask(datetime.date(1998, 3, 23) + datetime.timedelta(days=i), 5)
+                    yield DateStep(datetime.date(1998, 3, 23) + datetime.timedelta(days=i), 5)
 
-        self.run_task(EntryPoint())
+        self.run_step(EntryPoint())
         summary = self.summary()
 
         expected = ['',
                     '===== Luigi Execution Summary =====',
                     '',
-                    'Scheduled 218 tasks of which:',
+                    'Scheduled 218 steps of which:',
                     '* 195 complete ones were encountered:',
                     '    - 195 Bar(num=5...199)',
                     '* 1 ran successfully:',
@@ -925,7 +925,7 @@ class ExecutionSummaryTest(LuigiTestCase):
                     '    * 1 were missing external dependencies:',
                     '        - 1 MyExternal()',
                     '    * 21 had missing dependencies:',
-                    '        - 10 DateTask(date=1998-03-23...1998-04-01, num=5)',
+                    '        - 10 DateStep(date=1998-03-23...1998-04-01, num=5)',
                     '        - 1 EntryPoint()',
                     '        - 10 Foo(num=100, num2=0) ...',
                     '',
@@ -944,23 +944,23 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         start = datetime.datetime(1998, 3, 23, 5)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             datehour = luigi.DateHourParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(10):
                     new_date = start + datetime.timedelta(hours=i)
                     yield Bar(datehour=new_date)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(start + datetime.timedelta(hours=i)) for i in range(10)}
         exp_set.add(Foo())
         self.assertEqual(exp_set, d['completed'])
         s = self.summary()
         self.assertIn('datehour=1998-03-23T0', s)
-        self.assertIn('Scheduled 11 tasks', s)
+        self.assertIn('Scheduled 11 steps', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('00:00:00', s)
         self.assertNotIn('\n\n\n', s)
@@ -970,23 +970,23 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         start = datetime.datetime(1998, 3, 23)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             month = luigi.MonthParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(3):
                     new_date = start + datetime.timedelta(days=30*i)
                     yield Bar(month=new_date)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = {Bar(start + datetime.timedelta(days=30*i)) for i in range(3)}
         exp_set.add(Foo())
         self.assertEqual(exp_set, d['completed'])
         s = self.summary()
         self.assertIn('month=1998-0', s)
-        self.assertIn('Scheduled 4 tasks', s)
+        self.assertIn('Scheduled 4 steps', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('00:00:00', s)
         self.assertNotIn('\n\n\n', s)
@@ -997,10 +997,10 @@ class ExecutionSummaryTest(LuigiTestCase):
         """
         self.worker = luigi.worker.Worker(scheduler=self.scheduler, worker_processes=2)
 
-        class Foo(RunOnceTask):
+        class Foo(RunOnceStep):
             pass
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual(set(), d['run_by_other_worker'])
         s = self.summary()
@@ -1016,21 +1016,21 @@ class ExecutionSummaryTest(LuigiTestCase):
             red = 1
             yellow = 2
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             eparam = luigi.EnumParameter(enum=Color)
 
-        class Baz(RunOnceTask):
+        class Baz(RunOnceStep):
             eparam = luigi.EnumParameter(enum=Color)
             another_param = luigi.IntParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 yield Bar(Color.red)
                 yield Bar(Color.yellow)
                 yield Baz(Color.red, 5)
                 yield Baz(Color.yellow, 5)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         s = self.summary()
         self.assertIn('yellow', s)
 
@@ -1039,17 +1039,17 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         args = dict(start=datetime.date(1998, 3, 23), num=3)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             args = luigi.DictParameter()
 
-        class Foo(luigi.Task):
+        class Foo(luigi.Step):
             def requires(self):
                 for i in range(10):
                     new_dict = args.copy()
                     new_dict['start'] = str(new_dict['start'] + datetime.timedelta(days=i))
                     yield Bar(args=new_dict)
 
-        self.run_task(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         exp_set = set()
         for i in range(10):
@@ -1061,7 +1061,7 @@ class ExecutionSummaryTest(LuigiTestCase):
         s = self.summary()
         self.assertIn('"num": 3', s)
         self.assertIn('"start": "1998-0', s)
-        self.assertIn('Scheduled 11 tasks', s)
+        self.assertIn('Scheduled 11 steps', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('00:00:00', s)
         self.assertNotIn('\n\n\n', s)
@@ -1071,10 +1071,10 @@ class ExecutionSummaryTest(LuigiTestCase):
 
         args = dict(start=str(datetime.date(1998, 3, 23)), num=3)
 
-        class Bar(RunOnceTask):
+        class Bar(RunOnceStep):
             args = luigi.DictParameter()
 
-        self.run_task(Bar(args=args))
+        self.run_step(Bar(args=args))
         d = self.summary_dict()
         exp_set = set()
         exp_set.add(Bar(args=args))
@@ -1082,16 +1082,16 @@ class ExecutionSummaryTest(LuigiTestCase):
         s = self.summary()
         self.assertIn('"num": 3', s)
         self.assertIn('"start": "1998-0', s)
-        self.assertIn('Scheduled 1 task', s)
+        self.assertIn('Scheduled 1 step', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('00:00:00', s)
         self.assertNotIn('\n\n\n', s)
 
     """
-    Test that a task once crashing and then succeeding should be counted as no failure.
+    Test that a step once crashing and then succeeding should be counted as no failure.
     """
-    def test_status_with_task_retry(self):
-        class Foo(luigi.Task):
+    def test_status_with_step_retry(self):
+        class Foo(luigi.Step):
             run_count = 0
 
             def run(self):
@@ -1102,8 +1102,8 @@ class ExecutionSummaryTest(LuigiTestCase):
             def complete(self):
                 return self.run_count > 0
 
-        self.run_task(Foo())
-        self.run_task(Foo())
+        self.run_step(Foo())
+        self.run_step(Foo())
         d = self.summary_dict()
         self.assertEqual({Foo()}, d['completed'])
         self.assertEqual({Foo()}, d['ever_failed'])
@@ -1113,7 +1113,7 @@ class ExecutionSummaryTest(LuigiTestCase):
         self.assertFalse(d['run_by_other_worker'])
         self.assertFalse(d['still_pending_ext'])
         s = self.summary()
-        self.assertIn('Scheduled 1 task', s)
+        self.assertIn('Scheduled 1 step', s)
         self.assertIn('Luigi Execution Summary', s)
         self.assertNotIn('ever failed', s)
-        self.assertIn('\n\nThis progress looks :) because there were failed tasks but they all succeeded in a retry', s)
+        self.assertIn('\n\nThis progress looks :) because there were failed steps but they all succeeded in a retry', s)

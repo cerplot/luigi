@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-This module parses commands exactly the same as the luigi task runner. You must specify the module, the task and task parameters.
-Instead of executing a task, this module prints the significant parameters and state of the task and its dependencies in a tree format.
+This module parses commands exactly the same as the luigi step runner. You must specify the module, the step and step parameters.
+Instead of executing a step, this module prints the significant parameters and state of the step and its dependencies in a tree format.
 Use this to visualize the execution plan in the terminal.
 
 .. code-block:: none
@@ -23,7 +23,7 @@ Use this to visualize the execution plan in the terminal.
                     └─--[Bar-{'num': '12'} (PENDING)]
 """
 
-from luigi.task import flatten
+from luigi.step import flatten
 from luigi.cmdline_parser import CmdlineParser
 import sys
 import warnings
@@ -31,24 +31,24 @@ import warnings
 
 class bcolors:
     '''
-    colored output for task status
+    colored output for step status
     '''
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
     ENDC = '\033[0m'
 
 
-def print_tree(task, indent='', last=True):
+def print_tree(step, indent='', last=True):
     '''
-    Return a string representation of the tasks, their statuses/parameters in a dependency tree format
+    Return a string representation of the steps, their statuses/parameters in a dependency tree format
     '''
-    # dont bother printing out warnings about tasks with no output
+    # dont bother printing out warnings about steps with no output
     with warnings.catch_warnings():
-        warnings.filterwarnings(action='ignore', message='Task .* without outputs has no custom complete\\(\\) method')
-        is_task_complete = task.complete()
-    is_complete = (bcolors.OKGREEN + 'COMPLETE' if is_task_complete else bcolors.OKBLUE + 'PENDING') + bcolors.ENDC
-    name = task.__class__.__name__
-    params = task.to_str_params(only_significant=True)
+        warnings.filterwarnings(action='ignore', message='Step .* without outputs has no custom complete\\(\\) method')
+        is_step_complete = step.complete()
+    is_complete = (bcolors.OKGREEN + 'COMPLETE' if is_step_complete else bcolors.OKBLUE + 'PENDING') + bcolors.ENDC
+    name = step.__class__.__name__
+    params = step.to_str_params(only_significant=True)
     result = '\n' + indent
     if (last):
         result += '└─--'
@@ -57,7 +57,7 @@ def print_tree(task, indent='', last=True):
         result += '|---'
         indent += '|   '
     result += '[{0}-{1} ({2})]'.format(name, params, is_complete)
-    children = flatten(task.requires())
+    children = flatten(step.requires())
     for index, child in enumerate(children):
         result += print_tree(child, indent, (index+1) == len(children))
     return result
@@ -66,8 +66,8 @@ def print_tree(task, indent='', last=True):
 def main():
     cmdline_args = sys.argv[1:]
     with CmdlineParser.global_instance(cmdline_args) as cp:
-        task = cp.get_task_obj()
-        print(print_tree(task))
+        step = cp.get_step_obj()
+        print(print_tree(step))
 
 
 if __name__ == '__main__':

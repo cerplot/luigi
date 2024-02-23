@@ -20,15 +20,15 @@ Interface to the :py:class:`~luigi.scheduler.Scheduler` class.
 See :doc:`/central_scheduler` for more info.
 """
 #
-# Description: Added codes for visualization of how long each task takes
+# Description: Added codes for visualization of how long each step takes
 # running-time until it reaches the next status (failed or done)
-# At "{base_url}/tasklist", all completed(failed or done) tasks are shown.
-# At "{base_url}/tasklist", a user can select one specific task to see
+# At "{base_url}/steplist", all completed(failed or done) steps are shown.
+# At "{base_url}/steplist", a user can select one specific step to see
 # how its running-time has changed over time.
-# At "{base_url}/tasklist/{task_name}", it visualizes a multi-bar graph
-# that represents the changes of the running-time for a selected task
+# At "{base_url}/steplist/{step_name}", it visualizes a multi-bar graph
+# that represents the changes of the running-time for a selected step
 # up to the next status (failed or done).
-# This visualization let us know how the running-time of the specific task
+# This visualization let us know how the running-time of the specific step
 # has changed over time.
 #
 # Copyright 2015 Naver Corp.
@@ -170,7 +170,7 @@ class RPCHandler(tornado.web.RequestHandler):
             self.set_header('Access-Control-Expose-Headers', self._cors_config.exposed_headers)
 
 
-class BaseTaskHistoryHandler(tornado.web.RequestHandler):
+class BaseStepHistoryHandler(tornado.web.RequestHandler):
     def initialize(self, scheduler):
         self._scheduler = scheduler
 
@@ -178,50 +178,50 @@ class BaseTaskHistoryHandler(tornado.web.RequestHandler):
         return pkg_resources.resource_filename(__name__, 'templates')
 
 
-class AllRunHandler(BaseTaskHistoryHandler):
+class AllRunHandler(BaseStepHistoryHandler):
     def get(self):
-        all_tasks = self._scheduler.task_history.find_all_runs()
-        tasknames = [task.name for task in all_tasks]
-        # show all tasks with their name list to be selected
-        # why all tasks? the duration of the event history of a selected task
+        all_steps = self._scheduler.step_history.find_all_runs()
+        stepnames = [step.name for step in all_steps]
+        # show all steps with their name list to be selected
+        # why all steps? the duration of the event history of a selected step
         # can be more than 24 hours.
-        self.render("menu.html", tasknames=tasknames)
+        self.render("menu.html", stepnames=stepnames)
 
 
-class SelectedRunHandler(BaseTaskHistoryHandler):
+class SelectedRunHandler(BaseStepHistoryHandler):
     def get(self, name):
         statusResults = {}
-        taskResults = []
-        # get all tasks that has been updated
-        all_tasks = self._scheduler.task_history.find_all_runs()
-        # get events history for all tasks
-        all_tasks_event_history = self._scheduler.task_history.find_all_events()
+        stepResults = []
+        # get all steps that has been updated
+        all_steps = self._scheduler.step_history.find_all_runs()
+        # get events history for all steps
+        all_steps_event_history = self._scheduler.step_history.find_all_events()
 
-        # build the dictionary tasks with index: id, value: task_name
-        tasks = {task.id: str(task.name) for task in all_tasks}
+        # build the dictionary steps with index: id, value: step_name
+        steps = {step.id: str(step.name) for step in all_steps}
 
-        for task in all_tasks_event_history:
-            # if the name of user-selected task is in tasks, get its task_id
-            if tasks.get(task.task_id) == str(name):
-                status = str(task.event_name)
+        for step in all_steps_event_history:
+            # if the name of user-selected step is in steps, get its step_id
+            if steps.get(step.step_id) == str(name):
+                status = str(step.event_name)
                 if status not in statusResults:
                     statusResults[status] = []
-                # append the id, task_id, ts, y with 0, next_process with null
-                # for the status(running/failed/done) of the selected task
+                # append the id, step_id, ts, y with 0, next_process with null
+                # for the status(running/failed/done) of the selected step
                 statusResults[status].append(({
-                                                  'id': str(task.id), 'task_id': str(task.task_id),
-                                                  'x': from_utc(str(task.ts)), 'y': 0, 'next_process': ''}))
-                # append the id, task_name, task_id, status, datetime, timestamp
-                # for the selected task
-                taskResults.append({
-                    'id': str(task.id), 'taskName': str(name), 'task_id': str(task.task_id),
-                    'status': str(task.event_name), 'datetime': str(task.ts),
-                    'timestamp': from_utc(str(task.ts))})
+                                                  'id': str(step.id), 'step_id': str(step.step_id),
+                                                  'x': from_utc(str(step.ts)), 'y': 0, 'next_process': ''}))
+                # append the id, step_name, step_id, status, datetime, timestamp
+                # for the selected step
+                stepResults.append({
+                    'id': str(step.id), 'stepName': str(name), 'step_id': str(step.step_id),
+                    'status': str(step.event_name), 'datetime': str(step.ts),
+                    'timestamp': from_utc(str(step.ts))})
         statusResults = json.dumps(statusResults)
-        taskResults = json.dumps(taskResults)
+        stepResults = json.dumps(stepResults)
         statusResults = tornado.escape.xhtml_unescape(str(statusResults))
-        taskResults = tornado.escape.xhtml_unescape(str(taskResults))
-        self.render('history.html', name=name, statusResults=statusResults, taskResults=taskResults)
+        stepResults = tornado.escape.xhtml_unescape(str(stepResults))
+        self.render('history.html', name=name, statusResults=statusResults, stepResults=stepResults)
 
 
 def from_utc(utcTime, fmt=None):
@@ -243,37 +243,37 @@ def from_utc(utcTime, fmt=None):
         raise ValueError("No UTC format matches {}".format(utcTime))
 
 
-class RecentRunHandler(BaseTaskHistoryHandler):
+class RecentRunHandler(BaseStepHistoryHandler):
     def get(self):
-        with self._scheduler.task_history._session(None) as session:
-            tasks = self._scheduler.task_history.find_latest_runs(session)
-            self.render("recent.html", tasks=tasks)
+        with self._scheduler.step_history._session(None) as session:
+            steps = self._scheduler.step_history.find_latest_runs(session)
+            self.render("recent.html", steps=steps)
 
 
-class ByNameHandler(BaseTaskHistoryHandler):
+class ByNameHandler(BaseStepHistoryHandler):
     def get(self, name):
-        with self._scheduler.task_history._session(None) as session:
-            tasks = self._scheduler.task_history.find_all_by_name(name, session)
-            self.render("recent.html", tasks=tasks)
+        with self._scheduler.step_history._session(None) as session:
+            steps = self._scheduler.step_history.find_all_by_name(name, session)
+            self.render("recent.html", steps=steps)
 
 
-class ByIdHandler(BaseTaskHistoryHandler):
+class ByIdHandler(BaseStepHistoryHandler):
     def get(self, id):
-        with self._scheduler.task_history._session(None) as session:
-            task = self._scheduler.task_history.find_task_by_id(id, session)
-            self.render("show.html", task=task)
+        with self._scheduler.step_history._session(None) as session:
+            step = self._scheduler.step_history.find_step_by_id(id, session)
+            self.render("show.html", step=step)
 
 
-class ByParamsHandler(BaseTaskHistoryHandler):
+class ByParamsHandler(BaseStepHistoryHandler):
     def get(self, name):
         payload = self.get_argument('data', default="{}")
         arguments = json.loads(payload)
-        with self._scheduler.task_history._session(None) as session:
-            tasks = self._scheduler.task_history.find_all_by_parameters(name, session=session, **arguments)
-            self.render("recent.html", tasks=tasks)
+        with self._scheduler.step_history._session(None) as session:
+            steps = self._scheduler.step_history.find_all_by_parameters(name, session=session, **arguments)
+            self.render("recent.html", steps=steps)
 
 
-class RootPathHandler(BaseTaskHistoryHandler):
+class RootPathHandler(BaseStepHistoryHandler):
     def get(self):
         # we omit the leading slash in case the visualizer is behind a different
         # path (as in a reverse proxy setup)
@@ -309,8 +309,8 @@ def app(scheduler):
     handlers = [
         (r'/api/(.*)', RPCHandler, {"scheduler": scheduler}),
         (r'/', RootPathHandler, {'scheduler': scheduler}),
-        (r'/tasklist', AllRunHandler, {'scheduler': scheduler}),
-        (r'/tasklist/(.*?)', SelectedRunHandler, {'scheduler': scheduler}),
+        (r'/steplist', AllRunHandler, {'scheduler': scheduler}),
+        (r'/steplist/(.*?)', SelectedRunHandler, {'scheduler': scheduler}),
         (r'/history', RecentRunHandler, {'scheduler': scheduler}),
         (r'/history/by_name/(.*?)', ByNameHandler, {'scheduler': scheduler}),
         (r'/history/by_id/(.*?)', ByIdHandler, {'scheduler': scheduler}),

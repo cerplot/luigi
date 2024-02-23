@@ -169,7 +169,7 @@ class TestS3Client(unittest.TestCase):
     def test_init_without_init_or_config(self, mock):
         """If no config or arn provided, boto3 client
            should be called with default parameters.
-           Delegating ENV or Task Role credential handling
+           Delegating ENV or Step Role credential handling
            to boto3 itself.
         """
         S3Client().s3

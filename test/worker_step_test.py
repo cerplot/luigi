@@ -26,16 +26,16 @@ from time import sleep
 import luigi
 import luigi.date_interval
 import luigi.notifications
-from luigi.worker import TaskException, TaskProcess
+from luigi.worker import StepException, StepProcess
 from luigi.scheduler import DONE, FAILED
 
 luigi.notifications.DEBUG = True
 
 
-class WorkerTaskTest(LuigiTestCase):
+class WorkerStepTest(LuigiTestCase):
 
     def test_constructor(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             # Test overriding the constructor without calling the superconstructor
             # This is a simple mistake but caused an error that was very hard to understand
 
@@ -43,63 +43,63 @@ class WorkerTaskTest(LuigiTestCase):
                 pass
 
         def f():
-            luigi.build([MyTask()], local_scheduler=True)
-        self.assertRaises(TaskException, f)
+            luigi.build([MyStep()], local_scheduler=True)
+        self.assertRaises(StepException, f)
 
     def test_run_none(self):
         def f():
             luigi.build([None], local_scheduler=True)
-        self.assertRaises(TaskException, f)
+        self.assertRaises(StepException, f)
 
 
-class TaskProcessTest(LuigiTestCase):
+class StepProcessTest(LuigiTestCase):
 
     def test_update_result_queue_on_success(self):
         # IMO this test makes no sense as it tests internal behavior and have
         # already broken once during internal non-changing refactoring
-        class SuccessTask(luigi.Task):
+        class SuccessStep(luigi.Step):
             def on_success(self):
                 return "test success expl"
 
-        task = SuccessTask()
+        step = SuccessStep()
         result_queue = multiprocessing.Queue()
-        task_process = TaskProcess(task, 1, result_queue, mock.Mock())
+        step_process = StepProcess(step, 1, result_queue, mock.Mock())
 
         with mock.patch.object(result_queue, 'put') as mock_put:
-            task_process.run()
-            mock_put.assert_called_once_with((task.task_id, DONE, "test success expl", [], None))
+            step_process.run()
+            mock_put.assert_called_once_with((step.step_id, DONE, "test success expl", [], None))
 
     def test_update_result_queue_on_failure(self):
         # IMO this test makes no sense as it tests internal behavior and have
         # already broken once during internal non-changing refactoring
-        class FailTask(luigi.Task):
+        class FailStep(luigi.Step):
             def run(self):
                 raise BaseException("Uh oh.")
 
             def on_failure(self, exception):
                 return "test failure expl"
 
-        task = FailTask()
+        step = FailStep()
         result_queue = multiprocessing.Queue()
-        task_process = TaskProcess(task, 1, result_queue, mock.Mock())
+        step_process = StepProcess(step, 1, result_queue, mock.Mock())
 
         with mock.patch.object(result_queue, 'put') as mock_put:
-            task_process.run()
-            mock_put.assert_called_once_with((task.task_id, FAILED, "test failure expl", [], []))
+            step_process.run()
+            mock_put.assert_called_once_with((step.step_id, FAILED, "test failure expl", [], []))
 
     def test_fail_on_false_complete(self):
-        class NeverCompleteTask(luigi.Task):
+        class NeverCompleteStep(luigi.Step):
             def complete(self):
                 return False
 
-        task = NeverCompleteTask()
+        step = NeverCompleteStep()
         result_queue = multiprocessing.Queue()
-        task_process = TaskProcess(task, 1, result_queue, mock.Mock(), check_complete_on_run=True)
+        step_process = StepProcess(step, 1, result_queue, mock.Mock(), check_complete_on_run=True)
 
         with mock.patch.object(result_queue, 'put') as mock_put:
-            task_process.run()
+            step_process.run()
             mock_put.assert_called_once_with((
-                task.task_id,
+                step.step_id,
                 FAILED,
                 StringContaining("finished running, but complete() is still returning false"),
                 [],
@@ -108,27 +108,27 @@ class TaskProcessTest(LuigiTestCase):
 
     def test_cleanup_children_on_terminate(self):
         """
-        Subprocesses spawned by tasks should be terminated on terminate
+        Subprocesses spawned by steps should be terminated on terminate
         """
-        class HangingSubprocessTask(luigi.Task):
+        class HangingSubprocessStep(luigi.Step):
             def run(self):
                 python = sys.executable
                 check_call([python, '-c', 'while True: pass'])
 
-        task = HangingSubprocessTask()
+        step = HangingSubprocessStep()
         queue = mock.Mock()
         worker_id = 1
 
-        task_process = TaskProcess(task, worker_id, queue, mock.Mock())
-        task_process.start()
+        step_process = StepProcess(step, worker_id, queue, mock.Mock())
+        step_process.start()
 
-        parent = Process(task_process.pid)
+        parent = Process(step_process.pid)
         while not parent.children():
             # wait for child process to startup
             sleep(0.01)
 
         [child] = parent.children()
-        task_process.terminate()
+        step_process.terminate()
         child.wait(timeout=1.0)  # wait for terminate to complete
 
         self.assertFalse(parent.is_running())
@@ -136,18 +136,18 @@ class TaskProcessTest(LuigiTestCase):
 
     def test_disable_worker_timeout(self):
         """
-        When a task sets worker_timeout explicitly to 0, it should disable the timeout, even if it
+        When a step sets worker_timeout explicitly to 0, it should disable the timeout, even if it
         is configured globally.
         """
-        class Task(luigi.Task):
+        class Step(luigi.Step):
             worker_timeout = 0
 
-        task_process = TaskProcess(
-            task=Task(),
+        step_process = StepProcess(
+            step=Step(),
             worker_id=1,
             result_queue=mock.Mock(),
             status_reporter=mock.Mock(),
             worker_timeout=10,
 
         )
-        self.assertEqual(task_process.worker_timeout, 0)
+        self.assertEqual(step_process.worker_timeout, 0)

@@ -6,20 +6,20 @@
     <table class="table table-striped table-bordered">
       <tbody>
         <tr>
-          <td>Task Id</td>
-          <td>{{task.id}}</td>
+          <td>Step Id</td>
+          <td>{{step.id}}</td>
         </tr>
         <tr>
-          <td>Task Name</td>
-          <td>{{task.name}}</td>
+          <td>Step Name</td>
+          <td>{{step.name}}</td>
         </tr>
         <tr>
           <td>Host</td>
-          <td>{{task.host}}</td>
+          <td>{{step.host}}</td>
         </tr>
         <tr>
           <td>More</td>
-          <td><a href="/history/by_name/{{task.name}}">All "{{task.name}}" runs</a></td>
+          <td><a href="/history/by_name/{{step.name}}">All "{{step.name}}" runs</a></td>
         </tr>
       </tbody>
     </table>
@@ -34,7 +34,7 @@
     </tr>
   </thead>
   <tbody>
-    {% for (k, param) in task.parameters.items() %}
+    {% for (k, param) in step.parameters.items() %}
       <tr>
         <td>{{k}}</td>
         <td>{{param.value}}</td>
@@ -51,7 +51,7 @@
     </tr>
   </thead>
   <tbody>
-    {% for event in task.events %}
+    {% for event in step.events %}
       <tr>
         <td>{{event.event_name}}</td>
         <td>{{event.ts}}</td>

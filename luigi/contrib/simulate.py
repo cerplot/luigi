@@ -31,23 +31,23 @@ logger = logging.getLogger('luigi-interface')
 
 class RunAnywayTarget(luigi.Target):
     """
-    A target used to make a task run every time it is called.
+    A target used to make a step run every time it is called.
 
     Usage:
 
-    Pass `self` as the first argument in your task's `output`:
+    Pass `self` as the first argument in your step's `output`:
 
     .. code-block: python
 
         def output(self):
             return RunAnywayTarget(self)
 
-    And then mark it as `done` in your task's `run`:
+    And then mark it as `done` in your step's `run`:
 
     .. code-block: python
 
         def run(self):
-            # Your task execution
+            # Your step execution
             # ...
             self.output().done() # will then be considered as "existing"
     """
@@ -60,8 +60,8 @@ class RunAnywayTarget(luigi.Target):
     # avoid deletion collision
     unique = Value('i', 0)
 
-    def __init__(self, task_obj):
-        self.task_id = task_obj.task_id
+    def __init__(self, step_obj):
+        self.step_id = step_obj.step_id
 
         if self.unique.value == 0:
             with self.unique.get_lock():
@@ -80,14 +80,14 @@ class RunAnywayTarget(luigi.Target):
                     logger.debug('Deleted temporary directory %s', path)
 
     def __str__(self):
-        return self.task_id
+        return self.step_id
 
     def get_path(self):
         """
-        Returns a temporary file path based on a MD5 hash generated with the task's name and its arguments
+        Returns a temporary file path based on a MD5 hash generated with the step's name and its arguments
         """
-        md5_hash = hashlib.new('md5', self.task_id.encode(), usedforsecurity=False).hexdigest()
-        logger.debug('Hash %s corresponds to task %s', md5_hash, self.task_id)
+        md5_hash = hashlib.new('md5', self.step_id.encode(), usedforsecurity=False).hexdigest()
+        logger.debug('Hash %s corresponds to step %s', md5_hash, self.step_id)
 
         return os.path.join(self.temp_dir, str(self.unique.value), md5_hash)
 
@@ -99,7 +99,7 @@ class RunAnywayTarget(luigi.Target):
 
     def done(self):
         """
-        Creates temporary file to mark the task as `done`
+        Creates temporary file to mark the step as `done`
         """
         logger.info('Marking %s as done', self)
 

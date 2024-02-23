@@ -19,7 +19,7 @@
 """
 Docker container wrapper for Luigi.
 
-Enables running a docker container as a task in luigi.
+Enables running a docker container as a step in luigi.
 This wrapper uses the Docker Python SDK to communicate directly with the
 Docker API avoiding the common pattern to invoke the docker client
 from the command line. Using the SDK it is possible to detect and properly
@@ -48,7 +48,7 @@ try:
     from docker.errors import ContainerError, ImageNotFound, APIError
 
 except ImportError:
-    logger.warning('docker is not installed. DockerTask requires docker.')
+    logger.warning('docker is not installed. DockerStep requires docker.')
     docker = None
 
 # TODO: may need to implement this logic for remote hosts
@@ -63,7 +63,7 @@ except ImportError:
 #         description="Path to dockercfg file for authentication")
 
 
-class DockerTask(luigi.Task):
+class DockerStep(luigi.Step):
 
     @property
     def image(self):
@@ -136,14 +136,14 @@ class DockerTask(luigi.Task):
 
     def __init__(self, *args, **kwargs):
         '''
-        When a new instance of the DockerTask class gets created:
+        When a new instance of the DockerStep class gets created:
         - call the parent class __init__ method
         - start the logger
         - init an instance of the docker client
         - create a tmp dir
-        - add the temp dir to the volume binds specified in the task
+        - add the temp dir to the volume binds specified in the step
         '''
-        super(DockerTask, self).__init__(*args, **kwargs)
+        super(DockerStep, self).__init__(*args, **kwargs)
         self.__logger = logger
 
         '''init docker client
@@ -152,7 +152,7 @@ class DockerTask(luigi.Task):
         '''
         self._client = docker.APIClient(self.docker_url)
 
-        # add latest tag if nothing else is specified by task
+        # add latest tag if nothing else is specified by step
         if ':' not in self.image:
             self._image = ':'.join([self.image, 'latest'])
         else:
@@ -161,7 +161,7 @@ class DockerTask(luigi.Task):
         if self.mount_tmp:
             # create a tmp_dir, NOTE: /tmp needs to be specified for it to work on
             # macOS, despite what the python documentation says
-            self._host_tmp_dir = mkdtemp(suffix=self.task_id,
+            self._host_tmp_dir = mkdtemp(suffix=self.step_id,
                                          prefix='luigi-docker-tmp-dir-',
                                          dir='/tmp')
 

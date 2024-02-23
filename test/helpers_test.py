@@ -18,44 +18,44 @@ import luigi
 import luigi.date_interval
 import luigi.interface
 import luigi.notifications
-from helpers import LuigiTestCase, RunOnceTask
+from helpers import LuigiTestCase, RunOnceStep
 
 
 class LuigiTestCaseTest(LuigiTestCase):
 
     def test_1(self):
-        class MyClass(luigi.Task):
+        class MyClass(luigi.Step):
             pass
 
         self.assertTrue(self.run_locally(['MyClass']))
 
     def test_2(self):
-        class MyClass(luigi.Task):
+        class MyClass(luigi.Step):
             pass
 
         self.assertTrue(self.run_locally(['MyClass']))
 
 
-class RunOnceTaskTest(LuigiTestCase):
+class RunOnceStepTest(LuigiTestCase):
 
     def test_complete_behavior(self):
         """
-        Verify that RunOnceTask works as expected.
+        Verify that RunOnceStep works as expected.
 
-        This task will fail if it is a normal ``luigi.Task``, because
-        RequiringTask will not run (missing dependency at runtime).
+        This step will fail if it is a normal ``luigi.Step``, because
+        RequiringStep will not run (missing dependency at runtime).
         """
-        class MyTask(RunOnceTask):
+        class MyStep(RunOnceStep):
             pass
 
-        class RequiringTask(luigi.Task):
+        class RequiringStep(luigi.Step):
             counter = 0
 
             def requires(self):
-                yield MyTask()
+                yield MyStep()
 
             def run(self):
-                RequiringTask.counter += 1
+                RequiringStep.counter += 1
 
-        self.run_locally(['RequiringTask'])
-        self.assertEqual(1, RequiringTask.counter)
+        self.run_locally(['RequiringStep'])
+        self.assertEqual(1, RequiringStep.counter)

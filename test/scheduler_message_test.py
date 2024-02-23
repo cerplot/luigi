@@ -19,7 +19,7 @@ import os
 import time
 import tempfile
 
-from helpers import LuigiTestCase, RunOnceTask
+from helpers import LuigiTestCase, RunOnceStep
 
 import luigi
 import luigi.scheduler
@@ -32,7 +32,7 @@ def fast_worker(scheduler, **kwargs):
     return luigi.worker.Worker(scheduler=scheduler, **kwargs)
 
 
-class WriteMessageToFile(luigi.Task):
+class WriteMessageToFile(luigi.Step):
 
     path = luigi.Parameter()
 
@@ -56,15 +56,15 @@ class SchedulerMessageTest(LuigiTestCase):
 
     def test_scheduler_methods(self):
         sch = luigi.scheduler.Scheduler(send_messages=True)
-        sch.add_task(task_id="foo-task", worker="foo-worker")
+        sch.add_step(step_id="foo-step", worker="foo-worker")
 
-        res = sch.send_scheduler_message("foo-worker", "foo-task", "message content")
+        res = sch.send_scheduler_message("foo-worker", "foo-step", "message content")
         message_id = res["message_id"]
         self.assertTrue(len(message_id) > 0)
         self.assertIn("-", message_id)
 
-        sch.add_scheduler_message_response("foo-task", message_id, "message response")
-        res = sch.get_scheduler_message_response("foo-task", message_id)
+        sch.add_scheduler_message_response("foo-step", message_id, "message response")
+        res = sch.get_scheduler_message_response("foo-step", message_id)
         response = res["response"]
         self.assertEqual(response, "message response")
 
@@ -75,10 +75,10 @@ class SchedulerMessageTest(LuigiTestCase):
                 if os.path.exists(tmp.name):
                     os.remove(tmp.name)
 
-                task = WriteMessageToFile(path=tmp.name)
-                w.add(task)
+                step = WriteMessageToFile(path=tmp.name)
+                w.add(step)
 
-                sch.send_scheduler_message(w._id, task.task_id, "test")
+                sch.send_scheduler_message(w._id, step.step_id, "test")
                 w.run()
 
                 self.assertTrue(os.path.exists(tmp.name))
@@ -88,18 +88,18 @@ class SchedulerMessageTest(LuigiTestCase):
     def test_receive_messages_disabled(self):
         sch = luigi.scheduler.Scheduler(send_messages=True)
         with fast_worker(sch, force_multiprocessing=False) as w:
-            class MyTask(RunOnceTask):
+            class MyStep(RunOnceStep):
                 def run(self):
                     self.had_queue = self.scheduler_messages is not None
-                    super(MyTask, self).run()
+                    super(MyStep, self).run()
 
-            task = MyTask()
-            w.add(task)
+            step = MyStep()
+            w.add(step)
 
-            sch.send_scheduler_message(w._id, task.task_id, "test")
+            sch.send_scheduler_message(w._id, step.step_id, "test")
             w.run()
 
-            self.assertFalse(task.had_queue)
+            self.assertFalse(step.had_queue)
 
     def test_send_messages_disabled(self):
         sch = luigi.scheduler.Scheduler(send_messages=False)
@@ -108,10 +108,10 @@ class SchedulerMessageTest(LuigiTestCase):
                 if os.path.exists(tmp.name):
                     os.remove(tmp.name)
 
-                task = WriteMessageToFile(path=tmp.name)
-                w.add(task)
+                step = WriteMessageToFile(path=tmp.name)
+                w.add(step)
 
-                sch.send_scheduler_message(w._id, task.task_id, "test")
+                sch.send_scheduler_message(w._id, step.step_id, "test")
                 w.run()
 
                 self.assertTrue(os.path.exists(tmp.name))

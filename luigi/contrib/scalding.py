@@ -26,7 +26,7 @@ import luigi.contrib.hadoop
 import luigi.contrib.hadoop_jar
 import luigi.contrib.hdfs
 from luigi import LocalTarget
-from luigi.task import flatten
+from luigi.step import flatten
 
 logger = logging.getLogger('luigi-interface')
 
@@ -60,7 +60,7 @@ Example configuration section in luigi.cfg::
 
 class ScaldingJobRunner(luigi.contrib.hadoop.JobRunner):
     """
-    JobRunner for `pyscald` commands. Used to run a ScaldingJobTask.
+    JobRunner for `pyscald` commands. Used to run a ScaldingJobStep.
     """
 
     def __init__(self):
@@ -194,7 +194,7 @@ class ScaldingJobRunner(luigi.contrib.hadoop.JobRunner):
 
     def run_job(self, job, tracking_url_callback=None):
         if tracking_url_callback is not None:
-            warnings.warn("tracking_url_callback argument is deprecated, task.set_tracking_url is "
+            warnings.warn("tracking_url_callback argument is deprecated, step.set_tracking_url is "
                           "used instead.", DeprecationWarning)
 
         job_jar = self.build_job_jar(job)
@@ -208,7 +208,7 @@ class ScaldingJobRunner(luigi.contrib.hadoop.JobRunner):
         arglist += [job_class, '--hdfs']
 
         # scalding does not parse argument with '=' properly
-        arglist += ['--name', job.task_id.replace('=', ':')]
+        arglist += ['--name', job.step_id.replace('=', ':')]
 
         (tmp_files, job_args) = luigi.contrib.hadoop_jar.fix_paths(job)
         arglist += job_args
@@ -225,12 +225,12 @@ class ScaldingJobRunner(luigi.contrib.hadoop.JobRunner):
             a.move(b)
 
 
-class ScaldingJobTask(luigi.contrib.hadoop.BaseHadoopJobTask):
+class ScaldingJobStep(luigi.contrib.hadoop.BaseHadoopJobStep):
     """
-    A job task for Scalding that define a scala source and (optional) main method.
+    A job step for Scalding that define a scala source and (optional) main method.
 
     requires() should return a dictionary where the keys are Scalding argument
-    names and values are sub tasks or lists of subtasks.
+    names and values are sub steps or lists of substeps.
 
     For example:
 

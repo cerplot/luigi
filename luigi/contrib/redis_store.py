@@ -97,6 +97,6 @@ class RedisTarget(Target):
 
     def exists(self):
         """
-        Test, if this task has been run.
+        Test, if this step has been run.
         """
         return self.redis_client.exists(self.marker_key()) == 1

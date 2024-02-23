@@ -20,13 +20,13 @@ import tempfile
 
 import luigi
 from helpers import unittest
-from luigi.contrib.pig import PigJobError, PigJobTask
+from luigi.contrib.pig import PigJobError, PigJobStep
 from mock import patch
 
 import pytest
 
 
-class SimpleTestJob(PigJobTask):
+class SimpleTestJob(PigJobStep):
     def output(self):
         return luigi.LocalTarget('simple-output')
 
@@ -34,7 +34,7 @@ class SimpleTestJob(PigJobTask):
         return "my_simple_pig_script.pig"
 
 
-class ComplexTestJob(PigJobTask):
+class ComplexTestJob(PigJobStep):
     def output(self):
         return luigi.LocalTarget('complex-output')
 

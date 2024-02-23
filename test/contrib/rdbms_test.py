@@ -76,8 +76,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                         mock_redshift_target,
                                                         mock_metadata_columns,
                                                         mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey(table='my_test_table')
-        task.run()
+        step = DummyS3CopyToTableKey(table='my_test_table')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -101,8 +101,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                               mock_redshift_target,
                                                               mock_metadata_columns,
                                                               mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey(table='test.my_test_table')
-        task.run()
+        step = DummyS3CopyToTableKey(table='test.my_test_table')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -131,8 +131,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                          mock_columns_exists,
                                                          mock_metadata_columns,
                                                          mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         self.assertFalse(mock_add_to_table.called)
 
@@ -147,8 +147,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                          mock_columns_exists,
                                                          mock_metadata_columns,
                                                          mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         self.assertTrue(mock_add_to_table.called)
 
@@ -161,8 +161,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                      mock_columns_exists,
                                      mock_metadata_columns,
                                      mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey(table='my_test_table')
-        task.run()
+        step = DummyS3CopyToTableKey(table='my_test_table')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -186,8 +186,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                      mock_columns_exists,
                                      mock_metadata_columns,
                                      mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey(table='my_test_table')
-        task.run()
+        step = DummyS3CopyToTableKey(table='my_test_table')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -213,10 +213,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                 mock_columns_exists,
                                                 mock_metadata_columns,
                                                 mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
+        step = DummyS3CopyToTableKey()
 
         with self.assertRaises(ValueError):
-            task.run()
+            step.run()
 
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_columns", new_callable=mock.PropertyMock,
@@ -228,10 +228,10 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                 mock_columns_exists,
                                                 mock_metadata_columns,
                                                 mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
+        step = DummyS3CopyToTableKey()
 
         with self.assertRaises(ValueError):
-            task.run()
+            step.run()
 
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.enable_metadata_columns", new_callable=mock.PropertyMock, return_value=True)
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.metadata_queries",  new_callable=mock.PropertyMock, return_value=['SELECT 1 FROM X', 'SELECT 2 FROM Y'])
@@ -240,8 +240,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                    mock_redshift_target,
                                    mock_metadata_queries,
                                    mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect

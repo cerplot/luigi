@@ -42,31 +42,31 @@ class WorkerKeepAliveUpstreamTest(LuigiTestCase):
         """
         One dependency disables and one fails
         """
-        class Disabler(luigi.Task):
+        class Disabler(luigi.Step):
             pass
 
-        class Failer(luigi.Task):
+        class Failer(luigi.Step):
             did_run = False
 
             def run(self):
                 self.did_run = True
 
-        class Wrapper(luigi.WrapperTask):
+        class Wrapper(luigi.WrapperStep):
             def requires(self):
                 return (Disabler(), Failer())
 
         self.w.add(Wrapper())
-        disabler = Disabler().task_id
-        failer = Failer().task_id
-        self.sch.add_task(disabler, 'FAILED', worker='X')
-        self.sch.prune()  # Make scheduler unfail the disabled task
-        self.sch.add_task(disabler, 'FAILED', worker='X')  # Disable it
-        self.sch.add_task(failer, 'FAILED', worker='X')  # Fail it
+        disabler = Disabler().step_id
+        failer = Failer().step_id
+        self.sch.add_step(disabler, 'FAILED', worker='X')
+        self.sch.prune()  # Make scheduler unfail the disabled step
+        self.sch.add_step(disabler, 'FAILED', worker='X')  # Disable it
+        self.sch.add_step(failer, 'FAILED', worker='X')  # Fail it
         try:
             t = threading.Thread(target=self.w.run)
             t.start()
             t.join(timeout=1)  # Wait 1 second
-            self.assertTrue(t.is_alive())  # It shouldn't stop trying, the failed task should be retried!
+            self.assertTrue(t.is_alive())  # It shouldn't stop trying, the failed step should be retried!
             self.assertFalse(Failer.did_run)  # It should never have run, the cooldown is longer than a second.
         finally:
             self.sch.prune()  # Make it, like die. Couldn't find a more forceful way to do this.
@@ -78,33 +78,33 @@ class WorkerKeepAliveUpstreamTest(LuigiTestCase):
         One dependency disables and one succeeds
         """
         # TODO: Fix copy paste mess
-        class Disabler(luigi.Task):
+        class Disabler(luigi.Step):
             pass
 
-        class Succeeder(luigi.Task):
+        class Succeeder(luigi.Step):
             did_run = False
 
             def run(self):
                 self.did_run = True
 
-        class Wrapper(luigi.WrapperTask):
+        class Wrapper(luigi.WrapperStep):
             def requires(self):
                 return (Disabler(), Succeeder())
 
         self.w.add(Wrapper())
-        disabler = Disabler().task_id
-        succeeder = Succeeder().task_id
-        self.sch.add_task(disabler, 'FAILED', worker='X')
-        self.sch.prune()  # Make scheduler unfail the disabled task
-        self.sch.add_task(disabler, 'FAILED', worker='X')  # Disable it
-        self.sch.add_task(succeeder, 'DONE', worker='X')  # Fail it
+        disabler = Disabler().step_id
+        succeeder = Succeeder().step_id
+        self.sch.add_step(disabler, 'FAILED', worker='X')
+        self.sch.prune()  # Make scheduler unfail the disabled step
+        self.sch.add_step(disabler, 'FAILED', worker='X')  # Disable it
+        self.sch.add_step(succeeder, 'DONE', worker='X')  # Fail it
         try:
             t = threading.Thread(target=self.w.run)
             t.start()
             t.join(timeout=1)  # Wait 1 second
             self.assertFalse(t.is_alive())  # The worker should think that it should stop ...
-            # ... because in this case the only work remaining depends on DISABLED tasks,
-            # hence it's not worth considering the wrapper task as a PENDING task to
+            # ... because in this case the only work remaining depends on DISABLED steps,
+            # hence it's not worth considering the wrapper step as a PENDING step to
             # keep the worker alive anymore.
             self.assertFalse(Succeeder.did_run)  # It should never have run, it succeeded already
         finally:

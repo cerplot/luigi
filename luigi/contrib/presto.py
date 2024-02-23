@@ -8,7 +8,7 @@ from time import sleep
 
 import luigi
 from luigi.contrib import rdbms
-from luigi.task_register import Register
+from luigi.step_register import Register
 
 logger = logging.getLogger('luigi-interface')
 
@@ -193,9 +193,9 @@ class PrestoTarget(luigi.Target):
             raise
 
 
-class PrestoTask(rdbms.Query, metaclass=WithPrestoClient):
+class PrestoStep(rdbms.Query, metaclass=WithPrestoClient):
     """
-    Task for executing presto queries
+    Step for executing presto queries
     During its executions tracking url and percentage progress are set
     """
     _tracking_url_set = False

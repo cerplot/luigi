@@ -17,7 +17,7 @@
 
 """
 Run Hadoop Mapreduce jobs using Hadoop Streaming. To run a job, you need
-to subclass :py:class:`luigi.contrib.hadoop.JobTask` and implement a
+to subclass :py:class:`luigi.contrib.hadoop.JobStep` and implement a
 ``mapper`` and ``reducer`` methods. See :doc:`/example_top_artists` for
 an example of how to run a Hadoop job.
 """
@@ -42,7 +42,7 @@ from itertools import groupby
 
 from luigi import configuration
 import luigi
-import luigi.task
+import luigi.step
 import luigi.contrib.gcs
 import luigi.contrib.hdfs
 import luigi.contrib.s3
@@ -62,12 +62,12 @@ _attached_packages = []
 TRACKING_RE = re.compile(r'(tracking url|the url to track the job):\s+(?P<url>.+)$')
 
 
-class hadoop(luigi.task.Config):
+class hadoop(luigi.step.Config):
     pool = luigi.OptionalParameter(
         default=None,
         description=(
-            'Hadoop pool so use for Hadoop tasks. To specify pools per tasks, '
-            'see BaseHadoopJobTask.pool'
+            'Hadoop pool so use for Hadoop steps. To specify pools per steps, '
+            'see BaseHadoopJobStep.pool'
         ),
     )
 
@@ -328,15 +328,15 @@ def run_and_track_hadoop_job(arglist, tracking_url_callback=None, env=None):
             raise HadoopJobError(message + 'Also, no tracking url found.', out, err)
 
         try:
-            task_failures = fetch_task_failures(tracking_url)
+            step_failures = fetch_step_failures(tracking_url)
         except Exception as e:
             raise HadoopJobError(message + 'Additionally, an error occurred when fetching data from %s: %s' %
                                  (tracking_url, e), out, err)
 
-        if not task_failures:
-            raise HadoopJobError(message + 'Also, could not fetch output from tasks.', out, err)
+        if not step_failures:
+            raise HadoopJobError(message + 'Also, could not fetch output from steps.', out, err)
         else:
-            raise HadoopJobError(message + 'Output from tasks below:\n%s' % task_failures, out, err)
+            raise HadoopJobError(message + 'Output from steps below:\n%s' % step_failures, out, err)
 
     if tracking_url_callback is None:
         def tracking_url_callback(x): return None
@@ -344,9 +344,9 @@ def run_and_track_hadoop_job(arglist, tracking_url_callback=None, env=None):
     return track_process(arglist, tracking_url_callback, env)
 
 
-def fetch_task_failures(tracking_url):
+def fetch_step_failures(tracking_url):
     """
-    Uses mechanize to fetch the actual task logs from the task tracker.
+    Uses mechanize to fetch the actual step logs from the step tracker.
 
     This is highly opportunistic, and we might not succeed.
     So we set a low timeout and hope it works.
@@ -362,21 +362,21 @@ def fetch_task_failures(tracking_url):
     b = mechanize.Browser()
     b.open(failures_url, timeout=timeout)
     links = list(b.links(text_regex='Last 4KB'))  # For some reason text_regex='All' doesn't work... no idea why
-    links = random.sample(links, min(10, len(links)))  # Fetch a random subset of all failed tasks, so not to be biased towards the early fails
+    links = random.sample(links, min(10, len(links)))  # Fetch a random subset of all failed steps, so not to be biased towards the early fails
     error_text = []
     for link in links:
-        task_url = link.url.replace('&start=-4097', '&start=-100000')  # Increase the offset
-        logger.debug('Fetching data from %s', task_url)
+        step_url = link.url.replace('&start=-4097', '&start=-100000')  # Increase the offset
+        logger.debug('Fetching data from %s', step_url)
         b2 = mechanize.Browser()
         try:
-            r = b2.open(task_url, timeout=timeout)
+            r = b2.open(step_url, timeout=timeout)
             data = r.read()
         except Exception as e:
-            logger.debug('Error fetching data from %s: %s', task_url, e)
+            logger.debug('Error fetching data from %s: %s', step_url, e)
             continue
         # Try to get the hex-encoded traceback back from the output
         for exc in re.findall(r'luigi-exc-hex=[0-9a-f]+', data):
-            error_text.append('---------- %s:' % task_url)
+            error_text.append('---------- %s:' % step_url)
             error_text.append(exc.split('=')[-1].decode('hex'))
 
     return '\n'.join(error_text)
@@ -413,7 +413,7 @@ class HadoopJobRunner(JobRunner):
 
     def run_job(self, job, tracking_url_callback=None):
         if tracking_url_callback is not None:
-            warnings.warn("tracking_url_callback argument is deprecated, task.set_tracking_url is "
+            warnings.warn("tracking_url_callback argument is deprecated, step.set_tracking_url is "
                           "used instead.", DeprecationWarning)
 
         packages = [luigi] + self.modules + job.extra_modules() + list(_attached_packages)
@@ -546,7 +546,7 @@ class HadoopJobRunner(JobRunner):
             luigi.contrib.hdfs.HdfsTarget,
             luigi.contrib.s3.S3Target,
             luigi.contrib.gcs.GCSTarget)
-        for target in luigi.task.flatten(job.input_hadoop()):
+        for target in luigi.step.flatten(job.input_hadoop()):
             if not isinstance(target, allowed_input_targets):
                 raise TypeError('target must one of: {}'.format(
                     allowed_input_targets))
@@ -603,7 +603,7 @@ class LocalJobRunner(JobRunner):
 
     This is useful for debugging and also unit testing. Tries to mimic Hadoop Streaming.
 
-    TODO: integrate with JobTask
+    TODO: integrate with JobStep
     """
 
     def __init__(self, samplelines=None):
@@ -630,7 +630,7 @@ class LocalJobRunner(JobRunner):
     def run_job(self, job):
         map_input = StringIO()
 
-        for i in luigi.task.flatten(job.input_hadoop()):
+        for i in luigi.step.flatten(job.input_hadoop()):
             self.sample(i.open('r'), self.samplelines, map_input)
 
         map_input.seek(0)
@@ -661,7 +661,7 @@ class LocalJobRunner(JobRunner):
         reduce_output.close()
 
 
-class BaseHadoopJobTask(luigi.Task):
+class BaseHadoopJobStep(luigi.Step):
     pool = luigi.OptionalParameter(default=None, significant=False, positional=False)
     # This value can be set to change the default batching increment. Default is 1 for backwards compatibility.
     batch_counter_default = 1
@@ -674,7 +674,7 @@ class BaseHadoopJobTask(luigi.Task):
     package_binary = None
 
     _counter_dict = {}
-    task_id = None
+    step_id = None
 
     def _get_pool(self):
         """ Protected method """
@@ -740,14 +740,14 @@ class BaseHadoopJobTask(luigi.Task):
         return self.requires()  # default impl
 
     def input_local(self):
-        return luigi.task.getpaths(self.requires_local())
+        return luigi.step.getpaths(self.requires_local())
 
     def input_hadoop(self):
-        return luigi.task.getpaths(self.requires_hadoop())
+        return luigi.step.getpaths(self.requires_hadoop())
 
     def deps(self):
         # Overrides the default implementation
-        return luigi.task.flatten(self.requires_hadoop()) + luigi.task.flatten(self.requires_local())
+        return luigi.step.flatten(self.requires_hadoop()) + luigi.step.flatten(self.requires_local())
 
     def on_failure(self, exception):
         if isinstance(exception, HadoopJobError):
@@ -761,7 +761,7 @@ class BaseHadoopJobTask(luigi.Task):
     {stderr}
       """.format(message=exception.message, stdout=exception.out, stderr=exception.err)
         else:
-            return super(BaseHadoopJobTask, self).on_failure(exception)
+            return super(BaseHadoopJobStep, self).on_failure(exception)
 
 
 DataInterchange = {
@@ -774,17 +774,17 @@ DataInterchange = {
 }
 
 
-class JobTask(BaseHadoopJobTask):
+class JobStep(BaseHadoopJobStep):
     jobconf_truncate = 20000
-    n_reduce_tasks = 25
+    n_reduce_steps = 25
     reducer = NotImplemented
 
     def jobconfs(self):
-        jcs = super(JobTask, self).jobconfs()
+        jcs = super(JobStep, self).jobconfs()
         if self.reducer == NotImplemented:
-            jcs.append('mapred.reduce.tasks=0')
+            jcs.append('mapred.reduce.steps=0')
         else:
-            jcs.append('mapred.reduce.tasks=%s' % self.n_reduce_tasks)
+            jcs.append('mapred.reduce.steps=%s' % self.n_reduce_steps)
         if self.jobconf_truncate >= 0:
             jcs.append('stream.jobconf.truncate.limit=%i' % self.jobconf_truncate)
         return jcs
@@ -810,7 +810,7 @@ class JobTask(BaseHadoopJobTask):
         Otherwise, the LocalJobRunner which streams all data through the local machine
         will be used (great for testing).
         """
-        outputs = luigi.task.flatten(self.output())
+        outputs = luigi.step.flatten(self.output())
         for output in outputs:
             if not isinstance(output, luigi.contrib.hdfs.HdfsTarget):
                 warnings.warn("Job is using one or more non-HdfsTarget outputs" +
@@ -920,7 +920,7 @@ class JobTask(BaseHadoopJobTask):
         * `src` can be a directory (in which case everything will be copied recursively).
         * `dst` can include subdirectories (foo/bar/baz.txt etc)
 
-        Uses Hadoop's -files option so that the same file is reused across tasks.
+        Uses Hadoop's -files option so that the same file is reused across steps.
         """
         return []
 

@@ -34,20 +34,20 @@ class SchedulerIoTest(unittest.TestCase):
 
     def test_pretty_id_unicode(self):
         scheduler = luigi.scheduler.Scheduler()
-        scheduler.add_task(worker='A', task_id='1', params={u'foo': u'\u2192bar'})
-        [task] = list(scheduler._state.get_active_tasks())
-        task.pretty_id
+        scheduler.add_step(worker='A', step_id='1', params={u'foo': u'\u2192bar'})
+        [step] = list(scheduler._state.get_active_steps())
+        step.pretty_id
 
     def test_load_old_state(self):
-        tasks = {}
+        steps = {}
         active_workers = {'Worker1': 1e9, 'Worker2': time.time()}
 
         with tempfile.NamedTemporaryFile(delete=True) as fn:
             with open(fn.name, 'wb') as fobj:
-                state = (tasks, active_workers)
+                state = (steps, active_workers)
                 pickle.dump(state, fobj)
 
-            state = luigi.scheduler.SimpleTaskState(
+            state = luigi.scheduler.SimpleStepState(
                 state_path=fn.name)
             state.load()
 
@@ -58,7 +58,7 @@ class SchedulerIoTest(unittest.TestCase):
             with open(fn.name, 'w') as fobj:
                 print("b0rk", file=fobj)
 
-            state = luigi.scheduler.SimpleTaskState(
+            state = luigi.scheduler.SimpleStepState(
                 state_path=fn.name)
             state.load()  # bad if this crashes
 
@@ -81,19 +81,19 @@ class SchedulerIoTest(unittest.TestCase):
         scheduler = luigi.scheduler.Scheduler()
         self.assertEqual({'a': 100, 'b': 200}, scheduler._resources)
 
-    @with_config({'scheduler': {'record_task_history': 'True'},
-                  'task_history': {'db_connection': 'sqlite:////none/existing/path/hist.db'}})
-    def test_local_scheduler_task_history_status(self):
+    @with_config({'scheduler': {'record_step_history': 'True'},
+                  'step_history': {'db_connection': 'sqlite:////none/existing/path/hist.db'}})
+    def test_local_scheduler_step_history_status(self):
         ls = luigi.interface._WorkerSchedulerFactory().create_local_scheduler()
-        self.assertEqual(False, ls._config.record_task_history)
+        self.assertEqual(False, ls._config.record_step_history)
 
-    def test_load_recovers_tasks_index(self):
+    def test_load_recovers_steps_index(self):
         scheduler = luigi.scheduler.Scheduler()
-        scheduler.add_task(worker='A', task_id='1')
-        scheduler.add_task(worker='B', task_id='2')
-        scheduler.add_task(worker='C', task_id='3')
-        scheduler.add_task(worker='D', task_id='4')
-        self.assertEqual(scheduler.get_work(worker='A')['task_id'], '1')
+        scheduler.add_step(worker='A', step_id='1')
+        scheduler.add_step(worker='B', step_id='2')
+        scheduler.add_step(worker='C', step_id='3')
+        scheduler.add_step(worker='D', step_id='4')
+        self.assertEqual(scheduler.get_work(worker='A')['step_id'], '1')
 
         with tempfile.NamedTemporaryFile(delete=True) as fn:
             def reload_from_disk(scheduler):
@@ -104,10 +104,10 @@ class SchedulerIoTest(unittest.TestCase):
                 scheduler.load()
                 return scheduler
             scheduler = reload_from_disk(scheduler=scheduler)
-            self.assertEqual(scheduler.get_work(worker='B')['task_id'], '2')
-            self.assertEqual(scheduler.get_work(worker='C')['task_id'], '3')
+            self.assertEqual(scheduler.get_work(worker='B')['step_id'], '2')
+            self.assertEqual(scheduler.get_work(worker='C')['step_id'], '3')
             scheduler = reload_from_disk(scheduler=scheduler)
-            self.assertEqual(scheduler.get_work(worker='D')['task_id'], '4')
+            self.assertEqual(scheduler.get_work(worker='D')['step_id'], '4')
 
     def test_worker_prune_after_init(self):
         """
@@ -152,100 +152,100 @@ class SchedulerIoTest(unittest.TestCase):
         self.assertEqual(luigi.scheduler.RetryPolicy(1, 11, 111), retry_policy)
 
     @with_config({'scheduler': {'retry_count': '44'}})
-    def test_per_task_retry_policy(self):
+    def test_per_step_retry_policy(self):
         cps = luigi.scheduler.Scheduler()
 
-        cps.add_task(worker='test_worker1', task_id='test_task_1', deps=['test_task_2', 'test_task_3'])
-        tasks = list(cps._state.get_active_tasks())
-        self.assertEqual(3, len(tasks))
+        cps.add_step(worker='test_worker1', step_id='test_step_1', deps=['test_step_2', 'test_step_3'])
+        steps = list(cps._state.get_active_steps())
+        self.assertEqual(3, len(steps))
 
-        tasks = sorted(tasks, key=lambda x: x.id)
-        task_1 = tasks[0]
-        task_2 = tasks[1]
-        task_3 = tasks[2]
+        steps = sorted(steps, key=lambda x: x.id)
+        step_1 = steps[0]
+        step_2 = steps[1]
+        step_3 = steps[2]
 
-        self.assertEqual('test_task_1', task_1.id)
-        self.assertEqual('test_task_2', task_2.id)
-        self.assertEqual('test_task_3', task_3.id)
+        self.assertEqual('test_step_1', step_1.id)
+        self.assertEqual('test_step_2', step_2.id)
+        self.assertEqual('test_step_3', step_3.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_1.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_2.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_3.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_1.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_2.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_3.retry_policy)
 
-        cps._state._tasks = {}
-        cps.add_task(worker='test_worker2', task_id='test_task_4', deps=['test_task_5', 'test_task_6'],
+        cps._state._steps = {}
+        cps.add_step(worker='test_worker2', step_id='test_step_4', deps=['test_step_5', 'test_step_6'],
                      retry_policy_dict=luigi.scheduler.RetryPolicy(99, 999, 9999)._asdict())
 
-        tasks = list(cps._state.get_active_tasks())
-        self.assertEqual(3, len(tasks))
+        steps = list(cps._state.get_active_steps())
+        self.assertEqual(3, len(steps))
 
-        tasks = sorted(tasks, key=lambda x: x.id)
-        task_4 = tasks[0]
-        task_5 = tasks[1]
-        task_6 = tasks[2]
+        steps = sorted(steps, key=lambda x: x.id)
+        step_4 = steps[0]
+        step_5 = steps[1]
+        step_6 = steps[2]
 
-        self.assertEqual('test_task_4', task_4.id)
-        self.assertEqual('test_task_5', task_5.id)
-        self.assertEqual('test_task_6', task_6.id)
+        self.assertEqual('test_step_4', step_4.id)
+        self.assertEqual('test_step_5', step_5.id)
+        self.assertEqual('test_step_6', step_6.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), task_4.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_5.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_6.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), step_4.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_5.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_6.retry_policy)
 
-        cps._state._tasks = {}
-        cps.add_task(worker='test_worker3', task_id='test_task_7', deps=['test_task_8', 'test_task_9'])
-        cps.add_task(worker='test_worker3', task_id='test_task_8', retry_policy_dict=luigi.scheduler.RetryPolicy(99, 999, 9999)._asdict())
-        cps.add_task(worker='test_worker3', task_id='test_task_9', retry_policy_dict=luigi.scheduler.RetryPolicy(11, 111, 1111)._asdict())
+        cps._state._steps = {}
+        cps.add_step(worker='test_worker3', step_id='test_step_7', deps=['test_step_8', 'test_step_9'])
+        cps.add_step(worker='test_worker3', step_id='test_step_8', retry_policy_dict=luigi.scheduler.RetryPolicy(99, 999, 9999)._asdict())
+        cps.add_step(worker='test_worker3', step_id='test_step_9', retry_policy_dict=luigi.scheduler.RetryPolicy(11, 111, 1111)._asdict())
 
-        tasks = list(cps._state.get_active_tasks())
-        self.assertEqual(3, len(tasks))
+        steps = list(cps._state.get_active_steps())
+        self.assertEqual(3, len(steps))
 
-        tasks = sorted(tasks, key=lambda x: x.id)
-        task_7 = tasks[0]
-        task_8 = tasks[1]
-        task_9 = tasks[2]
+        steps = sorted(steps, key=lambda x: x.id)
+        step_7 = steps[0]
+        step_8 = steps[1]
+        step_9 = steps[2]
 
-        self.assertEqual('test_task_7', task_7.id)
-        self.assertEqual('test_task_8', task_8.id)
-        self.assertEqual('test_task_9', task_9.id)
+        self.assertEqual('test_step_7', step_7.id)
+        self.assertEqual('test_step_8', step_8.id)
+        self.assertEqual('test_step_9', step_9.id)
 
-        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), task_7.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), task_8.retry_policy)
-        self.assertEqual(luigi.scheduler.RetryPolicy(11, 111, 1111), task_9.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(44, 999999999, 3600), step_7.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(99, 999, 9999), step_8.retry_policy)
+        self.assertEqual(luigi.scheduler.RetryPolicy(11, 111, 1111), step_9.retry_policy)
 
-        # Task 7 which is disable-failures 44 and its has_excessive_failures method returns False under 44
+        # Step 7 which is disable-failures 44 and its has_excessive_failures method returns False under 44
         for i in range(43):
-            task_7.add_failure()
-        self.assertFalse(task_7.has_excessive_failures())
-        task_7.add_failure()
-        self.assertTrue(task_7.has_excessive_failures())
+            step_7.add_failure()
+        self.assertFalse(step_7.has_excessive_failures())
+        step_7.add_failure()
+        self.assertTrue(step_7.has_excessive_failures())
 
-        # Task 8 which is disable-failures 99 and its has_excessive_failures method returns False under 44
+        # Step 8 which is disable-failures 99 and its has_excessive_failures method returns False under 44
         for i in range(98):
-            task_8.add_failure()
-        self.assertFalse(task_8.has_excessive_failures())
-        task_8.add_failure()
-        self.assertTrue(task_8.has_excessive_failures())
+            step_8.add_failure()
+        self.assertFalse(step_8.has_excessive_failures())
+        step_8.add_failure()
+        self.assertTrue(step_8.has_excessive_failures())
 
-        # Task 9 which is disable-failures 1 and its has_excessive_failures method returns False under 44
+        # Step 9 which is disable-failures 1 and its has_excessive_failures method returns False under 44
         for i in range(10):
-            task_9.add_failure()
-        self.assertFalse(task_9.has_excessive_failures())
-        task_9.add_failure()
-        self.assertTrue(task_9.has_excessive_failures())
+            step_9.add_failure()
+        self.assertFalse(step_9.has_excessive_failures())
+        step_9.add_failure()
+        self.assertTrue(step_9.has_excessive_failures())
 
-    @with_config({'scheduler': {'record_task_history': 'true'}})
-    def test_has_task_history(self):
+    @with_config({'scheduler': {'record_step_history': 'true'}})
+    def test_has_step_history(self):
         cfg = luigi.configuration.get_config()
         with tempfile.NamedTemporaryFile(suffix='.db', delete=True) as fn:
-            cfg.set('task_history', 'db_connection', 'sqlite:///' + fn.name)
+            cfg.set('step_history', 'db_connection', 'sqlite:///' + fn.name)
             s = luigi.scheduler.Scheduler()
-            self.assertTrue(s.has_task_history())
+            self.assertTrue(s.has_step_history())
 
-    @with_config({'scheduler': {'record_task_history': 'false'}})
-    def test_has_no_task_history(self):
+    @with_config({'scheduler': {'record_step_history': 'false'}})
+    def test_has_no_step_history(self):
         s = luigi.scheduler.Scheduler()
-        self.assertFalse(s.has_task_history())
+        self.assertFalse(s.has_step_history())
 
     @with_config({'scheduler': {'pause_enabled': 'false'}})
     def test_pause_disabled(self):
@@ -293,14 +293,14 @@ class SchedulerIoTest(unittest.TestCase):
 
 class SchedulerWorkerTest(unittest.TestCase):
     def get_pending_ids(self, worker, state):
-        return {task.id for task in worker.get_tasks(state, 'PENDING')}
+        return {step.id for step in worker.get_steps(state, 'PENDING')}
 
-    def test_get_pending_tasks_with_many_done_tasks(self):
+    def test_get_pending_steps_with_many_done_steps(self):
         sch = luigi.scheduler.Scheduler()
-        sch.add_task(worker='NON_TRIVIAL', task_id='A', resources={'a': 1})
-        sch.add_task(worker='TRIVIAL', task_id='B', status='PENDING')
-        sch.add_task(worker='TRIVIAL', task_id='C', status='DONE')
-        sch.add_task(worker='TRIVIAL', task_id='D', status='DONE')
+        sch.add_step(worker='NON_TRIVIAL', step_id='A', resources={'a': 1})
+        sch.add_step(worker='TRIVIAL', step_id='B', status='PENDING')
+        sch.add_step(worker='TRIVIAL', step_id='C', status='DONE')
+        sch.add_step(worker='TRIVIAL', step_id='D', status='DONE')
 
         scheduler_state = sch._state
         trivial_worker = scheduler_state.get_worker('TRIVIAL')
@@ -310,14 +310,14 @@ class SchedulerWorkerTest(unittest.TestCase):
         self.assertEqual({'A'}, self.get_pending_ids(non_trivial_worker, scheduler_state))
 
 
-class FailingOnDoubleRunTask(luigi.Task):
+class FailingOnDoubleRunStep(luigi.Step):
     time_to_check_secs = 1
     time_to_run_secs = 2
     output_dir = luigi.Parameter(default="")
 
     def __init__(self, *args, **kwargs):
-        super(FailingOnDoubleRunTask, self).__init__(*args, **kwargs)
-        self.file_name = os.path.join(self.output_dir, "AnyTask")
+        super(FailingOnDoubleRunStep, self).__init__(*args, **kwargs)
+        self.file_name = os.path.join(self.output_dir, "AnyStep")
 
     def complete(self):
         time.sleep(self.time_to_check_secs)  # e.g., establish connection
@@ -340,8 +340,8 @@ class StableDoneCooldownSecsTest(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.p)
 
-    def run_task(self):
-        return luigi.build([FailingOnDoubleRunTask(output_dir=self.p)],
+    def run_step(self):
+        return luigi.build([FailingOnDoubleRunStep(output_dir=self.p)],
                            detailed_summary=True,
                            parallel_scheduling=True,
                            parallel_scheduling_processes=2)
@@ -349,15 +349,15 @@ class StableDoneCooldownSecsTest(unittest.TestCase):
     @with_config({'worker': {'keep_alive': 'false'}})
     def get_second_run_result_on_double_run(self):
         server_process = Process(target=luigi.server.run)
-        process = Process(target=self.run_task)
+        process = Process(target=self.run_step)
         try:
             # scheduler is started
             server_process.start()
             # first run is started
             process.start()
-            time.sleep(FailingOnDoubleRunTask.time_to_run_secs + FailingOnDoubleRunTask.time_to_check_secs)
-            # second run of the same task is started
-            second_run_result = self.run_task()
+            time.sleep(FailingOnDoubleRunStep.time_to_run_secs + FailingOnDoubleRunStep.time_to_check_secs)
+            # second run of the same step is started
+            second_run_result = self.run_step()
             return second_run_result
         finally:
             process.join(1)
@@ -365,11 +365,11 @@ class StableDoneCooldownSecsTest(unittest.TestCase):
             server_process.join(1)
 
     @with_config({'scheduler': {'stable_done_cooldown_secs': '5'}})
-    def test_sending_same_task_twice_with_cooldown_does_not_lead_to_double_run(self):
+    def test_sending_same_step_twice_with_cooldown_does_not_lead_to_double_run(self):
         second_run_result = self.get_second_run_result_on_double_run()
         self.assertEqual(second_run_result.scheduling_succeeded, True)
 
     @with_config({'scheduler': {'stable_done_cooldown_secs': '0'}})
-    def test_sending_same_task_twice_without_cooldown_leads_to_double_run(self):
+    def test_sending_same_step_twice_without_cooldown_leads_to_double_run(self):
         second_run_result = self.get_second_run_result_on_double_run()
         self.assertEqual(second_run_result.scheduling_succeeded, False)

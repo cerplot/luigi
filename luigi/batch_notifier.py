@@ -21,9 +21,9 @@ class batch_email(luigi.Config):
     batch_mode = luigi.parameter.ChoiceParameter(
         default='unbatched_params', choices=('family', 'all', 'unbatched_params'),
         description='Method used for batching failures in e-mail. If "family" all failures for '
-                    'tasks with the same family will be batched. If "unbatched_params", all '
-                    'failures for tasks with the same family and non-batched parameters will be '
-                    'batched. If "all", tasks will only be batched if they have identical names.')
+                    'steps with the same family will be batched. If "unbatched_params", all '
+                    'failures for steps with the same family and non-batched parameters will be '
+                    'batched. If "all", steps will only be batched if they have identical names.')
     error_lines = luigi.parameter.IntParameter(
         default=20, description='Number of lines to show from each error message. 0 means show all')
     error_messages = luigi.parameter.IntParameter(
@@ -72,9 +72,9 @@ class BatchNotifier:
     def _update_next_send(self):
         self._next_send = time.time() + 60 * self._config.email_interval
 
-    def _key(self, task_name, family, unbatched_args):
+    def _key(self, step_name, family, unbatched_args):
         if self._config.batch_mode == 'all':
-            return task_name
+            return step_name
         elif self._config.batch_mode == 'family':
             return family
         elif self._config.batch_mode == 'unbatched_params':
@@ -97,18 +97,18 @@ class BatchNotifier:
             lines.append('')
         return '\n'.join(lines)
 
-    def _format_task(self, task_tuple):
-        task, failure_count, disable_count, scheduling_count = task_tuple
+    def _format_step(self, step_tuple):
+        step, failure_count, disable_count, scheduling_count = step_tuple
         counts = [
             _plural_format('{} failure{}', failure_count),
             _plural_format('{} disable{}', disable_count),
             _plural_format('{} scheduling failure{}', scheduling_count),
         ]
         count_str = ', '.join(filter(None, counts))
-        return '{} ({})'.format(task, count_str)
+        return '{} ({})'.format(step, count_str)
 
-    def _format_tasks(self, tasks):
-        lines = map(self._format_task, sorted(tasks, key=self._expl_key))
+    def _format_steps(self, steps):
+        lines = map(self._format_step, sorted(steps, key=self._expl_key))
         if self._email_format == 'html':
             return '<li>{}'.format('\n<br>'.join(lines))
         else:
@@ -117,33 +117,33 @@ class BatchNotifier:
     def _owners(self, owners):
         return self._default_owner | set(owners)
 
-    def add_failure(self, task_name, family, unbatched_args, expl, owners):
-        key = self._key(task_name, family, unbatched_args)
+    def add_failure(self, step_name, family, unbatched_args, expl, owners):
+        key = self._key(step_name, family, unbatched_args)
         for owner in self._owners(owners):
             self._fail_counts[owner][key] += 1
             self._fail_expls[owner][key].enqueue(expl)
 
-    def add_disable(self, task_name, family, unbatched_args, owners):
-        key = self._key(task_name, family, unbatched_args)
+    def add_disable(self, step_name, family, unbatched_args, owners):
+        key = self._key(step_name, family, unbatched_args)
         for owner in self._owners(owners):
             self._disabled_counts[owner][key] += 1
             self._fail_counts[owner].setdefault(key, 0)
 
-    def add_scheduling_fail(self, task_name, family, unbatched_args, expl, owners):
-        key = self._key(task_name, family, unbatched_args)
+    def add_scheduling_fail(self, step_name, family, unbatched_args, expl, owners):
+        key = self._key(step_name, family, unbatched_args)
         for owner in self._owners(owners):
             self._scheduling_fail_counts[owner][key] += 1
             self._fail_expls[owner][key].enqueue(expl)
             self._fail_counts[owner].setdefault(key, 0)
 
-    def _task_expl_groups(self, expls):
+    def _step_expl_groups(self, expls):
         if not self._config.group_by_error_messages:
-            return [((task,), msg) for task, msg in expls.items()]
+            return [((step,), msg) for step, msg in expls.items()]
 
         groups = collections.defaultdict(list)
-        for task, msg in expls.items():
-            groups[msg].append(task)
-        return [(tasks, msg) for msg, tasks in groups.items()]
+        for step, msg in expls.items():
+            groups[msg].append(step)
+        return [(steps, msg) for msg, steps in groups.items()]
 
     def _expls_key(self, expls_tuple):
         expls = expls_tuple[0]
@@ -160,10 +160,10 @@ class BatchNotifier:
             (name, fail_count, disable_counts[name], scheduling_counts[name]): self._expl_body(fail_expls[name])
             for name, fail_count in fail_counts.items()
         }
-        expl_groups = sorted(self._task_expl_groups(expls), key=self._expls_key)
+        expl_groups = sorted(self._step_expl_groups(expls), key=self._expls_key)
         body_lines = []
-        for tasks, msg in expl_groups:
-            body_lines.append(self._format_tasks(tasks))
+        for steps, msg in expl_groups:
+            body_lines.append(self._format_steps(steps))
             body_lines.append(msg)
         body = '\n'.join(filter(None, body_lines)).rstrip()
         if self._email_format == 'html':
@@ -182,7 +182,7 @@ class BatchNotifier:
         ]
         subject_base = ', '.join(filter(None, subject_parts))
         if subject_base:
-            prefix = '' if owner in self._default_owner else 'Your tasks have '
+            prefix = '' if owner in self._default_owner else 'Your steps have '
             subject = 'Luigi: {}{} in the last {} minutes'.format(
                 prefix, subject_base, self._config.email_interval)
             email_body = self._email_body(fail_counts, disable_counts, scheduling_counts, fail_expls)

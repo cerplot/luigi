@@ -68,7 +68,7 @@ class HadoopJarJobError(Exception):
 
 class HadoopJarJobRunner(luigi.contrib.hadoop.JobRunner):
     """
-    JobRunner for `hadoop jar` commands. Used to run a HadoopJarJobTask.
+    JobRunner for `hadoop jar` commands. Used to run a HadoopJarJobStep.
     """
 
     def __init__(self):
@@ -76,7 +76,7 @@ class HadoopJarJobRunner(luigi.contrib.hadoop.JobRunner):
 
     def run_job(self, job, tracking_url_callback=None):
         if tracking_url_callback is not None:
-            warnings.warn("tracking_url_callback argument is deprecated, task.set_tracking_url is "
+            warnings.warn("tracking_url_callback argument is deprecated, step.set_tracking_url is "
                           "used instead.", DeprecationWarning)
 
         # TODO(jcrobak): libjars, files, etc. Can refactor out of
@@ -125,9 +125,9 @@ class HadoopJarJobRunner(luigi.contrib.hadoop.JobRunner):
             a.move(b)
 
 
-class HadoopJarJobTask(luigi.contrib.hadoop.BaseHadoopJobTask):
+class HadoopJarJobStep(luigi.contrib.hadoop.BaseHadoopJobStep):
     """
-    A job task for `hadoop jar` commands that define a jar and (optional) main method.
+    A job step for `hadoop jar` commands that define a jar and (optional) main method.
     """
 
     def jar(self):

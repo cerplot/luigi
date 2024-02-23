@@ -24,7 +24,7 @@ from luigi.mock import MockTarget
 # Calculates Fibonacci numbers :)
 
 
-class Fib(luigi.Task):
+class Fib(luigi.Step):
     n = luigi.IntParameter(default=100)
 
     def requires(self):

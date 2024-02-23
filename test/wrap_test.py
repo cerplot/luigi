@@ -26,8 +26,8 @@ from luigi.util import inherits
 luigi.notifications.DEBUG = True
 
 
-class A(luigi.Task):
-    task_namespace = 'wrap'  # to prevent task name conflict between tests
+class A(luigi.Step):
+    step_namespace = 'wrap'  # to prevent step name conflict between tests
 
     def output(self):
         return MockTarget('/tmp/a.txt')
@@ -38,7 +38,7 @@ class A(luigi.Task):
         f.close()
 
 
-class B(luigi.Task):
+class B(luigi.Step):
     date = luigi.DateParameter()
 
     def output(self):
@@ -52,7 +52,7 @@ class B(luigi.Task):
 
 def XMLWrapper(cls):
     @inherits(cls)
-    class XMLWrapperCls(luigi.Task):
+    class XMLWrapperCls(luigi.Step):
 
         def requires(self):
             return self.clone_parent()
@@ -82,7 +82,7 @@ class BXML(XMLWrapper(B)):
 
 class WrapperTest(unittest.TestCase):
 
-    ''' This test illustrates how a task class can wrap another task class by modifying its behavior.
+    ''' This test illustrates how a step class can wrap another step class by modifying its behavior.
 
     See instance_wrap_test.py for an example of how instances can wrap each other. '''
     workers = 1

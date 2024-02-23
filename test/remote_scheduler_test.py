@@ -24,7 +24,7 @@ import server_test
 tempdir = tempfile.mkdtemp()
 
 
-class DummyTask(luigi.Task):
+class DummyStep(luigi.Step):
     id = luigi.IntParameter()
 
     def run(self):
@@ -38,10 +38,10 @@ class DummyTask(luigi.Task):
 class RemoteSchedulerTest(server_test.ServerTestBase):
 
     def _test_run(self, workers):
-        tasks = [DummyTask(id) for id in range(20)]
-        luigi.build(tasks, workers=workers, scheduler_port=self.get_http_port())
+        steps = [DummyStep(id) for id in range(20)]
+        luigi.build(steps, workers=workers, scheduler_port=self.get_http_port())
 
-        for t in tasks:
+        for t in steps:
             self.assertEqual(t.complete(), True)
             self.assertTrue(os.path.exists(t.output().path))
 

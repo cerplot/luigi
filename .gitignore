@@ -108,7 +108,7 @@ Session.vim
 
 # User-specific stuff:
 # .idea/workspace.xml
-# .idea/tasks.xml
+# .idea/steps.xml
 # .idea/dictionaries
 
 # Sensitive or high-churn files:

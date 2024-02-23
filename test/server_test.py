@@ -343,13 +343,13 @@ class _ServerTest(unittest.TestCase):
 
     @skipOnTravisAndGithubActions('https://travis-ci.org/spotify/luigi/jobs/72953884')
     def test_save_state(self):
-        self.sch.add_task(worker='X', task_id='B', deps=('A',))
-        self.sch.add_task(worker='X', task_id='A')
-        self.assertEqual(self.sch.get_work(worker='X')['task_id'], 'A')
+        self.sch.add_step(worker='X', step_id='B', deps=('A',))
+        self.sch.add_step(worker='X', step_id='A')
+        self.assertEqual(self.sch.get_work(worker='X')['step_id'], 'A')
         self.stop_server()
         self.start_server()
-        work = self.sch.get_work(worker='X')['running_tasks'][0]
-        self.assertEqual(work['task_id'], 'A')
+        work = self.sch.get_work(worker='X')['running_steps'][0]
+        self.assertEqual(work['step_id'], 'A')
 
 
 @pytest.mark.unixsocket
@@ -399,7 +399,7 @@ class _INETServerTest(_ServerTest):
         """
         Test to run against the server as a normal luigi invocation does
         """
-        params = ['Task', '--scheduler-port', str(self.server_client.port), '--no-lock']
+        params = ['Step', '--scheduler-port', str(self.server_client.port), '--no-lock']
         self.assertTrue(luigi.interface.run(params))
 
 

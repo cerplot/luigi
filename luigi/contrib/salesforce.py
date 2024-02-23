@@ -26,7 +26,7 @@ import tempfile
 from urllib.parse import urlsplit
 
 import luigi
-from luigi import Task
+from luigi import Step
 
 logger = logging.getLogger('luigi-interface')
 
@@ -104,7 +104,7 @@ class salesforce(luigi.Config):
     sb_security_token = luigi.Parameter(default='')
 
 
-class QuerySalesforce(Task):
+class QuerySalesforce(Step):
     @property
     @abc.abstractmethod
     def object_name(self):

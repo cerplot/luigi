@@ -20,11 +20,11 @@ from helpers import unittest
 import luigi
 
 
-class Factorial(luigi.Task):
+class Factorial(luigi.Step):
 
     ''' This calculates factorials *online* and does not write its results anywhere
 
-    Demonstrates the ability for dependencies between Tasks and not just between their output.
+    Demonstrates the ability for dependencies between Steps and not just between their output.
     '''
     n = luigi.IntParameter(default=100)
 

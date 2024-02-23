@@ -64,7 +64,7 @@ def bucket_url(suffix):
 
 
 @pytest.mark.gcloud
-class TestLoadTask(bigquery.BigQueryLoadTask):
+class TestLoadStep(bigquery.BigQueryLoadStep):
     source = luigi.Parameter()
     table = luigi.Parameter()
     dataset = luigi.Parameter()
@@ -85,7 +85,7 @@ class TestLoadTask(bigquery.BigQueryLoadTask):
 
 
 @pytest.mark.gcloud
-class TestRunQueryTask(bigquery.BigQueryRunQueryTask):
+class TestRunQueryStep(bigquery.BigQueryRunQueryStep):
     query = ''' SELECT 'hello' as field1, 2 as field2 '''
     table = luigi.Parameter()
     dataset = luigi.Parameter()
@@ -95,7 +95,7 @@ class TestRunQueryTask(bigquery.BigQueryRunQueryTask):
 
 
 @pytest.mark.gcloud
-class TestExtractTask(bigquery.BigQueryExtractTask):
+class TestExtractStep(bigquery.BigQueryExtractStep):
     source = luigi.Parameter()
     table = luigi.Parameter()
     dataset = luigi.Parameter()
@@ -113,7 +113,7 @@ class TestExtractTask(bigquery.BigQueryExtractTask):
         return GCSTarget(bucket_url(self.extract_gcs_file))
 
     def requires(self):
-        return TestLoadTask(
+        return TestLoadStep(
             source=self.source,
             dataset=self.dataset,
             table=self.table)
@@ -157,31 +157,31 @@ class BigQueryGcloudTest(unittest.TestCase):
         self.bq_client.make_dataset(self.table_eu.dataset, body={})
 
     def test_extract_to_gcs_csv(self):
-        task1 = TestLoadTask(
+        step1 = TestLoadStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id)
-        task1.run()
+        step1.run()
 
-        task2 = TestExtractTask(
+        step2 = TestExtractStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id,
             extract_gcs_file=self.id() + '_extract_file',
             destination_format=bigquery.DestinationFormat.CSV)
-        task2.run()
+        step2.run()
 
-        self.assertTrue(task2.output().exists)
+        self.assertTrue(step2.output().exists)
 
     def test_extract_to_gcs_csv_alternate(self):
-        task1 = TestLoadTask(
+        step1 = TestLoadStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id
         )
-        task1.run()
+        step1.run()
 
-        task2 = TestExtractTask(
+        step2 = TestExtractStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id,
@@ -190,64 +190,64 @@ class BigQueryGcloudTest(unittest.TestCase):
             print_header=bigquery.PrintHeader.FALSE,
             field_delimiter=bigquery.FieldDelimiter.PIPE
         )
-        task2.run()
+        step2.run()
 
-        self.assertTrue(task2.output().exists)
+        self.assertTrue(step2.output().exists)
 
     def test_extract_to_gcs_json(self):
-        task1 = TestLoadTask(
+        step1 = TestLoadStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id)
-        task1.run()
+        step1.run()
 
-        task2 = TestExtractTask(
+        step2 = TestExtractStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id,
             extract_gcs_file=self.id() + '_extract_file',
             destination_format=bigquery.DestinationFormat.NEWLINE_DELIMITED_JSON)
-        task2.run()
+        step2.run()
 
-        self.assertTrue(task2.output().exists)
+        self.assertTrue(step2.output().exists)
 
     def test_extract_to_gcs_avro(self):
-        task1 = TestLoadTask(
+        step1 = TestLoadStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id)
-        task1.run()
+        step1.run()
 
-        task2 = TestExtractTask(
+        step2 = TestExtractStep(
             source=self.gcs_file,
             dataset=self.table.dataset.dataset_id,
             table=self.table.table_id,
             extract_gcs_file=self.id() + '_extract_file',
             destination_format=bigquery.DestinationFormat.AVRO)
-        task2.run()
+        step2.run()
 
-        self.assertTrue(task2.output().exists)
+        self.assertTrue(step2.output().exists)
 
     def test_load_eu_to_undefined(self):
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table.dataset.dataset_id,
                             table=self.table.table_id,
                             location=EU_LOCATION)
-        self.assertRaises(Exception, task.run)
+        self.assertRaises(Exception, step.run)
 
     def test_load_us_to_eu(self):
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table_eu.dataset.dataset_id,
                             table=self.table_eu.table_id,
                             location=US_LOCATION)
-        self.assertRaises(Exception, task.run)
+        self.assertRaises(Exception, step.run)
 
     def test_load_eu_to_eu(self):
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table_eu.dataset.dataset_id,
                             table=self.table_eu.table_id,
                             location=EU_LOCATION)
-        task.run()
+        step.run()
 
         self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
         self.assertTrue(self.bq_client.table_exists(self.table_eu))
@@ -257,10 +257,10 @@ class BigQueryGcloudTest(unittest.TestCase):
                       list(self.bq_client.list_tables(self.table_eu.dataset)))
 
     def test_load_undefined_to_eu(self):
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table_eu.dataset.dataset_id,
                             table=self.table_eu.table_id)
-        task.run()
+        step.run()
 
         self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
         self.assertTrue(self.bq_client.table_exists(self.table_eu))
@@ -275,11 +275,11 @@ class BigQueryGcloudTest(unittest.TestCase):
 
         self.assertFalse(self.bq_client.dataset_exists(self.table_eu))
 
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table_eu.dataset.dataset_id,
                             table=self.table_eu.table_id,
                             location=EU_LOCATION)
-        task.run()
+        step.run()
 
         self.assertTrue(self.bq_client.dataset_exists(self.table_eu))
         self.assertTrue(self.bq_client.table_exists(self.table_eu))
@@ -289,10 +289,10 @@ class BigQueryGcloudTest(unittest.TestCase):
                       list(self.bq_client.list_tables(self.table_eu.dataset)))
 
     def test_copy(self):
-        task = TestLoadTask(source=self.gcs_file,
+        step = TestLoadStep(source=self.gcs_file,
                             dataset=self.table.dataset.dataset_id,
                             table=self.table.table_id)
-        task.run()
+        step.run()
 
         self.assertTrue(self.bq_client.dataset_exists(self.table))
         self.assertTrue(self.bq_client.table_exists(self.table))
@@ -316,10 +316,10 @@ class BigQueryGcloudTest(unittest.TestCase):
         self.assertTrue(self.table.uri == intended_uri)
 
     def test_run_query(self):
-        task = TestRunQueryTask(table=self.table.table_id,
+        step = TestRunQueryStep(table=self.table.table_id,
                                 dataset=self.table.dataset.dataset_id)
-        task._BIGQUERY_CLIENT = self.bq_client
-        task.run()
+        step._BIGQUERY_CLIENT = self.bq_client
+        step.run()
 
         self.assertTrue(self.bq_client.table_exists(self.table))
 
@@ -538,21 +538,21 @@ class BigQueryLoadAvroTest(unittest.TestCase):
         self._produce_test_input()
 
     def test_load_avro_dir_and_propagate_doc(self):
-        class BigQueryLoadAvroTestInput(luigi.ExternalTask):
+        class BigQueryLoadAvroTestInput(luigi.ExternalStep):
             def output(_):
                 return gcs.GCSTarget(self.gcs_dir_url)
 
-        class BigQueryLoadAvroTestTask(bigquery_avro.BigQueryLoadAvro):
+        class BigQueryLoadAvroTestStep(bigquery_avro.BigQueryLoadAvro):
             def requires(_):
                 return BigQueryLoadAvroTestInput()
 
             def output(_):
                 return bigquery.BigQueryTarget(PROJECT_ID, DATASET_ID, self.table_id, location=EU_LOCATION)
 
-        task = BigQueryLoadAvroTestTask()
-        self.assertFalse(task.complete())
-        task.run()
-        self.assertTrue(task.complete())
+        step = BigQueryLoadAvroTestStep()
+        self.assertFalse(step.complete())
+        step.run()
+        self.assertTrue(step.complete())
 
         table = self.bq_client.client.tables().get(projectId=PROJECT_ID,
                                                    datasetId=DATASET_ID,

@@ -26,9 +26,9 @@ import luigi.contrib.hdfs
 # jar: /usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar
 
 
-class InputText(luigi.ExternalTask):
+class InputText(luigi.ExternalStep):
     """
-    This task is a :py:class:`luigi.task.ExternalTask` which means it doesn't generate the
+    This step is a :py:class:`luigi.step.ExternalStep` which means it doesn't generate the
     :py:meth:`~.InputText.output` target on its own instead relying on the execution something outside of Luigi
     to produce it.
     """
@@ -37,42 +37,42 @@ class InputText(luigi.ExternalTask):
 
     def output(self):
         """
-        Returns the target output for this task.
+        Returns the target output for this step.
         In this case, it expects a file to be present in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget(self.date.strftime('/tmp/text/%Y-%m-%d.txt'))
 
 
-class WordCount(luigi.contrib.hadoop.JobTask):
+class WordCount(luigi.contrib.hadoop.JobStep):
     """
-    This task runs a :py:class:`luigi.contrib.hadoop.JobTask`
+    This step runs a :py:class:`luigi.contrib.hadoop.JobStep`
     over the target data returned by :py:meth:`~/.InputText.output` and
     writes the result into its :py:meth:`~.WordCount.output` target.
 
-    This class uses :py:meth:`luigi.contrib.hadoop.JobTask.run`.
+    This class uses :py:meth:`luigi.contrib.hadoop.JobStep.run`.
     """
 
     date_interval = luigi.DateIntervalParameter()
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.InputText`
 
-        :return: list of object (:py:class:`luigi.task.Task`)
+        :return: list of object (:py:class:`luigi.step.Step`)
         """
         return [InputText(date) for date in self.date_interval.dates()]
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget('/tmp/text-count/%s' % self.date_interval)

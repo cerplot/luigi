@@ -34,7 +34,7 @@ import pytest
 luigi.notifications.DEBUG = True
 
 
-class OutputMixin(luigi.Task):
+class OutputMixin(luigi.Step):
     use_hdfs = luigi.BoolParameter(default=False)
 
     def get_output(self, fn):
@@ -44,7 +44,7 @@ class OutputMixin(luigi.Task):
             return MockTarget(fn)
 
 
-class HadoopJobTask(luigi.contrib.hadoop.JobTask, OutputMixin):
+class HadoopJobStep(luigi.contrib.hadoop.JobStep, OutputMixin):
 
     def job_runner(self):
         return luigi.contrib.hadoop.LocalJobRunner()
@@ -62,7 +62,7 @@ class Words(OutputMixin):
         f.close()
 
 
-class WordCountJob(HadoopJobTask):
+class WordCountJob(HadoopJobStep):
 
     def mapper(self, line):
         for word in line.strip().split():
@@ -79,7 +79,7 @@ class WordCountJob(HadoopJobTask):
         return self.get_output('wordcount')
 
 
-class WordFreqJob(HadoopJobTask):
+class WordFreqJob(HadoopJobStep):
 
     def init_local(self):
         self.n = 0
@@ -114,7 +114,7 @@ class WordFreqJob(HadoopJobTask):
         open('my_dir/my_file')  # make sure it exists
 
 
-class MapOnlyJob(HadoopJobTask):
+class MapOnlyJob(HadoopJobStep):
 
     def mapper(self, line):
         for word in line.strip().split():
@@ -127,7 +127,7 @@ class MapOnlyJob(HadoopJobTask):
         return self.get_output('luigitest-3')
 
 
-class UnicodeJob(HadoopJobTask):
+class UnicodeJob(HadoopJobStep):
 
     def mapper(self, line):
         yield u'test', 1
@@ -143,7 +143,7 @@ class UnicodeJob(HadoopJobTask):
         return self.get_output('luigitest-4')
 
 
-class UseJsonAsDataInteterchangeFormatJob(HadoopJobTask):
+class UseJsonAsDataInteterchangeFormatJob(HadoopJobStep):
 
     data_interchange_format = "json"
 
@@ -154,7 +154,7 @@ class UseJsonAsDataInteterchangeFormatJob(HadoopJobTask):
         yield "", json.dumps(list(vals)[0])
 
     def requires(self):
-        """ Two lines from Word.task will cause two `mapper` call. """
+        """ Two lines from Word.step will cause two `mapper` call. """
         return Words(self.use_hdfs)
 
     def output(self):
@@ -165,7 +165,7 @@ class FailingJobException(Exception):
     pass
 
 
-class FailingJob(HadoopJobTask):
+class FailingJob(HadoopJobStep):
 
     def init_hadoop(self):
         raise FailingJobException('failure')
@@ -174,7 +174,7 @@ class FailingJob(HadoopJobTask):
         return self.get_output('failing')
 
 
-class MyStreamingJob(luigi.contrib.hadoop.JobTask):
+class MyStreamingJob(luigi.contrib.hadoop.JobStep):
     param = luigi.Parameter()
 
 
@@ -272,15 +272,15 @@ class MapreduceLocalTest(unittest.TestCase):
         MyStreamingJob('param_value')
 
     def test_cmd_line(self):
-        class DummyHadoopTask(luigi.contrib.hadoop.JobTask):
+        class DummyHadoopStep(luigi.contrib.hadoop.JobStep):
             param = luigi.Parameter()
 
             def run(self):
                 if 'mypool' not in ''.join(self.jobconfs()):
                     raise ValueError("noooooo")
 
-        self.assertTrue(self.run_and_check(['DummyHadoopTask', '--param', 'myparam', '--pool', 'mypool']))
-        self.assertTrue(self.run_and_check(['DummyHadoopTask', '--param', 'myparam', '--hadoop-pool', 'mypool']))
+        self.assertTrue(self.run_and_check(['DummyHadoopStep', '--param', 'myparam', '--pool', 'mypool']))
+        self.assertTrue(self.run_and_check(['DummyHadoopStep', '--param', 'myparam', '--hadoop-pool', 'mypool']))
 
     def setUp(self):
         MockTarget.fs.clear()

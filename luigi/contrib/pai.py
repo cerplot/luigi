@@ -21,7 +21,7 @@ MicroSoft OpenPAI Job wrapper for Luigi.
   "OpenPAI is an open source platform that provides complete AI model training and resource management capabilities,
   it is easy to extend and supports on-premise, cloud and hybrid environments in various scale."
 
-For more information about OpenPAI : https://github.com/Microsoft/pai/, this task is tested against OpenPAI 0.7.1
+For more information about OpenPAI : https://github.com/Microsoft/pai/, this step is tested against OpenPAI 0.7.1
 
 Requires:
 
@@ -45,7 +45,7 @@ try:
     from requests.exceptions import HTTPError
 
 except ImportError:
-    logger.warning('requests is not installed. PaiTask requires requests.')
+    logger.warning('requests is not installed. PaiStep requires requests.')
 
 
 def slot_to_dict(o):
@@ -72,10 +72,10 @@ class PaiJob:
           "outputDir": String,
           "codeDir":   String,
           "virtualCluster": String,
-          "taskRoles": [
+          "stepRoles": [
             {
               "name":       String,
-              "taskNumber": Integer,
+              "stepNumber": Integer,
               "cpuNumber":  Integer,
               "memoryMB":   Integer,
               "shmMB":      Integer,
@@ -88,8 +88,8 @@ class PaiJob:
                 }
               ],
               "command":    String,
-              "minFailedTaskCount": Integer,
-              "minSucceededTaskCount": Integer
+              "minFailedStepCount": Integer,
+              "minSucceededStepCount": Integer
             }
           ],
           "gpuType": String,
@@ -99,23 +99,23 @@ class PaiJob:
     """
     __slots__ = (
         'jobName', 'image', 'authFile', 'dataDir', 'outputDir', 'codeDir', 'virtualCluster',
-        'taskRoles', 'gpuType', 'retryCount'
+        'stepRoles', 'gpuType', 'retryCount'
     )
 
-    def __init__(self, jobName, image, tasks):
+    def __init__(self, jobName, image, steps):
         """
         Initialize a Job with required fields.
 
         :param jobName: Name for the job, need to be unique
-        :param image: URL pointing to the Docker image for all tasks in the job
-        :param tasks: List of taskRole, one task role at least
+        :param image: URL pointing to the Docker image for all steps in the job
+        :param steps: List of stepRole, one step role at least
         """
         self.jobName = jobName
         self.image = image
-        if isinstance(tasks, list) and len(tasks) != 0:
-            self.taskRoles = tasks
+        if isinstance(steps, list) and len(steps) != 0:
+            self.stepRoles = steps
         else:
-            raise TypeError('you must specify one task at least.')
+            raise TypeError('you must specify one step at least.')
 
 
 class Port:
@@ -123,7 +123,7 @@ class Port:
 
     def __init__(self, label, begin_at=0, port_number=1):
         """
-        The Port definition for TaskRole
+        The Port definition for StepRole
 
         :param label: Label name for the port type, required
         :param begin_at: The port to begin with in the port type, 0 for random selection, required
@@ -134,28 +134,28 @@ class Port:
         self.portNumber = port_number
 
 
-class TaskRole:
+class StepRole:
     __slots__ = (
-        'name', 'taskNumber', 'cpuNumber', 'memoryMB', 'shmMB', 'gpuNumber', 'portList', 'command',
-        'minFailedTaskCount', 'minSucceededTaskCount'
+        'name', 'stepNumber', 'cpuNumber', 'memoryMB', 'shmMB', 'gpuNumber', 'portList', 'command',
+        'minFailedStepCount', 'minSucceededStepCount'
     )
 
-    def __init__(self, name, command, taskNumber=1, cpuNumber=1, memoryMB=2048, shmMB=64, gpuNumber=0, portList=[]):
+    def __init__(self, name, command, stepNumber=1, cpuNumber=1, memoryMB=2048, shmMB=64, gpuNumber=0, portList=[]):
         """
-        The TaskRole of PAI
+        The StepRole of PAI
 
-        :param name: Name for the task role, need to be unique with other roles, required
-        :param command: Executable command for tasks in the task role, can not be empty, required
-        :param taskNumber: Number of tasks for the task role, no less than 1, required
-        :param cpuNumber: CPU number for one task in the task role, no less than 1, required
-        :param shmMB: Shared memory for one task in the task role, no more than memory size, required
-        :param memoryMB: Memory for one task in the task role, no less than 100, required
-        :param gpuNumber: GPU number for one task in the task role, no less than 0, required
+        :param name: Name for the step role, need to be unique with other roles, required
+        :param command: Executable command for steps in the step role, can not be empty, required
+        :param stepNumber: Number of steps for the step role, no less than 1, required
+        :param cpuNumber: CPU number for one step in the step role, no less than 1, required
+        :param shmMB: Shared memory for one step in the step role, no more than memory size, required
+        :param memoryMB: Memory for one step in the step role, no less than 100, required
+        :param gpuNumber: GPU number for one step in the step role, no less than 0, required
         :param portList: List of portType to use, optional
         """
         self.name = name
         self.command = command
-        self.taskNumber = taskNumber
+        self.stepNumber = stepNumber
         self.cpuNumber = cpuNumber
         self.memoryMB = memoryMB
         self.shmMB = shmMB
@@ -178,7 +178,7 @@ class OpenPai(luigi.Config):
         description='expiration time in seconds')
 
 
-class PaiTask(luigi.Task):
+class PaiStep(luigi.Step):
     __POLL_TIME = 5
 
     @property
@@ -190,13 +190,13 @@ class PaiTask(luigi.Task):
     @property
     @abc.abstractmethod
     def image(self):
-        """URL pointing to the Docker image for all tasks in the job, required"""
+        """URL pointing to the Docker image for all steps in the job, required"""
         return 'openpai/pai.example.sklearn'
 
     @property
     @abc.abstractmethod
-    def tasks(self):
-        """List of taskRole, one task role at least, required"""
+    def steps(self):
+        """List of stepRole, one step role at least, required"""
         return []
 
     @property
@@ -226,7 +226,7 @@ class PaiTask(luigi.Task):
 
     @property
     def gpu_type(self):
-        """Specify the GPU type to be used in the tasks. If omitted, the job will run on any gpu type, optional"""
+        """Specify the GPU type to be used in the steps. If omitted, the job will run on any gpu type, optional"""
         return None
 
     @property
@@ -255,7 +255,7 @@ class PaiTask(luigi.Task):
         :param pai_url: The rest server url of PAI clusters, default is 'http://127.0.0.1:9186'.
         :param token: The token used to auth the rest server of PAI.
         """
-        super(PaiTask, self).__init__(*args, **kwargs)
+        super(PaiStep, self).__init__(*args, **kwargs)
         self.__init_token()
 
     def __check_job_status(self):
@@ -282,7 +282,7 @@ class PaiTask(luigi.Task):
                 raise RuntimeError(msg)
 
     def run(self):
-        job = PaiJob(self.name, self.image, self.tasks)
+        job = PaiJob(self.name, self.image, self.steps)
         job.virtualCluster = self.virtual_cluster
         job.authFile = self.auth_file_path
         job.codeDir = self.code_dir

@@ -21,7 +21,7 @@ Step 1 - Aggregate Artist Streams
 
 .. code:: python
 
-    class AggregateArtists(luigi.Task):
+    class AggregateArtists(luigi.Step):
         date_interval = luigi.DateIntervalParameter()
 
         def output(self):
@@ -44,26 +44,26 @@ Step 1 - Aggregate Artist Streams
                     print(artist, count, file=out_file)
 
 Note that this is just a portion of the file ``examples/top_artists.py``.
-In particular, ``Streams`` is defined as a :class:`~luigi.task.Task`,
+In particular, ``Streams`` is defined as a :class:`~luigi.step.Step`,
 acting as a dependency for ``AggregateArtists``.
 In addition, ``luigi.run()`` is called if the script is executed directly,
 allowing it to be run from the command line.
 
 There are several pieces of this snippet that deserve more explanation.
 
--  Any :class:`~luigi.task.Task` may be customized by instantiating one
+-  Any :class:`~luigi.step.Step` may be customized by instantiating one
    or more :class:`~luigi.parameter.Parameter` objects on the class level.
--  The :func:`~luigi.task.Task.output` method tells Luigi where the result
-   of running the task will end up. The path can be some function of the
+-  The :func:`~luigi.step.Step.output` method tells Luigi where the result
+   of running the step will end up. The path can be some function of the
    parameters.
--  The :func:`~luigi.task.Task.requires` tasks specifies other tasks that
-   we need to perform this task. In this case it's an external dump named
+-  The :func:`~luigi.step.Step.requires` steps specifies other steps that
+   we need to perform this step. In this case it's an external dump named
    *Streams* which takes the date as the argument.
--  For plain Tasks, the :func:`~luigi.task.Task.run` method implements the
-   task. This could be anything, including calling subprocesses, performing
+-  For plain Steps, the :func:`~luigi.step.Step.run` method implements the
+   step. This could be anything, including calling subprocesses, performing
    long running number crunching, etc. For some subclasses of
-   :class:`~luigi.task.Task` you don't have to implement the ``run``
-   method. For instance, for the :class:`~luigi.contrib.hadoop.JobTask`
+   :class:`~luigi.step.Step` you don't have to implement the ``run``
+   method. For instance, for the :class:`~luigi.contrib.hadoop.JobStep`
    subclass you implement a *mapper* and *reducer* instead.
 -  :class:`~luigi.LocalTarget` is a built in class that makes it
    easy to read/write from/to the local filesystem. It also makes all file operations
@@ -90,7 +90,7 @@ overview of the options.
 
 Running the command again will do nothing because the output file is
 already created.
-In that sense, any task in Luigi is *idempotent*
+In that sense, any step in Luigi is *idempotent*
 because running it many times gives the same outcome as running it once.
 Note that unlike Makefile, the output will not be recreated when any of
 the input files is modified.
@@ -110,7 +110,7 @@ read from HDFS and calculated with Spark, orchestrated by Luigi.
 
 .. code:: python
 
-    class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitTask):
+    class AggregateArtistsSpark(luigi.contrib.spark.SparkSubmitStep):
         date_interval = luigi.DateIntervalParameter()
 
         app = 'top_artists_spark.py'
@@ -123,14 +123,14 @@ read from HDFS and calculated with Spark, orchestrated by Luigi.
             return [StreamsHdfs(date) for date in self.date_interval]
 
         def app_options(self):
-            # :func:`~luigi.task.Task.input` returns the targets produced by the tasks in
-            # `~luigi.task.Task.requires`.
+            # :func:`~luigi.step.Step.input` returns the targets produced by the steps in
+            # `~luigi.step.Step.requires`.
             return [','.join([p.path for p in self.input()]),
                     self.output().path]
 
 
-:class:`luigi.contrib.hadoop.SparkSubmitTask` doesn't require you to implement a
-:func:`~luigi.task.Task.run` method. Instead, you specify the command line parameters to send
+:class:`luigi.contrib.hadoop.SparkSubmitStep` doesn't require you to implement a
+:func:`~luigi.step.Step.run` method. Instead, you specify the command line parameters to send
 to ``spark-submit``, as well as any other configuration specific to Spark.
 
 Python code for the Spark job is found below.
@@ -183,7 +183,7 @@ we choose to do this not as a Hadoop job, but just as a plain old for-loop in Py
 
 .. code:: python
 
-    class Top10Artists(luigi.Task):
+    class Top10Artists(luigi.Step):
         date_interval = luigi.DateIntervalParameter()
         use_hadoop = luigi.BoolParameter()
 
@@ -208,24 +208,24 @@ we choose to do this not as a Hadoop job, but just as a plain old for-loop in Py
                     artist, streams = line.strip().split()
                     yield int(streams), int(artist)
 
-The most interesting thing here is that this task (*Top10Artists*)
-defines a dependency on the previous task (*AggregateArtists*).
+The most interesting thing here is that this step (*Top10Artists*)
+defines a dependency on the previous step (*AggregateArtists*).
 This means that if the output of *AggregateArtists* does not exist,
-the task will run before *Top10Artists*.
+the step will run before *Top10Artists*.
 
 .. code-block:: console
 
     $ luigi --module examples.top_artists Top10Artists --local-scheduler --date-interval 2012-07
 
-This will run both tasks.
+This will run both steps.
 
 Step 3 - Insert into Postgres
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This mainly serves as an example of a specific subclass *Task* that
+This mainly serves as an example of a specific subclass *Step* that
 doesn't require any code to be written.
-It's also an example of how you can define task templates that
-you can reuse for a lot of different tasks.
+It's also an example of how you can define step templates that
+you can reuse for a lot of different steps.
 
 .. code:: python
 
@@ -248,7 +248,7 @@ you can reuse for a lot of different tasks.
             return Top10Artists(self.date_interval, self.use_hadoop)
 
 Just like previously, this defines a recursive dependency on the
-previous task. If you try to build the task, that will also trigger
+previous step. If you try to build the step, that will also trigger
 building all its upstream dependencies.
 
 Using the Central Planner
@@ -259,7 +259,7 @@ This is recommended in order to get started and or for development purposes.
 At the point where you start putting things in production
 we strongly recommend running the central scheduler server.
 In addition to providing locking
-so that the same task is not run by multiple processes at the same time,
+so that the same step is not run by multiple processes at the same time,
 this server also provides a pretty nice visualization of your current work flow.
 
 If you drop the ``--local-scheduler`` flag,
@@ -271,7 +271,7 @@ If you run
 
     $ luigid
 
-in the background and then run your task without the ``--local-scheduler`` flag,
+in the background and then run your step without the ``--local-scheduler`` flag,
 then your script will now schedule through a centralized server.
 You need `Tornado <http://www.tornadoweb.org/>`__ for this to work.
 
@@ -282,7 +282,7 @@ Launching http://localhost:8082 should show something like this:
 
 Web server screenshot
 Looking at the dependency graph
-for any of the tasks yields something like this:
+for any of the steps yields something like this:
 
 .. figure:: aggregate_artists.png
    :alt: Aggregate artists screenshot

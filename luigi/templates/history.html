@@ -23,8 +23,8 @@
 	<div id="chart">
 		<svg></svg>
 	</div>
-	{% if statusResults and taskResults %}
-	<!--h5> {{ statusResults }} and {{ taskResults }}</h5 -->
+	{% if statusResults and stepResults %}
+	<!--h5> {{ statusResults }} and {{ stepResults }}</h5 -->
 	<script>
 		var status_results  =  unescape("{{ statusResults }}");
 		var status_results_str = String(status_results).replace(/&quot;/ig,'"');
@@ -32,22 +32,22 @@
 		var running_data = status_data.RUNNING;
 		var done_data = status_data.DONE;
 		var failed_data = status_data.FAILED;
-		var task_results = unescape("{{ taskResults }}");
-		var task_results_str = String(task_results).replace(/&quot;/ig,'"');
-		var task_data = JSON.parse(task_results_str);
+		var step_results = unescape("{{ stepResults }}");
+		var step_results_str = String(step_results).replace(/&quot;/ig,'"');
+		var step_data = JSON.parse(step_results_str);
 		var dateSet = new Set();
 		for (var i = 0; i < running_data.length; i++) {
 			var id = running_data[i].id;
 			//millisecond converion of time for x-axis
 			running_data[i].x = running_data[i].x * 1000;
 			dateSet.add(running_data[i].x);
-			for (var j = 0; j < task_data.length; j++) {
+			for (var j = 0; j < step_data.length; j++) {
 				var latter_id = parseInt(id) + 1;
-				if (latter_id == task_data[j].id) {
-					//calculate time spent for running task with millisecond conversion of time for y-axis
-					running_data[i].y = task_data[j].timestamp * 1000 - running_data[i].x;
+				if (latter_id == step_data[j].id) {
+					//calculate time spent for running step with millisecond conversion of time for y-axis
+					running_data[i].y = step_data[j].timestamp * 1000 - running_data[i].x;
 					//get the next process after completing running status
-					running_data[i].next_process = task_data[j].status;
+					running_data[i].next_process = step_data[j].status;
 				}
 			}
 		}
@@ -60,12 +60,12 @@
 		for (var i = 0; i < running_data.length; i++) {
 			//push each running data whose next process is "Failed" into refined_failed_data
 			if (running_data[i].next_process == "FAILED") {
-				to_be_failed_data = [running_data[i].x, running_data[i].y, running_data[i].id, running_data[i].task_id];
+				to_be_failed_data = [running_data[i].x, running_data[i].y, running_data[i].id, running_data[i].step_id];
 				refined_failed_data["values"].push(to_be_failed_data);
 			} 
 			//push each running data whose next process is "Done" into refined_done_data
 			if (running_data[i].next_process == "DONE") {
-				to_be_done_data = [running_data[i].x, running_data[i].y, running_data[i].id, running_data[i].task_id];
+				to_be_done_data = [running_data[i].x, running_data[i].y, running_data[i].id, running_data[i].step_id];
 				refined_done_data["values"].push(to_be_done_data);
 			}
 		}

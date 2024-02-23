@@ -28,140 +28,140 @@ from luigi.tools.range import (RangeDaily, RangeDailyBase, RangeEvent,
                                _constrain_glob, _get_filesystems_and_globs, RangeMonthly)
 
 
-class CommonDateMinuteTask(luigi.Task):
+class CommonDateMinuteStep(luigi.Step):
     dh = luigi.DateMinuteParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%H%Mdara21/ooo'))
 
 
-class CommonDateHourTask(luigi.Task):
+class CommonDateHourStep(luigi.Step):
     dh = luigi.DateHourParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%Hdara21/ooo'))
 
 
-class CommonDateTask(luigi.Task):
+class CommonDateStep(luigi.Step):
     d = luigi.DateParameter()
 
     def output(self):
         return MockTarget(self.d.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm01dara21/ooo'))
 
 
-class CommonMonthTask(luigi.Task):
+class CommonMonthStep(luigi.Step):
     m = luigi.MonthParameter()
 
     def output(self):
         return MockTarget(self.m.strftime('/n2000y01a05n/%Y_%maww/21mm01dara21/ooo'))
 
 
-task_a_paths = [
-    'TaskA/2014-03-20/18',
-    'TaskA/2014-03-20/21',
-    'TaskA/2014-03-20/23',
-    'TaskA/2014-03-21/00',
-    'TaskA/2014-03-21/00.attempt.1',
-    'TaskA/2014-03-21/00.attempt.2',
-    'TaskA/2014-03-21/01',
-    'TaskA/2014-03-21/02',
-    'TaskA/2014-03-21/03.attempt-temp-2014-03-21T13-22-58.165969',
-    'TaskA/2014-03-21/03.attempt.1',
-    'TaskA/2014-03-21/03.attempt.2',
-    'TaskA/2014-03-21/03.attempt.3',
-    'TaskA/2014-03-21/03.attempt.latest',
-    'TaskA/2014-03-21/04.attempt-temp-2014-03-21T13-23-09.078249',
-    'TaskA/2014-03-21/12',
-    'TaskA/2014-03-23/12',
+step_a_paths = [
+    'StepA/2014-03-20/18',
+    'StepA/2014-03-20/21',
+    'StepA/2014-03-20/23',
+    'StepA/2014-03-21/00',
+    'StepA/2014-03-21/00.attempt.1',
+    'StepA/2014-03-21/00.attempt.2',
+    'StepA/2014-03-21/01',
+    'StepA/2014-03-21/02',
+    'StepA/2014-03-21/03.attempt-temp-2014-03-21T13-22-58.165969',
+    'StepA/2014-03-21/03.attempt.1',
+    'StepA/2014-03-21/03.attempt.2',
+    'StepA/2014-03-21/03.attempt.3',
+    'StepA/2014-03-21/03.attempt.latest',
+    'StepA/2014-03-21/04.attempt-temp-2014-03-21T13-23-09.078249',
+    'StepA/2014-03-21/12',
+    'StepA/2014-03-23/12',
 ]
 
-task_b_paths = [
-    'TaskB/no/worries2014-03-20/23',
-    'TaskB/no/worries2014-03-21/01',
-    'TaskB/no/worries2014-03-21/03',
-    'TaskB/no/worries2014-03-21/04.attempt-yadayada',
-    'TaskB/no/worries2014-03-21/05',
+step_b_paths = [
+    'StepB/no/worries2014-03-20/23',
+    'StepB/no/worries2014-03-21/01',
+    'StepB/no/worries2014-03-21/03',
+    'StepB/no/worries2014-03-21/04.attempt-yadayada',
+    'StepB/no/worries2014-03-21/05',
 ]
 
-mock_contents = task_a_paths + task_b_paths
+mock_contents = step_a_paths + step_b_paths
 
 
 expected_a = [
-    'TaskA(dh=2014-03-20T17)',
-    'TaskA(dh=2014-03-20T19)',
-    'TaskA(dh=2014-03-20T20)',
+    'StepA(dh=2014-03-20T17)',
+    'StepA(dh=2014-03-20T19)',
+    'StepA(dh=2014-03-20T20)',
 ]
 
 # expected_reverse = [
 # ]
 
 expected_wrapper = [
-    'CommonWrapperTask(dh=2014-03-21T00)',
-    'CommonWrapperTask(dh=2014-03-21T02)',
-    'CommonWrapperTask(dh=2014-03-21T03)',
-    'CommonWrapperTask(dh=2014-03-21T04)',
-    'CommonWrapperTask(dh=2014-03-21T05)',
+    'CommonWrapperStep(dh=2014-03-21T00)',
+    'CommonWrapperStep(dh=2014-03-21T02)',
+    'CommonWrapperStep(dh=2014-03-21T03)',
+    'CommonWrapperStep(dh=2014-03-21T04)',
+    'CommonWrapperStep(dh=2014-03-21T05)',
 ]
 
 
-class TaskA(luigi.Task):
+class StepA(luigi.Step):
     dh = luigi.DateHourParameter()
 
     def output(self):
-        return MockTarget(self.dh.strftime('TaskA/%Y-%m-%d/%H'))
+        return MockTarget(self.dh.strftime('StepA/%Y-%m-%d/%H'))
 
 
-class TaskB(luigi.Task):
+class StepB(luigi.Step):
     dh = luigi.DateHourParameter()
     complicator = luigi.Parameter()
 
     def output(self):
-        return MockTarget(self.dh.strftime('TaskB/%%s%Y-%m-%d/%H') % self.complicator)
+        return MockTarget(self.dh.strftime('StepB/%%s%Y-%m-%d/%H') % self.complicator)
 
 
-class TaskC(luigi.Task):
+class StepC(luigi.Step):
     dh = luigi.DateHourParameter()
 
     def output(self):
         return MockTarget(self.dh.strftime('not/a/real/path/%Y-%m-%d/%H'))
 
 
-class CommonWrapperTask(luigi.WrapperTask):
+class CommonWrapperStep(luigi.WrapperStep):
     dh = luigi.DateHourParameter()
 
     def requires(self):
-        yield TaskA(dh=self.dh)
-        yield TaskB(dh=self.dh, complicator='no/worries')  # str(self.dh) would complicate beyond working
+        yield StepA(dh=self.dh)
+        yield StepB(dh=self.dh, complicator='no/worries')  # str(self.dh) would complicate beyond working
 
 
-class TaskMinutesA(luigi.Task):
+class StepMinutesA(luigi.Step):
     dm = luigi.DateMinuteParameter()
 
     def output(self):
-        return MockTarget(self.dm.strftime('TaskA/%Y-%m-%d/%H%M'))
+        return MockTarget(self.dm.strftime('StepA/%Y-%m-%d/%H%M'))
 
 
-class TaskMinutesB(luigi.Task):
+class StepMinutesB(luigi.Step):
     dm = luigi.DateMinuteParameter()
     complicator = luigi.Parameter()
 
     def output(self):
-        return MockTarget(self.dm.strftime('TaskB/%%s%Y-%m-%d/%H%M') % self.complicator)
+        return MockTarget(self.dm.strftime('StepB/%%s%Y-%m-%d/%H%M') % self.complicator)
 
 
-class TaskMinutesC(luigi.Task):
+class StepMinutesC(luigi.Step):
     dm = luigi.DateMinuteParameter()
 
     def output(self):
         return MockTarget(self.dm.strftime('not/a/real/path/%Y-%m-%d/%H%M'))
 
 
-class CommonWrapperTaskMinutes(luigi.WrapperTask):
+class CommonWrapperStepMinutes(luigi.WrapperStep):
     dm = luigi.DateMinuteParameter()
 
     def requires(self):
-        yield TaskMinutesA(dm=self.dm)
-        yield TaskMinutesB(dm=self.dm, complicator='no/worries')  # str(self.dh) would complicate beyond working
+        yield StepMinutesA(dm=self.dm)
+        yield StepMinutesB(dm=self.dm, complicator='no/worries')  # str(self.dh) would complicate beyond working
 
 
 def mock_listdir(contents):
@@ -243,27 +243,27 @@ class RangeDailyBaseTest(unittest.TestCase):
         self.events = {}
 
     def test_consistent_formatting(self):
-        task = RangeDailyBase(of=CommonDateTask,
+        step = RangeDailyBase(of=CommonDateStep,
                               start=datetime.date(2016, 1, 1))
-        self.assertEqual(task._format_range([datetime.datetime(2016, 1, 2, 13), datetime.datetime(2016, 2, 29, 23)]), '[2016-01-02, 2016-02-29]')
+        self.assertEqual(step._format_range([datetime.datetime(2016, 1, 2, 13), datetime.datetime(2016, 2, 29, 23)]), '[2016-01-02, 2016-02-29]')
 
     def _empty_subcase(self, kwargs, expected_events):
         calls = []
 
         class RangeDailyDerived(RangeDailyBase):
-            def missing_datetimes(self, task_cls, finite_datetimes):
-                args = [self, task_cls, finite_datetimes]
+            def missing_datetimes(self, step_cls, finite_datetimes):
+                args = [self, step_cls, finite_datetimes]
                 calls.append(args)
                 return args[-1][:5]
 
-        task = RangeDailyDerived(of=CommonDateTask,
+        step = RangeDailyDerived(of=CommonDateStep,
                                  **kwargs)
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
         self.assertEqual(self.events, expected_events)
-        self.assertTrue(task.complete())
+        self.assertTrue(step.complete())
 
     def test_stop_before_days_back(self):
         # nothing to do because stop is earlier
@@ -277,13 +277,13 @@ class RangeDailyBaseTest(unittest.TestCase):
             },
             {
                 'event.tools.range.delay': [
-                    ('CommonDateTask', 0),
+                    ('CommonDateStep', 0),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateTask', 0),
+                    ('CommonDateStep', 0),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateTask', 1.),
+                    ('CommonDateStep', 1.),
                 ],
             }
         )
@@ -298,14 +298,14 @@ class RangeDailyBaseTest(unittest.TestCase):
                 calls.append((self, finite_datetimes))
                 return finite_datetimes[:7]
 
-        task = RangeDailyDerived(of=CommonDateTask,
+        step = RangeDailyDerived(of=CommonDateStep,
                                  **kwargs)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual((min(calls[0][1]), max(calls[0][1])), expected_finite_datetimes_range)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
         self.assertEqual(self.events, expected_events)
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
 
     def test_start_long_before_long_days_back_and_with_long_days_forward(self):
         self._nonempty_subcase(
@@ -313,26 +313,26 @@ class RangeDailyBaseTest(unittest.TestCase):
                 'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
                 'start': datetime.date(2011, 3, 20),
                 'stop': datetime.date(2025, 1, 29),
-                'task_limit': 4,
+                'step_limit': 4,
                 'days_back': 3 * 365,
                 'days_forward': 3 * 365,
             },
             (datetime.datetime(2014, 10, 24), datetime.datetime(2020, 10, 21)),
             [
-                'CommonDateTask(d=2014-10-24)',
-                'CommonDateTask(d=2014-10-25)',
-                'CommonDateTask(d=2014-10-26)',
-                'CommonDateTask(d=2014-10-27)',
+                'CommonDateStep(d=2014-10-24)',
+                'CommonDateStep(d=2014-10-25)',
+                'CommonDateStep(d=2014-10-26)',
+                'CommonDateStep(d=2014-10-27)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateTask', 3750),
+                    ('CommonDateStep', 3750),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateTask', 5057),
+                    ('CommonDateStep', 5057),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateTask', 5057. / (5057 + 7)),
+                    ('CommonDateStep', 5057. / (5057 + 7)),
                 ],
             }
         )
@@ -360,9 +360,9 @@ class RangeHourlyBaseTest(unittest.TestCase):
         self.events = {}
 
     def test_consistent_formatting(self):
-        task = RangeHourlyBase(of=CommonDateHourTask,
+        step = RangeHourlyBase(of=CommonDateHourStep,
                                start=datetime.datetime(2016, 1, 1))
-        self.assertEqual(task._format_range([datetime.datetime(2016, 1, 2, 13), datetime.datetime(2016, 2, 29, 23)]), '[2016-01-02T13, 2016-02-29T23]')
+        self.assertEqual(step._format_range([datetime.datetime(2016, 1, 2, 13), datetime.datetime(2016, 2, 29, 23)]), '[2016-01-02T13, 2016-02-29T23]')
 
     def _empty_subcase(self, kwargs, expected_events):
         calls = []
@@ -373,14 +373,14 @@ class RangeHourlyBaseTest(unittest.TestCase):
                 calls.append(args)
                 return args[-1][:5]
 
-        task = RangeHourlyDerived(of=CommonDateHourTask,
+        step = RangeHourlyDerived(of=CommonDateHourStep,
                                   **kwargs)
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
         self.assertEqual(self.events, expected_events)
-        self.assertTrue(task.complete())
+        self.assertTrue(step.complete())
 
     def test_start_after_hours_forward(self):
         # nothing to do because start is later
@@ -393,13 +393,13 @@ class RangeHourlyBaseTest(unittest.TestCase):
             },
             {
                 'event.tools.range.delay': [
-                    ('CommonDateHourTask', 0),
+                    ('CommonDateHourStep', 0),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateHourTask', 0),
+                    ('CommonDateHourStep', 0),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateHourTask', 1.),
+                    ('CommonDateHourStep', 1.),
                 ],
             }
         )
@@ -413,15 +413,15 @@ class RangeHourlyBaseTest(unittest.TestCase):
                 calls.append(args)
                 return args[-1][:7]
 
-        task = RangeHourlyDerived(of=CommonDateHourTask,
+        step = RangeHourlyDerived(of=CommonDateHourStep,
                                   **kwargs)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
-        self.assertEqual(calls[0][1], CommonDateHourTask)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
+        self.assertEqual(calls[0][1], CommonDateHourStep)
         self.assertEqual((min(calls[0][2]), max(calls[0][2])), expected_finite_datetimes_range)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
         self.assertEqual(self.events, expected_events)
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
 
     def test_start_long_before_hours_back(self):
         self._nonempty_subcase(
@@ -433,23 +433,23 @@ class RangeHourlyBaseTest(unittest.TestCase):
             },
             (datetime.datetime(1999, 12, 31, 23), datetime.datetime(2000, 1, 1, 23)),
             [
-                'CommonDateHourTask(dh=1999-12-31T23)',
-                'CommonDateHourTask(dh=2000-01-01T00)',
-                'CommonDateHourTask(dh=2000-01-01T01)',
-                'CommonDateHourTask(dh=2000-01-01T02)',
-                'CommonDateHourTask(dh=2000-01-01T03)',
-                'CommonDateHourTask(dh=2000-01-01T04)',
-                'CommonDateHourTask(dh=2000-01-01T05)',
+                'CommonDateHourStep(dh=1999-12-31T23)',
+                'CommonDateHourStep(dh=2000-01-01T00)',
+                'CommonDateHourStep(dh=2000-01-01T01)',
+                'CommonDateHourStep(dh=2000-01-01T02)',
+                'CommonDateHourStep(dh=2000-01-01T03)',
+                'CommonDateHourStep(dh=2000-01-01T04)',
+                'CommonDateHourStep(dh=2000-01-01T05)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateHourTask', 25),  # because of short hours_back we're oblivious to those 40 preceding years
+                    ('CommonDateHourStep', 25),  # because of short hours_back we're oblivious to those 40 preceding years
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateHourTask', 349192),
+                    ('CommonDateHourStep', 349192),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateHourTask', 349192. / (349192 + 7)),
+                    ('CommonDateHourStep', 349192. / (349192 + 7)),
                 ],
             }
         )
@@ -459,25 +459,25 @@ class RangeHourlyBaseTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2014, 10, 22, 12, 4, 29)),
                 'start': datetime.datetime(2014, 3, 20, 17),
-                'task_limit': 4,
+                'step_limit': 4,
                 'hours_back': 365 * 24,
             },
             (datetime.datetime(2014, 3, 20, 17), datetime.datetime(2014, 10, 22, 12)),
             [
-                'CommonDateHourTask(dh=2014-03-20T17)',
-                'CommonDateHourTask(dh=2014-03-20T18)',
-                'CommonDateHourTask(dh=2014-03-20T19)',
-                'CommonDateHourTask(dh=2014-03-20T20)',
+                'CommonDateHourStep(dh=2014-03-20T17)',
+                'CommonDateHourStep(dh=2014-03-20T18)',
+                'CommonDateHourStep(dh=2014-03-20T19)',
+                'CommonDateHourStep(dh=2014-03-20T20)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateHourTask', 5180),
+                    ('CommonDateHourStep', 5180),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateHourTask', 5173),
+                    ('CommonDateHourStep', 5173),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateHourTask', 5173. / (5173 + 7)),
+                    ('CommonDateHourStep', 5173. / (5173 + 7)),
                 ],
             }
         )
@@ -487,26 +487,26 @@ class RangeHourlyBaseTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
                 'start': datetime.datetime(2011, 3, 20, 17),
-                'task_limit': 4,
+                'step_limit': 4,
                 'hours_back': 3 * 365 * 24,
                 'hours_forward': 3 * 365 * 24,
             },
             (datetime.datetime(2014, 10, 23, 13), datetime.datetime(2020, 10, 21, 12)),
             [
-                'CommonDateHourTask(dh=2014-10-23T13)',
-                'CommonDateHourTask(dh=2014-10-23T14)',
-                'CommonDateHourTask(dh=2014-10-23T15)',
-                'CommonDateHourTask(dh=2014-10-23T16)',
+                'CommonDateHourStep(dh=2014-10-23T13)',
+                'CommonDateHourStep(dh=2014-10-23T14)',
+                'CommonDateHourStep(dh=2014-10-23T15)',
+                'CommonDateHourStep(dh=2014-10-23T16)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateHourTask', 52560),
+                    ('CommonDateHourStep', 52560),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateHourTask', 84061),
+                    ('CommonDateHourStep', 84061),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateHourTask', 84061. / (84061 + 7)),
+                    ('CommonDateHourStep', 84061. / (84061 + 7)),
                 ],
             }
         )
@@ -534,10 +534,10 @@ class RangeByMinutesBaseTest(unittest.TestCase):
         self.events = {}
 
     def test_consistent_formatting(self):
-        task = RangeByMinutesBase(of=CommonDateMinuteTask,
+        step = RangeByMinutesBase(of=CommonDateMinuteStep,
                                   start=datetime.datetime(2016, 1, 1, 13),
                                   minutes_interval=5)
-        self.assertEqual(task._format_range(
+        self.assertEqual(step._format_range(
             [datetime.datetime(2016, 1, 2, 13, 10), datetime.datetime(2016, 2, 29, 23, 20)]),
             '[2016-01-02T1310, 2016-02-29T2320]')
 
@@ -550,13 +550,13 @@ class RangeByMinutesBaseTest(unittest.TestCase):
                 calls.append(args)
                 return args[-1][:5]
 
-        task = RangeByMinutesDerived(of=CommonDateMinuteTask, **kwargs)
-        self.assertEqual(task.requires(), [])
+        step = RangeByMinutesDerived(of=CommonDateMinuteStep, **kwargs)
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
         self.assertEqual(self.events, expected_events)
-        self.assertTrue(task.complete())
+        self.assertTrue(step.complete())
 
     def test_start_after_minutes_forward(self):
         # nothing to do because start is later
@@ -570,13 +570,13 @@ class RangeByMinutesBaseTest(unittest.TestCase):
             },
             {
                 'event.tools.range.delay': [
-                    ('CommonDateMinuteTask', 0),
+                    ('CommonDateMinuteStep', 0),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateMinuteTask', 0),
+                    ('CommonDateMinuteStep', 0),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateMinuteTask', 1.),
+                    ('CommonDateMinuteStep', 1.),
                 ],
             }
         )
@@ -590,40 +590,40 @@ class RangeByMinutesBaseTest(unittest.TestCase):
                 calls.append(args)
                 return args[-1][:7]
 
-        task = RangeByMinutesDerived(of=CommonDateMinuteTask, **kwargs)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
-        self.assertEqual(calls[0][1], CommonDateMinuteTask)
+        step = RangeByMinutesDerived(of=CommonDateMinuteStep, **kwargs)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
+        self.assertEqual(calls[0][1], CommonDateMinuteStep)
         self.assertEqual((min(calls[0][2]), max(calls[0][2])), expected_finite_datetimes_range)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
         self.assertEqual(self.events, expected_events)
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
 
     def test_negative_interval(self):
-        class SomeByMinutesTask(luigi.Task):
+        class SomeByMinutesStep(luigi.Step):
             d = luigi.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
 
-        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
-                              of=SomeByMinutesTask,
+        step = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                              of=SomeByMinutesStep,
                               start=datetime.datetime(2014, 3, 20, 17),
                               minutes_interval=-1)
-        self.assertRaises(luigi.parameter.ParameterException, task.requires)
+        self.assertRaises(luigi.parameter.ParameterException, step.requires)
 
     def test_non_dividing_interval(self):
-        class SomeByMinutesTask(luigi.Task):
+        class SomeByMinutesStep(luigi.Step):
             d = luigi.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
 
-        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
-                              of=SomeByMinutesTask,
+        step = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                              of=SomeByMinutesStep,
                               start=datetime.datetime(2014, 3, 20, 17),
                               minutes_interval=8)
-        self.assertRaises(luigi.parameter.ParameterException, task.requires)
+        self.assertRaises(luigi.parameter.ParameterException, step.requires)
 
     def test_start_and_minutes_period(self):
         self._nonempty_subcase(
@@ -636,23 +636,23 @@ class RangeByMinutesBaseTest(unittest.TestCase):
             },
             (datetime.datetime(2016, 9, 1, 11, 0), datetime.datetime(2016, 9, 1, 11, 57, 0)),
             [
-                'CommonDateMinuteTask(dh=2016-09-01T1100)',
-                'CommonDateMinuteTask(dh=2016-09-01T1103)',
-                'CommonDateMinuteTask(dh=2016-09-01T1106)',
-                'CommonDateMinuteTask(dh=2016-09-01T1109)',
-                'CommonDateMinuteTask(dh=2016-09-01T1112)',
-                'CommonDateMinuteTask(dh=2016-09-01T1115)',
-                'CommonDateMinuteTask(dh=2016-09-01T1118)',
+                'CommonDateMinuteStep(dh=2016-09-01T1100)',
+                'CommonDateMinuteStep(dh=2016-09-01T1103)',
+                'CommonDateMinuteStep(dh=2016-09-01T1106)',
+                'CommonDateMinuteStep(dh=2016-09-01T1109)',
+                'CommonDateMinuteStep(dh=2016-09-01T1112)',
+                'CommonDateMinuteStep(dh=2016-09-01T1115)',
+                'CommonDateMinuteStep(dh=2016-09-01T1118)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateMinuteTask', 20),  # First missing is the 20th
+                    ('CommonDateMinuteStep', 20),  # First missing is the 20th
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateMinuteTask', 13),  # 20 intervals - 7 missing
+                    ('CommonDateMinuteStep', 13),  # 20 intervals - 7 missing
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateMinuteTask', 13. / (13 + 7)),  # (expected - missing) / expected
+                    ('CommonDateMinuteStep', 13. / (13 + 7)),  # (expected - missing) / expected
                 ],
             }
         )
@@ -668,21 +668,21 @@ class RangeByMinutesBaseTest(unittest.TestCase):
             },
             (datetime.datetime(2000, 1, 1, 0, 0), datetime.datetime(2000, 1, 1, 0, 20, 0)),
             [
-                'CommonDateMinuteTask(dh=2000-01-01T0000)',
-                'CommonDateMinuteTask(dh=2000-01-01T0005)',
-                'CommonDateMinuteTask(dh=2000-01-01T0010)',
-                'CommonDateMinuteTask(dh=2000-01-01T0015)',
-                'CommonDateMinuteTask(dh=2000-01-01T0020)',
+                'CommonDateMinuteStep(dh=2000-01-01T0000)',
+                'CommonDateMinuteStep(dh=2000-01-01T0005)',
+                'CommonDateMinuteStep(dh=2000-01-01T0010)',
+                'CommonDateMinuteStep(dh=2000-01-01T0015)',
+                'CommonDateMinuteStep(dh=2000-01-01T0020)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateMinuteTask', 5),  # because of short minutes_back we're oblivious to those 40 preceding years
+                    ('CommonDateMinuteStep', 5),  # because of short minutes_back we're oblivious to those 40 preceding years
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateMinuteTask', 4207680),  # expected intervals - missing.
+                    ('CommonDateMinuteStep', 4207680),  # expected intervals - missing.
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateMinuteTask', 4207680. / 4207685),  # (expected - missing) / expected
+                    ('CommonDateMinuteStep', 4207680. / 4207685),  # (expected - missing) / expected
                 ],
             }
         )
@@ -692,26 +692,26 @@ class RangeByMinutesBaseTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2014, 3, 20, 18, 4, 29)),
                 'start': datetime.datetime(2014, 3, 20, 17, 10),
-                'task_limit': 4,
+                'step_limit': 4,
                 'minutes_back': 365 * 24 * 60,
                 'minutes_interval': 5,
             },
             (datetime.datetime(2014, 3, 20, 17, 10, 0), datetime.datetime(2014, 3, 20, 18, 0, 0)),
             [
-                'CommonDateMinuteTask(dh=2014-03-20T1710)',
-                'CommonDateMinuteTask(dh=2014-03-20T1715)',
-                'CommonDateMinuteTask(dh=2014-03-20T1720)',
-                'CommonDateMinuteTask(dh=2014-03-20T1725)',
+                'CommonDateMinuteStep(dh=2014-03-20T1710)',
+                'CommonDateMinuteStep(dh=2014-03-20T1715)',
+                'CommonDateMinuteStep(dh=2014-03-20T1720)',
+                'CommonDateMinuteStep(dh=2014-03-20T1725)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateMinuteTask', 11),
+                    ('CommonDateMinuteStep', 11),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateMinuteTask', 4),
+                    ('CommonDateMinuteStep', 4),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateMinuteTask', 4. / 11),
+                    ('CommonDateMinuteStep', 4. / 11),
                 ],
             }
         )
@@ -721,27 +721,27 @@ class RangeByMinutesBaseTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2017, 3, 22, 20, 4, 29)),
                 'start': datetime.datetime(2011, 3, 20, 17, 10, 0),
-                'task_limit': 4,
+                'step_limit': 4,
                 'minutes_back': 365 * 24 * 60,
                 'minutes_forward': 365 * 24 * 60,
                 'minutes_interval': 5,
             },
             (datetime.datetime(2016, 3, 22, 20, 5), datetime.datetime(2018, 3, 22, 20, 0)),
             [
-                'CommonDateMinuteTask(dh=2016-03-22T2005)',
-                'CommonDateMinuteTask(dh=2016-03-22T2010)',
-                'CommonDateMinuteTask(dh=2016-03-22T2015)',
-                'CommonDateMinuteTask(dh=2016-03-22T2020)',
+                'CommonDateMinuteStep(dh=2016-03-22T2005)',
+                'CommonDateMinuteStep(dh=2016-03-22T2010)',
+                'CommonDateMinuteStep(dh=2016-03-22T2015)',
+                'CommonDateMinuteStep(dh=2016-03-22T2020)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonDateMinuteTask', 210240),
+                    ('CommonDateMinuteStep', 210240),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonDateMinuteTask', 737020),
+                    ('CommonDateMinuteStep', 737020),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonDateMinuteTask', 737020. / (737020 + 7)),
+                    ('CommonDateMinuteStep', 737020. / (737020 + 7)),
                 ],
             }
         )
@@ -749,8 +749,8 @@ class RangeByMinutesBaseTest(unittest.TestCase):
 
 class FilesystemInferenceTest(unittest.TestCase):
 
-    def _test_filesystems_and_globs(self, datetime_to_task, datetime_to_re, expected):
-        actual = list(_get_filesystems_and_globs(datetime_to_task, datetime_to_re))
+    def _test_filesystems_and_globs(self, datetime_to_step, datetime_to_re, expected):
+        actual = list(_get_filesystems_and_globs(datetime_to_step, datetime_to_re))
         self.assertEqual(len(actual), len(expected))
         for (actual_filesystem, actual_glob), (expected_filesystem, expected_glob) in zip(actual, expected):
             self.assertTrue(isinstance(actual_filesystem, expected_filesystem))
@@ -758,7 +758,7 @@ class FilesystemInferenceTest(unittest.TestCase):
 
     def test_date_glob_successfully_inferred(self):
         self._test_filesystems_and_globs(
-            lambda d: CommonDateTask(d),
+            lambda d: CommonDateStep(d),
             lambda d: d.strftime('(%Y).*(%m).*(%d)'),
             [
                 (MockFileSystem, '/n2000y01a05n/[0-9][0-9][0-9][0-9]_[0-9][0-9]-_-[0-9][0-9]aww/21mm01dara21'),
@@ -767,7 +767,7 @@ class FilesystemInferenceTest(unittest.TestCase):
 
     def test_datehour_glob_successfully_inferred(self):
         self._test_filesystems_and_globs(
-            lambda d: CommonDateHourTask(d),
+            lambda d: CommonDateHourStep(d),
             lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H)'),
             [
                 (MockFileSystem, '/n2000y01a05n/[0-9][0-9][0-9][0-9]_[0-9][0-9]-_-[0-9][0-9]aww/21mm[0-9][0-9]dara21'),
@@ -776,7 +776,7 @@ class FilesystemInferenceTest(unittest.TestCase):
 
     def test_dateminute_glob_successfully_inferred(self):
         self._test_filesystems_and_globs(
-            lambda d: CommonDateMinuteTask(d),
+            lambda d: CommonDateMinuteStep(d),
             lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H).*(%M)'),
             [
                 (MockFileSystem, '/n2000y01a05n/[0-9][0-9][0-9][0-9]_[0-9][0-9]-_-[0-9][0-9]aww/21mm[0-9][0-9][0-9][0-9]dara21'),
@@ -785,16 +785,16 @@ class FilesystemInferenceTest(unittest.TestCase):
 
     def test_wrapped_datehour_globs_successfully_inferred(self):
         self._test_filesystems_and_globs(
-            lambda d: CommonWrapperTask(d),
+            lambda d: CommonWrapperStep(d),
             lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H)'),
             [
-                (MockFileSystem, 'TaskA/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
-                (MockFileSystem, 'TaskB/no/worries[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+                (MockFileSystem, 'StepA/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
+                (MockFileSystem, 'StepB/no/worries[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
             ]
         )
 
     def test_inconsistent_output_datehour_glob_not_inferred(self):
-        class InconsistentlyOutputtingDateHourTask(luigi.Task):
+        class InconsistentlyOutputtingDateHourStep(luigi.Step):
             dh = luigi.DateHourParameter()
 
             def output(self):
@@ -809,22 +809,22 @@ class FilesystemInferenceTest(unittest.TestCase):
 
         def test_raise_not_implemented():
             list(_get_filesystems_and_globs(
-                lambda d: InconsistentlyOutputtingDateHourTask(d),
+                lambda d: InconsistentlyOutputtingDateHourStep(d),
                 lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H)')))
 
         self.assertRaises(NotImplementedError, test_raise_not_implemented)
 
     def test_wrapped_inconsistent_datehour_globs_not_inferred(self):
-        class InconsistentlyParameterizedWrapperTask(luigi.WrapperTask):
+        class InconsistentlyParameterizedWrapperStep(luigi.WrapperStep):
             dh = luigi.DateHourParameter()
 
             def requires(self):
-                yield TaskA(dh=self.dh - datetime.timedelta(days=1))
-                yield TaskB(dh=self.dh, complicator='no/worries')
+                yield StepA(dh=self.dh - datetime.timedelta(days=1))
+                yield StepB(dh=self.dh, complicator='no/worries')
 
         def test_raise_not_implemented():
             list(_get_filesystems_and_globs(
-                lambda d: InconsistentlyParameterizedWrapperTask(d),
+                lambda d: InconsistentlyParameterizedWrapperStep(d),
                 lambda d: d.strftime('(%Y).*(%m).*(%d).*(%H)')))
 
         self.assertRaises(NotImplementedError, test_raise_not_implemented)
@@ -854,18 +854,18 @@ class RangeMonthlyTest(unittest.TestCase):
         calls = []
 
         class RangeMonthlyDerived(RangeMonthly):
-            def missing_datetimes(self, task_cls, finite_datetimes):
-                args = [self, task_cls, finite_datetimes]
+            def missing_datetimes(self, step_cls, finite_datetimes):
+                args = [self, step_cls, finite_datetimes]
                 calls.append(args)
                 return args[-1][:5]
 
-        task = RangeMonthlyDerived(of=CommonMonthTask, **kwargs)
-        self.assertEqual(task.requires(), [])
+        step = RangeMonthlyDerived(of=CommonMonthStep, **kwargs)
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])
-        self.assertEqual(task.requires(), [])
+        self.assertEqual(step.requires(), [])
         self.assertEqual(calls, [])  # subsequent requires() should return the cached result, never call missing_datetimes
         self.assertEqual(self.events, expected_events)
-        self.assertTrue(task.complete())
+        self.assertTrue(step.complete())
 
     def test_stop_before_months_back(self):
         # nothing to do because stop is earlier
@@ -879,13 +879,13 @@ class RangeMonthlyTest(unittest.TestCase):
             },
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', 0),
+                    ('CommonMonthStep', 0),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', 0),
+                    ('CommonMonthStep', 0),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', 1.),
+                    ('CommonMonthStep', 1.),
                 ],
             }
         )
@@ -901,13 +901,13 @@ class RangeMonthlyTest(unittest.TestCase):
             },
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', 0),
+                    ('CommonMonthStep', 0),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', 0),
+                    ('CommonMonthStep', 0),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', 1.),
+                    ('CommonMonthStep', 1.),
                 ],
             }
         )
@@ -920,13 +920,13 @@ class RangeMonthlyTest(unittest.TestCase):
                 calls.append((self, finite_datetimes))
                 return finite_datetimes[:7]
 
-        task = RangeDailyDerived(of=CommonMonthTask, **kwargs)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        step = RangeDailyDerived(of=CommonMonthStep, **kwargs)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual((min(calls[0][1]), max(calls[0][1])), expected_finite_datetimes_range)
-        self.assertEqual(list(map(str, task.requires())), expected_requires)
+        self.assertEqual(list(map(str, step.requires())), expected_requires)
         self.assertEqual(len(calls), 1)  # subsequent requires() should return the cached result, not call missing_datetimes again
         self.assertEqual(self.events, expected_events)
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
 
     def test_start_long_before_months_back(self):
         total = (2000 - 1960) * 12 + 20 - 2
@@ -939,23 +939,23 @@ class RangeMonthlyTest(unittest.TestCase):
             },
             (datetime.datetime(1999, 8, 1), datetime.datetime(2001, 8, 1)),
             [
-                'CommonMonthTask(m=1999-08)',
-                'CommonMonthTask(m=1999-09)',
-                'CommonMonthTask(m=1999-10)',
-                'CommonMonthTask(m=1999-11)',
-                'CommonMonthTask(m=1999-12)',
-                'CommonMonthTask(m=2000-01)',
-                'CommonMonthTask(m=2000-02)',
+                'CommonMonthStep(m=1999-08)',
+                'CommonMonthStep(m=1999-09)',
+                'CommonMonthStep(m=1999-10)',
+                'CommonMonthStep(m=1999-11)',
+                'CommonMonthStep(m=1999-12)',
+                'CommonMonthStep(m=2000-01)',
+                'CommonMonthStep(m=2000-02)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', 25),
+                    ('CommonMonthStep', 25),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', total - 7),
+                    ('CommonMonthStep', total - 7),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', (total - 7.0) / total),
+                    ('CommonMonthStep', (total - 7.0) / total),
                 ],
             }
         )
@@ -966,25 +966,25 @@ class RangeMonthlyTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2014, 11, 22)),
                 'start': datetime.datetime(2014, 3, 1),
-                'task_limit': 4,
+                'step_limit': 4,
                 'months_back': 12 * 24,
             },
             (datetime.datetime(2014, 3, 1), datetime.datetime(2014, 10, 1)),
             [
-                'CommonMonthTask(m=2014-03)',
-                'CommonMonthTask(m=2014-04)',
-                'CommonMonthTask(m=2014-05)',
-                'CommonMonthTask(m=2014-06)',
+                'CommonMonthStep(m=2014-03)',
+                'CommonMonthStep(m=2014-04)',
+                'CommonMonthStep(m=2014-05)',
+                'CommonMonthStep(m=2014-06)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', total),
+                    ('CommonMonthStep', total),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', total - 7),
+                    ('CommonMonthStep', total - 7),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', (total - 7.0) / total),
+                    ('CommonMonthStep', (total - 7.0) / total),
                 ],
             }
         )
@@ -996,26 +996,26 @@ class RangeMonthlyTest(unittest.TestCase):
                 'now': datetime_to_epoch(datetime.datetime(2017, 10, 22, 12, 4, 29)),
                 'start': datetime.date(2011, 3, 20),
                 'stop': datetime.date(2025, 1, 29),
-                'task_limit': 4,
+                'step_limit': 4,
                 'months_back': 3 * 12,
                 'months_forward': 3 * 12,
             },
             (datetime.datetime(2014, 10, 1), datetime.datetime(2020, 9, 1)),
             [
-                'CommonMonthTask(m=2014-10)',
-                'CommonMonthTask(m=2014-11)',
-                'CommonMonthTask(m=2014-12)',
-                'CommonMonthTask(m=2015-01)',
+                'CommonMonthStep(m=2014-10)',
+                'CommonMonthStep(m=2014-11)',
+                'CommonMonthStep(m=2014-12)',
+                'CommonMonthStep(m=2015-01)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', (2025 - (2017 - 3)) * 12 - 9),
+                    ('CommonMonthStep', (2025 - (2017 - 3)) * 12 - 9),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', total - 7),
+                    ('CommonMonthStep', total - 7),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', (total - 7.0) / total),
+                    ('CommonMonthStep', (total - 7.0) / total),
                 ],
             }
         )
@@ -1026,25 +1026,25 @@ class RangeMonthlyTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2017, 10, 31, 12, 4, 29)),
                 'start': datetime.date(2011, 10, 1),
-                'task_limit': 10,
+                'step_limit': 10,
                 'months_back': 4,
             },
             (datetime.datetime(2017, 6, 1), datetime.datetime(2017, 9, 1)),
             [
-                'CommonMonthTask(m=2017-06)',
-                'CommonMonthTask(m=2017-07)',
-                'CommonMonthTask(m=2017-08)',
-                'CommonMonthTask(m=2017-09)',
+                'CommonMonthStep(m=2017-06)',
+                'CommonMonthStep(m=2017-07)',
+                'CommonMonthStep(m=2017-08)',
+                'CommonMonthStep(m=2017-09)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', 4),
+                    ('CommonMonthStep', 4),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', total - 4),
+                    ('CommonMonthStep', total - 4),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', (total - 4.0) / total),
+                    ('CommonMonthStep', (total - 4.0) / total),
                 ],
             }
         )
@@ -1055,36 +1055,36 @@ class RangeMonthlyTest(unittest.TestCase):
             {
                 'now': datetime_to_epoch(datetime.datetime(2017, 10, 1, 12, 4, 29)),
                 'start': datetime.date(2011, 10, 1),
-                'task_limit': 10,
+                'step_limit': 10,
                 'months_back': 4,
                 'months_forward': 2
             },
             (datetime.datetime(2017, 6, 1), datetime.datetime(2017, 11, 1)),
             [
-                'CommonMonthTask(m=2017-06)',
-                'CommonMonthTask(m=2017-07)',
-                'CommonMonthTask(m=2017-08)',
-                'CommonMonthTask(m=2017-09)',
-                'CommonMonthTask(m=2017-10)',
-                'CommonMonthTask(m=2017-11)',
+                'CommonMonthStep(m=2017-06)',
+                'CommonMonthStep(m=2017-07)',
+                'CommonMonthStep(m=2017-08)',
+                'CommonMonthStep(m=2017-09)',
+                'CommonMonthStep(m=2017-10)',
+                'CommonMonthStep(m=2017-11)',
             ],
             {
                 'event.tools.range.delay': [
-                    ('CommonMonthTask', 6),
+                    ('CommonMonthStep', 6),
                 ],
                 'event.tools.range.complete.count': [
-                    ('CommonMonthTask', total - 6),
+                    ('CommonMonthStep', total - 6),
                 ],
                 'event.tools.range.complete.fraction': [
-                    ('CommonMonthTask', (total - 6.0) / total),
+                    ('CommonMonthStep', (total - 6.0) / total),
                 ],
             }
         )
 
     def test_consistent_formatting(self):
-        task = RangeMonthly(of=CommonMonthTask,
+        step = RangeMonthly(of=CommonMonthStep,
                             start=datetime.date(2018, 1, 4))
-        self.assertEqual(task._format_range([datetime.datetime(2018, 2, 3, 14), datetime.datetime(2018, 4, 5, 21)]),
+        self.assertEqual(step._format_range([datetime.datetime(2018, 2, 3, 14), datetime.datetime(2018, 4, 5, 21)]),
                          '[2018-02, 2018-04]')
 
 
@@ -1094,26 +1094,26 @@ class MonthInstantiationTest(LuigiTestCase):
         """
         Verify that you can still programmatically set of param as string
         """
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             month_param = luigi.MonthParameter()
 
             def complete(self):
                 return False
 
-        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
-                                  of=MyTask,
+        range_step = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyStep,
                                   start=datetime.date(2015, 12, 1),
                                   stop=datetime.date(2016, 1, 1))
-        expected_task = MyTask(month_param=datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep(month_param=datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_month_cli_instantiation(self):
         """
         Verify that you can still use Range through CLI
         """
 
-        class MyTask(luigi.Task):
-            task_namespace = "wohoo"
+        class MyStep(luigi.Step):
+            step_namespace = "wohoo"
             month_param = luigi.MonthParameter()
             secret = 'some-value-to-sooth-python-linters'
             comp = False
@@ -1123,46 +1123,46 @@ class MonthInstantiationTest(LuigiTestCase):
 
             def run(self):
                 self.comp = True
-                MyTask.secret = 'yay'
+                MyStep.secret = 'yay'
 
         now = str(int(datetime_to_epoch(datetime.datetime(2016, 1, 1))))
-        self.run_locally_split('RangeMonthly --of wohoo.MyTask --now {now} --start 2015-12 --stop 2016-01'.format(now=now))
-        self.assertEqual(MyTask(month_param=datetime.date(1934, 12, 1)).secret, 'yay')
+        self.run_locally_split('RangeMonthly --of wohoo.MyStep --now {now} --start 2015-12 --stop 2016-01'.format(now=now))
+        self.assertEqual(MyStep(month_param=datetime.date(1934, 12, 1)).secret, 'yay')
 
     def test_param_name(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             some_non_range_param = luigi.Parameter(default='woo')
             month_param = luigi.MonthParameter()
 
             def complete(self):
                 return False
 
-        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
-                                  of=MyTask,
+        range_step = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyStep,
                                   start=datetime.date(2015, 12, 1),
                                   stop=datetime.date(2016, 1, 1),
                                   param_name='month_param')
-        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_param_name_with_inferred_fs(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             some_non_range_param = luigi.Parameter(default='woo')
             month_param = luigi.MonthParameter()
 
             def output(self):
                 return MockTarget(self.month_param.strftime('/n2000y01a05n/%Y_%m-aww/21mm%Hdara21/ooo'))
 
-        range_task = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
-                                  of=MyTask,
+        range_step = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2016, 1, 1)),
+                                  of=MyStep,
                                   start=datetime.date(2015, 12, 1),
                                   stop=datetime.date(2016, 1, 1),
                                   param_name='month_param')
-        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_of_param_distinction(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             arbitrary_param = luigi.Parameter(default='foo')
             arbitrary_integer_param = luigi.IntParameter(default=10)
             month_param = luigi.MonthParameter()
@@ -1170,20 +1170,20 @@ class MonthInstantiationTest(LuigiTestCase):
             def complete(self):
                 return False
 
-        range_task_1 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                    of=MyTask,
+        range_step_1 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyStep,
                                     start=datetime.date(2015, 12, 1),
                                     stop=datetime.date(2016, 1, 1))
-        range_task_2 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                    of=MyTask,
+        range_step_2 = RangeMonthly(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyStep,
                                     of_params=dict(arbitrary_param="bar", abitrary_integer_param=2),
                                     start=datetime.date(2015, 12, 1),
                                     stop=datetime.date(2016, 1, 1))
-        self.assertNotEqual(range_task_1.task_id, range_task_2.task_id)
+        self.assertNotEqual(range_step_1.step_id, range_step_2.step_id)
 
     def test_of_param_commandline(self):
-        class MyTask(luigi.Task):
-            task_namespace = "wohoo"
+        class MyStep(luigi.Step):
+            step_namespace = "wohoo"
             month_param = luigi.MonthParameter()
             arbitrary_param = luigi.Parameter(default='foo')
             arbitrary_integer_param = luigi.IntParameter(default=10)
@@ -1195,19 +1195,19 @@ class MonthInstantiationTest(LuigiTestCase):
 
             def run(self):
                 self.comp = True
-                MyTask.state = (self.arbitrary_param, self.arbitrary_integer_param)
+                MyStep.state = (self.arbitrary_param, self.arbitrary_integer_param)
 
         now = str(int(datetime_to_epoch(datetime.datetime(2016, 1, 1))))
-        self.run_locally(['RangeMonthly', '--of', 'wohoo.MyTask',
+        self.run_locally(['RangeMonthly', '--of', 'wohoo.MyStep',
                           '--of-params', '{"arbitrary_param":"bar","arbitrary_integer_param":5}',
                           '--now', '{0}'.format(now), '--start', '2015-12', '--stop', '2016-01'])
-        self.assertEqual(MyTask.state, ('bar', 5))
+        self.assertEqual(MyStep.state, ('bar', 5))
 
 
 class RangeDailyTest(unittest.TestCase):
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteDailyTask(luigi.Task):
+        class BulkCompleteDailyStep(luigi.Step):
             d = luigi.DateParameter()
 
             @classmethod
@@ -1217,21 +1217,21 @@ class RangeDailyTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                          of=BulkCompleteDailyTask,
+        step = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                          of=BulkCompleteDailyStep,
                           start=datetime.date(2015, 11, 1),
                           stop=datetime.date(2015, 12, 1))
 
         expected = [
-            'BulkCompleteDailyTask(d=2015-11-29)',
-            'BulkCompleteDailyTask(d=2015-11-30)',
+            'BulkCompleteDailyStep(d=2015-11-29)',
+            'BulkCompleteDailyStep(d=2015-11-30)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteDailyTask(luigi.Task):
+        class BulkCompleteDailyStep(luigi.Step):
             non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
             d = luigi.DateParameter()
             arbitrary_argument = luigi.BoolParameter()
@@ -1246,17 +1246,17 @@ class RangeDailyTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                          of=BulkCompleteDailyTask,
+        step = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                          of=BulkCompleteDailyStep,
                           of_params=dict(arbitrary_argument=True),
                           start=datetime.date(2015, 11, 1),
                           stop=datetime.date(2015, 12, 1))
         expected = [
-            'BulkCompleteDailyTask(d=2015-11-29, arbitrary_argument=True)',
-            'BulkCompleteDailyTask(d=2015-11-30, arbitrary_argument=True)',
+            'BulkCompleteDailyStep(d=2015-11-29, arbitrary_argument=True)',
+            'BulkCompleteDailyStep(d=2015-11-30, arbitrary_argument=True)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     @mock.patch('luigi.mock.MockFileSystem.listdir',
@@ -1267,24 +1267,24 @@ class RangeDailyTest(unittest.TestCase):
                 ]))
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
-    def test_missing_tasks_correctly_required(self):
-        class SomeDailyTask(luigi.Task):
+    def test_missing_steps_correctly_required(self):
+        class SomeDailyStep(luigi.Step):
             d = luigi.DateParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/ZOOO'))
 
-        task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
-                          of=SomeDailyTask,
+        step = RangeDaily(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                          of=SomeDailyStep,
                           start=datetime.date(2014, 3, 20),
-                          task_limit=3,
+                          step_limit=3,
                           days_back=3 * 365)
         expected = [
-            'SomeDailyTask(d=2014-03-20)',
-            'SomeDailyTask(d=2014-03-22)',
-            'SomeDailyTask(d=2014-03-25)',
+            'SomeDailyStep(d=2014-03-20)',
+            'SomeDailyStep(d=2014-03-22)',
+            'SomeDailyStep(d=2014-03-25)',
         ]
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
 
@@ -1294,34 +1294,34 @@ class RangeHourlyTest(unittest.TestCase):
     @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
-    def test_missing_tasks_correctly_required(self):
-        for task_path in task_a_paths:
-            MockTarget(task_path)
+    def test_missing_steps_correctly_required(self):
+        for step_path in step_a_paths:
+            MockTarget(step_path)
         # this test takes a few seconds. Since stop is not defined,
         # finite_datetimes constitute many years to consider
-        task = RangeHourly(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
-                           of=TaskA,
+        step = RangeHourly(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                           of=StepA,
                            start=datetime.datetime(2014, 3, 20, 17),
-                           task_limit=3,
+                           step_limit=3,
                            hours_back=3 * 365 * 24)
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected_a)
 
     @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
-    def test_missing_wrapper_tasks_correctly_required(self):
-        task = RangeHourly(
+    def test_missing_wrapper_steps_correctly_required(self):
+        step = RangeHourly(
             now=datetime_to_epoch(datetime.datetime(2040, 4, 1)),
-            of=CommonWrapperTask,
+            of=CommonWrapperStep,
             start=datetime.datetime(2014, 3, 20, 23),
             stop=datetime.datetime(2014, 3, 21, 6),
             hours_back=30 * 365 * 24)
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected_wrapper)
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteHourlyTask(luigi.Task):
+        class BulkCompleteHourlyStep(luigi.Step):
             dh = luigi.DateHourParameter()
 
             @classmethod
@@ -1331,21 +1331,21 @@ class RangeHourlyTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                           of=BulkCompleteHourlyTask,
+        step = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                           of=BulkCompleteHourlyStep,
                            start=datetime.datetime(2015, 11, 1),
                            stop=datetime.datetime(2015, 12, 1))
 
         expected = [
-            'BulkCompleteHourlyTask(dh=2015-11-30T22)',
-            'BulkCompleteHourlyTask(dh=2015-11-30T23)',
+            'BulkCompleteHourlyStep(dh=2015-11-30T22)',
+            'BulkCompleteHourlyStep(dh=2015-11-30T23)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteHourlyTask(luigi.Task):
+        class BulkCompleteHourlyStep(luigi.Step):
             non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
             dh = luigi.DateHourParameter()
             arbitrary_argument = luigi.BoolParameter()
@@ -1359,33 +1359,33 @@ class RangeHourlyTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                           of=BulkCompleteHourlyTask,
+        step = RangeHourly(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                           of=BulkCompleteHourlyStep,
                            of_params=dict(arbitrary_argument=True),
                            start=datetime.datetime(2015, 11, 1),
                            stop=datetime.datetime(2015, 12, 1))
 
         expected = [
-            'BulkCompleteHourlyTask(dh=2015-11-30T22, arbitrary_argument=True)',
-            'BulkCompleteHourlyTask(dh=2015-11-30T23, arbitrary_argument=True)',
+            'BulkCompleteHourlyStep(dh=2015-11-30T22, arbitrary_argument=True)',
+            'BulkCompleteHourlyStep(dh=2015-11-30T23, arbitrary_argument=True)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_false)
     def test_missing_directory(self):
-        task = RangeHourly(now=datetime_to_epoch(
+        step = RangeHourly(now=datetime_to_epoch(
                            datetime.datetime(2014, 4, 1)),
-                           of=TaskC,
+                           of=StepC,
                            start=datetime.datetime(2014, 3, 20, 23),
                            stop=datetime.datetime(2014, 3, 21, 1))
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
         expected = [
-            'TaskC(dh=2014-03-20T23)',
-            'TaskC(dh=2014-03-21T00)']
-        self.assertEqual([str(t) for t in task.requires()], expected)
+            'StepC(dh=2014-03-20T23)',
+            'StepC(dh=2014-03-21T00)']
+        self.assertEqual([str(t) for t in step.requires()], expected)
 
 
 class RangeByMinutesTest(unittest.TestCase):
@@ -1394,52 +1394,52 @@ class RangeByMinutesTest(unittest.TestCase):
     @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
-    def test_missing_tasks_correctly_required(self):
-        expected_tasks = [
-            'SomeByMinutesTask(d=2016-03-31T0000)',
-            'SomeByMinutesTask(d=2016-03-31T0005)',
-            'SomeByMinutesTask(d=2016-03-31T0010)']
+    def test_missing_steps_correctly_required(self):
+        expected_steps = [
+            'SomeByMinutesStep(d=2016-03-31T0000)',
+            'SomeByMinutesStep(d=2016-03-31T0005)',
+            'SomeByMinutesStep(d=2016-03-31T0010)']
 
-        class SomeByMinutesTask(luigi.Task):
+        class SomeByMinutesStep(luigi.Step):
             d = luigi.DateMinuteParameter()
 
             def output(self):
                 return MockTarget(self.d.strftime('/data/2014/p/v/z/%Y_/_%m-_-%doctor/20/%HZ%MOOO'))
 
-        for task_path in task_a_paths:
-            MockTarget(task_path)
+        for step_path in step_a_paths:
+            MockTarget(step_path)
         # this test takes a few seconds. Since stop is not defined,
         # finite_datetimes constitute many years to consider
-        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
-                              of=SomeByMinutesTask,
+        step = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2016, 4, 1)),
+                              of=SomeByMinutesStep,
                               start=datetime.datetime(2014, 3, 20, 17),
-                              task_limit=3,
+                              step_limit=3,
                               minutes_back=24 * 60,
                               minutes_interval=5)
-        actual = [str(t) for t in task.requires()]
-        self.assertEqual(actual, expected_tasks)
+        actual = [str(t) for t in step.requires()]
+        self.assertEqual(actual, expected_steps)
 
     @mock.patch('luigi.mock.MockFileSystem.listdir', new=mock_listdir(mock_contents))
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_true)
-    def test_missing_wrapper_tasks_correctly_required(self):
+    def test_missing_wrapper_steps_correctly_required(self):
         expected_wrapper = [
-            'CommonWrapperTaskMinutes(dm=2014-03-20T2300)',
-            'CommonWrapperTaskMinutes(dm=2014-03-20T2305)',
-            'CommonWrapperTaskMinutes(dm=2014-03-20T2310)',
-            'CommonWrapperTaskMinutes(dm=2014-03-20T2315)']
-        task = RangeByMinutes(
+            'CommonWrapperStepMinutes(dm=2014-03-20T2300)',
+            'CommonWrapperStepMinutes(dm=2014-03-20T2305)',
+            'CommonWrapperStepMinutes(dm=2014-03-20T2310)',
+            'CommonWrapperStepMinutes(dm=2014-03-20T2315)']
+        step = RangeByMinutes(
             now=datetime_to_epoch(datetime.datetime(2040, 4, 1, 0, 0, 0)),
-            of=CommonWrapperTaskMinutes,
+            of=CommonWrapperStepMinutes,
             start=datetime.datetime(2014, 3, 20, 23, 0, 0),
             stop=datetime.datetime(2014, 3, 20, 23, 20, 0),
             minutes_back=30 * 365 * 24 * 60,
             minutes_interval=5)
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected_wrapper)
 
     def test_bulk_complete_correctly_interfaced(self):
-        class BulkCompleteByMinutesTask(luigi.Task):
+        class BulkCompleteByMinutesStep(luigi.Step):
             dh = luigi.DateMinuteParameter()
 
             @classmethod
@@ -1449,22 +1449,22 @@ class RangeByMinutesTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                              of=BulkCompleteByMinutesTask,
+        step = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                              of=BulkCompleteByMinutesStep,
                               start=datetime.datetime(2015, 11, 1),
                               stop=datetime.datetime(2015, 12, 1),
                               minutes_interval=5)
 
         expected = [
-            'BulkCompleteByMinutesTask(dh=2015-11-30T2350)',
-            'BulkCompleteByMinutesTask(dh=2015-11-30T2355)',
+            'BulkCompleteByMinutesStep(dh=2015-11-30T2350)',
+            'BulkCompleteByMinutesStep(dh=2015-11-30T2355)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     def test_bulk_complete_of_params(self):
-        class BulkCompleteByMinutesTask(luigi.Task):
+        class BulkCompleteByMinutesStep(luigi.Step):
             non_positional_arbitrary_argument = luigi.Parameter(default="whatever", positional=False, significant=False)
             dh = luigi.DateMinuteParameter()
             arbitrary_argument = luigi.BoolParameter()
@@ -1479,35 +1479,35 @@ class RangeByMinutesTest(unittest.TestCase):
             def output(self):
                 raise RuntimeError("Shouldn't get called while resolving deps via bulk_complete")
 
-        task = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
-                              of=BulkCompleteByMinutesTask,
+        step = RangeByMinutes(now=datetime_to_epoch(datetime.datetime(2015, 12, 1)),
+                              of=BulkCompleteByMinutesStep,
                               of_params=dict(arbitrary_argument=True),
                               start=datetime.datetime(2015, 11, 1),
                               stop=datetime.datetime(2015, 12, 1),
                               minutes_interval=5)
 
         expected = [
-            'BulkCompleteByMinutesTask(dh=2015-11-30T2350, arbitrary_argument=True)',
-            'BulkCompleteByMinutesTask(dh=2015-11-30T2355, arbitrary_argument=True)',
+            'BulkCompleteByMinutesStep(dh=2015-11-30T2350, arbitrary_argument=True)',
+            'BulkCompleteByMinutesStep(dh=2015-11-30T2355, arbitrary_argument=True)',
         ]
 
-        actual = [str(t) for t in task.requires()]
+        actual = [str(t) for t in step.requires()]
         self.assertEqual(actual, expected)
 
     @mock.patch('luigi.mock.MockFileSystem.exists',
                 new=mock_exists_always_false)
     def test_missing_directory(self):
-        task = RangeByMinutes(now=datetime_to_epoch(
+        step = RangeByMinutes(now=datetime_to_epoch(
                            datetime.datetime(2014, 3, 21, 0, 0)),
-                           of=TaskMinutesC,
+                           of=StepMinutesC,
                            start=datetime.datetime(2014, 3, 20, 23, 11),
                            stop=datetime.datetime(2014, 3, 20, 23, 21),
                            minutes_interval=5)
-        self.assertFalse(task.complete())
+        self.assertFalse(step.complete())
         expected = [
-            'TaskMinutesC(dm=2014-03-20T2315)',
-            'TaskMinutesC(dm=2014-03-20T2320)']
-        self.assertEqual([str(t) for t in task.requires()], expected)
+            'StepMinutesC(dm=2014-03-20T2315)',
+            'StepMinutesC(dm=2014-03-20T2320)']
+        self.assertEqual([str(t) for t in step.requires()], expected)
 
 
 class RangeInstantiationTest(LuigiTestCase):
@@ -1516,26 +1516,26 @@ class RangeInstantiationTest(LuigiTestCase):
         """
         Verify that you can still programmatically set of param as string
         """
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             date_param = luigi.DateParameter()
 
             def complete(self):
                 return False
 
-        range_task = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                    of=MyTask,
+        range_step = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyStep,
                                     start=datetime.date(2015, 12, 1),
                                     stop=datetime.date(2015, 12, 2))
-        expected_task = MyTask(date_param=datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep(date_param=datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_cli_instantiation(self):
         """
         Verify that you can still use Range through CLI
         """
 
-        class MyTask(luigi.Task):
-            task_namespace = "wohoo"
+        class MyStep(luigi.Step):
+            step_namespace = "wohoo"
             date_param = luigi.DateParameter()
             secret = 'some-value-to-sooth-python-linters'
             comp = False
@@ -1545,46 +1545,46 @@ class RangeInstantiationTest(LuigiTestCase):
 
             def run(self):
                 self.comp = True
-                MyTask.secret = 'yay'
+                MyStep.secret = 'yay'
 
         now = str(int(datetime_to_epoch(datetime.datetime(2015, 12, 2))))
-        self.run_locally_split('RangeDailyBase --of wohoo.MyTask --now {now} --start 2015-12-01 --stop 2015-12-02'.format(now=now))
-        self.assertEqual(MyTask(date_param=datetime.date(1934, 12, 1)).secret, 'yay')
+        self.run_locally_split('RangeDailyBase --of wohoo.MyStep --now {now} --start 2015-12-01 --stop 2015-12-02'.format(now=now))
+        self.assertEqual(MyStep(date_param=datetime.date(1934, 12, 1)).secret, 'yay')
 
     def test_param_name(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             some_non_range_param = luigi.Parameter(default='woo')
             date_param = luigi.DateParameter()
 
             def complete(self):
                 return False
 
-        range_task = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                    of=MyTask,
+        range_step = RangeDailyBase(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                    of=MyStep,
                                     start=datetime.date(2015, 12, 1),
                                     stop=datetime.date(2015, 12, 2),
                                     param_name='date_param')
-        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_param_name_with_inferred_fs(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             some_non_range_param = luigi.Parameter(default='woo')
             date_param = luigi.DateParameter()
 
             def output(self):
                 return MockTarget(self.date_param.strftime('/n2000y01a05n/%Y_%m-_-%daww/21mm%Hdara21/ooo'))
 
-        range_task = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                of=MyTask,
+        range_step = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                of=MyStep,
                                 start=datetime.date(2015, 12, 1),
                                 stop=datetime.date(2015, 12, 2),
                                 param_name='date_param')
-        expected_task = MyTask('woo', datetime.date(2015, 12, 1))
-        self.assertEqual(expected_task, list(range_task._requires())[0])
+        expected_step = MyStep('woo', datetime.date(2015, 12, 1))
+        self.assertEqual(expected_step, list(range_step._requires())[0])
 
     def test_of_param_distinction(self):
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             arbitrary_param = luigi.Parameter(default='foo')
             arbitrary_integer_param = luigi.IntParameter(default=10)
             date_param = luigi.DateParameter()
@@ -1592,20 +1592,20 @@ class RangeInstantiationTest(LuigiTestCase):
             def complete(self):
                 return False
 
-        range_task_1 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                  of=MyTask,
+        range_step_1 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                  of=MyStep,
                                   start=datetime.date(2015, 12, 1),
                                   stop=datetime.date(2015, 12, 2))
-        range_task_2 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
-                                  of=MyTask,
+        range_step_2 = RangeDaily(now=datetime_to_epoch(datetime.datetime(2015, 12, 2)),
+                                  of=MyStep,
                                   of_params=dict(arbitrary_param="bar", abitrary_integer_param=2),
                                   start=datetime.date(2015, 12, 1),
                                   stop=datetime.date(2015, 12, 2))
-        self.assertNotEqual(range_task_1.task_id, range_task_2.task_id)
+        self.assertNotEqual(range_step_1.step_id, range_step_2.step_id)
 
     def test_of_param_commandline(self):
-        class MyTask(luigi.Task):
-            task_namespace = "wohoo"
+        class MyStep(luigi.Step):
+            step_namespace = "wohoo"
             date_param = luigi.DateParameter()
             arbitrary_param = luigi.Parameter(default='foo')
             arbitrary_integer_param = luigi.IntParameter(default=10)
@@ -1617,9 +1617,9 @@ class RangeInstantiationTest(LuigiTestCase):
 
             def run(self):
                 self.comp = True
-                MyTask.state = (self.arbitrary_param, self.arbitrary_integer_param)
+                MyStep.state = (self.arbitrary_param, self.arbitrary_integer_param)
 
         now = str(int(datetime_to_epoch(datetime.datetime(2015, 12, 2))))
-        self.run_locally(['RangeDailyBase', '--of', 'wohoo.MyTask', '--of-params', '{"arbitrary_param":"bar","arbitrary_integer_param":5}',
+        self.run_locally(['RangeDailyBase', '--of', 'wohoo.MyStep', '--of-params', '{"arbitrary_param":"bar","arbitrary_integer_param":5}',
                           '--now', '{0}'.format(now), '--start', '2015-12-01', '--stop', '2015-12-02'])
-        self.assertEqual(MyTask.state, ('bar', 5))
+        self.assertEqual(MyStep.state, ('bar', 5))

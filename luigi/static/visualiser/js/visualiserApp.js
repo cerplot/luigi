@@ -4,11 +4,11 @@ function visualiserApp(luigi) {
     var dt; // DataTable instantiated in $(document).ready()
     var missingCategories = {};
     var currentFilter = {
-        taskFamily: "",
-        taskCategory: [],
+        stepFamily: "",
+        stepCategory: [],
         tableFilter: ""
     };
-    var taskIcons = {
+    var stepIcons = {
         PENDING: 'pause',
         RUNNING: 'play',
         BATCH_RUNNING: 'play',
@@ -47,42 +47,42 @@ function visualiserApp(luigi) {
         return dateObject.getHours() + ":" + dateObject.getMinutes() + ":" + dateObject.getSeconds();
     }
 
-    function taskToDisplayTask(task) {
-        var taskName = task.name;
-        var taskParams = JSON.stringify(task.params);
-        var displayTime = new Date(Math.floor(task.last_updated*1000)).toLocaleString();
+    function stepToDisplayStep(step) {
+        var stepName = step.name;
+        var stepParams = JSON.stringify(step.params);
+        var displayTime = new Date(Math.floor(step.last_updated*1000)).toLocaleString();
         var time_running = -1;
-        if (task.status == "RUNNING" && "time_running" in task) {
+        if (step.status == "RUNNING" && "time_running" in step) {
             var current_time = new Date().getTime();
-            var minutes_running = Math.round((current_time - task.time_running * 1000) / 1000 / 60);
-            time_running = task.time_running;
+            var minutes_running = Math.round((current_time - step.time_running * 1000) / 1000 / 60);
+            time_running = step.time_running;
             displayTime += " | " + minutes_running + " minutes";
         }
         return {
-            taskId: task.taskId,
-            encodedTaskId: encodeURIComponent(task.taskId),
-            taskName: taskName,
-            taskParams: taskParams,
-            displayName: task.display_name,
-            priority: task.priority,
-            resources: JSON.stringify(task.resources_running || task.resources).replace(/,"/g, ', "'),
+            stepId: step.stepId,
+            encodedStepId: encodeURIComponent(step.stepId),
+            stepName: stepName,
+            stepParams: stepParams,
+            displayName: step.display_name,
+            priority: step.priority,
+            resources: JSON.stringify(step.resources_running || step.resources).replace(/,"/g, ', "'),
             displayTime: displayTime,
-            displayTimestamp: task.last_updated,
+            displayTimestamp: step.last_updated,
             timeRunning: time_running,
-            trackingUrl: task.tracking_url,
-            status: task.status,
-            graph: (task.status == "PENDING" || task.status == "RUNNING" || task.status == "DONE"),
-            error: task.status == "FAILED",
-            re_enable: task.status == "DISABLED" && task.re_enable_able,
-            mark_as_done: (task.status == "RUNNING" || task.status == "FAILED" || task.status == "DISABLED"),
-            statusMessage: task.status_message,
-            progressPercentage: task.progress_percentage,
-            acceptsMessages: task.accepts_messages,
-            workerIdRunning: task.worker_running,
+            trackingUrl: step.tracking_url,
+            status: step.status,
+            graph: (step.status == "PENDING" || step.status == "RUNNING" || step.status == "DONE"),
+            error: step.status == "FAILED",
+            re_enable: step.status == "DISABLED" && step.re_enable_able,
+            mark_as_done: (step.status == "RUNNING" || step.status == "FAILED" || step.status == "DISABLED"),
+            statusMessage: step.status_message,
+            progressPercentage: step.progress_percentage,
+            acceptsMessages: step.accepts_messages,
+            workerIdRunning: step.worker_running,
         };
     }
 
-    function taskCategoryIcon(category) {
+    function stepCategoryIcon(category) {
         var iconClass;
         var iconColor;
         switch (category) {
@@ -133,7 +133,7 @@ function visualiserApp(luigi) {
         if (activeBoxes === undefined) {
             activeBoxes = getActiveBoxes();
         }
-        currentFilter.taskCategory = activeBoxes;
+        currentFilter.stepCategory = activeBoxes;
         dt.column(0).search(categoryQuery(activeBoxes), regex=true).draw();
     }
 
@@ -154,13 +154,13 @@ function visualiserApp(luigi) {
         return activeBoxes;
     }
 
-    function filterByTaskFamily(taskFamily, dt) {
-        currentFilter.taskFamily = taskFamily;
-        if (taskFamily === "") {
+    function filterByStepFamily(stepFamily, dt) {
+        currentFilter.stepFamily = stepFamily;
+        if (stepFamily === "") {
             dt.column(1).search('').draw();
         }
         else {
-            dt.column(1).search('^' + taskFamily + '$', regex = true).draw();
+            dt.column(1).search('^' + stepFamily + '$', regex = true).draw();
         }
     }
 
@@ -181,38 +181,38 @@ function visualiserApp(luigi) {
         }
     }
 
-    function renderSidebar(tasks) {
-        // tasks is a list of task names
+    function renderSidebar(steps) {
+        // steps is a list of step names
         var counts = {};
-        $.each(tasks, function(i) {
-            var name = tasks[i];
+        $.each(steps, function(i) {
+            var name = steps[i];
             if (counts[name] === undefined) {
                 counts[name] = 0;
             }
             counts[name] += 1;
         });
-        var taskList = [];
+        var stepList = [];
         $.each(counts, function (name) {
             var dotIndex = name.indexOf('.');
             var prefix = 'Others';
             if (dotIndex > 0) {
                 prefix = name.slice(0, dotIndex);
             }
-            var prefixList = taskList.find(function (pref) {
+            var prefixList = stepList.find(function (pref) {
                 return pref.name == prefix;
             })
             if (prefixList) {
-                prefixList.tasks.push({name: name, count: counts[name]});
+                prefixList.steps.push({name: name, count: counts[name]});
             } else {
                 prefixList = {
                     name: prefix,
-                    tasks: [{name: name, count: counts[name]}]
+                    steps: [{name: name, count: counts[name]}]
                 }
-                taskList.push(prefixList);
+                stepList.push(prefixList);
             }
 
         });
-        taskList.sort(function(a,b){
+        stepList.sort(function(a,b){
             if (a.name == 'Others') {
                 if (b.name == 'Others') {
                     return 0;
@@ -223,19 +223,19 @@ function visualiserApp(luigi) {
             }
             return a.name.localeCompare(b.name);
         });
-        taskList.forEach(function(p){
-            p.tasks.sort(function(a,b){
+        stepList.forEach(function(p){
+            p.steps.sort(function(a,b){
                 return a.name.localeCompare(b.name);
             });
         });
-        return renderTemplate("sidebarTemplate", {"tasks": taskList});
+        return renderTemplate("sidebarTemplate", {"steps": stepList});
     }
 
     function selectSidebarItem(item) {
         var sidebarItems = $('.sidebar').find('li');
         sidebarItems.each(function (i) {
             var item2 = sidebarItems[i];
-            if (item2.dataset.task === undefined) {
+            if (item2.dataset.step === undefined) {
                 return;
             }
             if (item === item2) {
@@ -266,9 +266,9 @@ function visualiserApp(luigi) {
     }
 
     function processWorker(worker) {
-        worker.encoded_first_task = encodeURIComponent(worker.first_task);
-        worker.tasks = worker.running.map(taskToDisplayTask);
-        worker.tasks.sort(function(task1, task2) { return task1.timeRunning - task2.timeRunning; });
+        worker.encoded_first_step = encodeURIComponent(worker.first_step);
+        worker.steps = worker.running.map(stepToDisplayStep);
+        worker.steps.sort(function(step1, step2) { return step1.timeRunning - step2.timeRunning; });
         worker.start_time = new Date(worker.started * 1000).toLocaleString();
         worker.active = new Date(worker.last_active * 1000).toLocaleString();
         worker.is_disabled = worker.state === 'disabled';
@@ -280,7 +280,7 @@ function visualiserApp(luigi) {
     }
 
     function processResource(resource) {
-        resource.tasks = resource.running.map(taskToDisplayTask);
+        resource.steps = resource.running.map(stepToDisplayStep);
         resource.percent_used = 100 * resource.num_used / resource.num_total;
         if (resource.percent_used >= 100) {
             resource.bar_type = 'danger';
@@ -325,8 +325,8 @@ function visualiserApp(luigi) {
 
     function showErrorTrace(data) {
         data.error = decodeError(data.error);
-        if (data.taskParams) {
-          data.taskParams = Object.entries(data.taskParams).map(([k,v]) => `--${k.replace(/_/g, '-')} ${JSON.stringify(v)}`).join(" ");
+        if (data.stepParams) {
+          data.stepParams = Object.entries(data.stepParams).map(([k,v]) => `--${k.replace(/_/g, '-')} ${JSON.stringify(v)}`).join(" ");
         }
         $("#errorModal").empty().append(renderTemplate("errorTemplate", data));
         $("#errorModal").modal({});
@@ -339,21 +339,21 @@ function visualiserApp(luigi) {
                 if ($("#statusMessageModal").is(":hidden"))
                     clearInterval(refreshInterval);
                 else {
-                    luigi.getTaskStatusMessage(data.taskId, function(data) {
+                    luigi.getStepStatusMessage(data.stepId, function(data) {
                         if (data.statusMessage === null)
                             $("#statusMessageModal pre").hide();
                         else {
                             $("#statusMessageModal pre").html(data.statusMessage).show();
                         }
                     });
-                    luigi.getTaskProgressPercentage(data.taskId, function(data) {
+                    luigi.getStepProgressPercentage(data.stepId, function(data) {
                         // show or hide the progress bar container in the message modal
                         $("#statusMessageModal .progress").toggle(data.progressPercentage !== null);
 
                         // adjust the status of both progress bars (message modal and worker list)
                         var value = data.progressPercentage || 0;
                         var progressBars = $('#statusMessageModal .progress-bar, ' +
-                            '.worker-table tbody .taskProgressBar[data-task-id="' + data.taskId + '"]');
+                            '.worker-table tbody .stepProgressBar[data-step-id="' + data.stepId + '"]');
                         progressBars.attr('aria-valuenow', value)
                             .text(value + '%')
                             .css({'width': value + '%'});
@@ -390,9 +390,9 @@ function visualiserApp(luigi) {
                     $responseContainer.show();
                     $responseSpinner.show();
                     $responseContent.empty();
-                    luigi.sendSchedulerMessage(data.worker, data.taskId, content, function(messageId) {
+                    luigi.sendSchedulerMessage(data.worker, data.stepId, content, function(messageId) {
                         var interval = window.setInterval(function() {
-                            luigi.getSchedulerMessageResponse(data.taskId, messageId, function(response) {
+                            luigi.getSchedulerMessageResponse(data.stepId, messageId, function(response) {
                                 if (response != null) {
                                     clearInterval(interval);
                                     $responseSpinner.hide();
@@ -404,7 +404,7 @@ function visualiserApp(luigi) {
                     $event.stopPropagation();
                 } else {
                     $responseContainer.hide();
-                    luigi.sendSchedulerMessage(data.worker, data.taskId, content);
+                    luigi.sendSchedulerMessage(data.worker, data.stepId, content);
                 }
             }
         });
@@ -420,7 +420,7 @@ function visualiserApp(luigi) {
         var extraNodes = [];
         var seen = {};
         $.each(dependencyGraph, function(i, node) {
-            seen[node.taskId] = true;
+            seen[node.stepId] = true;
         });
         $.each(dependencyGraph, function(i, node) {
             $.each(node.deps, function(j, dep) {
@@ -437,7 +437,7 @@ function visualiserApp(luigi) {
 
                     extraNodes.push({
                         name: (/(\w+)\(/.exec(dep) || [])[1],
-                        taskId: dep,
+                        stepId: dep,
                         deps: [],
                         params: params,
                         status: "TRUNCATED"
@@ -448,7 +448,7 @@ function visualiserApp(luigi) {
         return dependencyGraph.concat(extraNodes);
     }
 
-    function makeGraphCallback(visType, taskId, paint) {
+    function makeGraphCallback(visType, stepId, paint) {
         function depGraphCallbackD3(dependencyGraph) {
             $("#searchError").empty();
             $("#searchError").removeClass();
@@ -471,7 +471,7 @@ function visualiserApp(luigi) {
                 }
             } else {
                 $("#searchError").addClass("alert alert-error");
-                $("#searchError").text("Couldn't find task " + taskId);
+                $("#searchError").text("Couldn't find step " + stepId);
             }
             drawGraphETL(dependencyGraph, paint);
             bindGraphEvents();
@@ -484,14 +484,14 @@ function visualiserApp(luigi) {
             if(dependencyGraph.length > 0) {
                 $("#dependencyTitle").text(dependencyGraph[0].display_name);
                 var hashBaseObj = URI.parseQuery(location.hash.replace('#', ''));
-                delete hashBaseObj.taskId;
-                var hashBase = '#' + URI.buildQuery(hashBaseObj) + '&taskId=';
+                delete hashBaseObj.stepId;
+                var hashBase = '#' + URI.buildQuery(hashBaseObj) + '&stepId=';
                 $("#graphPlaceholder").get(0).graph.updateData(dependencyGraph, hashBase);
                 $("#graphContainer").show();
                 bindGraphEvents();
             } else {
                 $("#searchError").addClass("alert alert-error");
-                $("#searchError").text("Couldn't find task " + taskId);
+                $("#searchError").text("Couldn't find step " + stepId);
             }
         }
 
@@ -521,37 +521,37 @@ function visualiserApp(luigi) {
             expandResources(fragmentQuery.resources);
             switchTab("resourceList");
         } else if (fragmentQuery.tab == "graph") {
-            var taskId = fragmentQuery.taskId;
+            var stepId = fragmentQuery.stepId;
             var hideDone = fragmentQuery.hideDone === '1' ? true : false;
 
             // Populate fields with values from hash.
             $('#hideDoneCheckbox').prop('checked', hideDone);
             $("#invertCheckbox").prop('checked', fragmentQuery.invert === '1' ? true : false);
-            $("#js-task-id").val(fragmentQuery.taskId);
+            $("#js-step-id").val(fragmentQuery.stepId);
 
             // Empty errors.
             $("#searchError").empty();
             $("#searchError").removeClass();
 
             var visType = fragmentQuery.visType || VISTYPE_DEFAULT;
-            if (taskId) {
-                var depGraphCallback = makeGraphCallback(visType, taskId, paint);
+            if (stepId) {
+                var depGraphCallback = makeGraphCallback(visType, stepId, paint);
 
                 if (fragmentQuery.invert) {
-                    luigi.getInverseDependencyGraph(taskId, depGraphCallback, !hideDone);
+                    luigi.getInverseDependencyGraph(stepId, depGraphCallback, !hideDone);
                 } else {
-                    luigi.getDependencyGraph(taskId, depGraphCallback, !hideDone);
+                    luigi.getDependencyGraph(stepId, depGraphCallback, !hideDone);
                 }
             }
             updateVisType(visType);
             initVisualisation(visType);
             switchTab("dependencyGraph");
         } else {
-            // Tasks tab.
+            // Steps tab.
 
             // Populate fields with values from hash.
             if (fragmentQuery.length) {
-                $('select[name=taskTable_length]').val(fragmentQuery.length);
+                $('select[name=stepTable_length]').val(fragmentQuery.length);
             }
             $("#serverSideCheckbox").prop('checked', fragmentQuery.filterOnServer === '1' ? true : false);
             dt.search(fragmentQuery.search__search);
@@ -559,10 +559,10 @@ function visualiserApp(luigi) {
             $('#familySidebar li').removeClass('active');
             $('#familySidebar li .badge').removeClass('bg-green');
             if (fragmentQuery.family) {
-                family_item = $('#familySidebar li[data-task="' + fragmentQuery.family + '"]');
+                family_item = $('#familySidebar li[data-step="' + fragmentQuery.family + '"]');
                 family_item.addClass('active');
                 family_item.find('.badge').addClass('bg-green');
-                filterByTaskFamily(fragmentQuery.family, dt);
+                filterByStepFamily(fragmentQuery.family, dt);
             }
 
             if (fragmentQuery.statuses) {
@@ -577,7 +577,7 @@ function visualiserApp(luigi) {
                 dt.order([fragmentQuery.order.split(',')]);
             }
             dt.draw();
-            switchTab("taskList");
+            switchTab("stepList");
         }
     }
 
@@ -586,28 +586,28 @@ function visualiserApp(luigi) {
         var visType = fragmentQuery.visType;
         if (visType === 'd3') {
             $('.node').click(function(event) {
-                var taskDiv = $(this).find('.taskNode');
-                var taskId = taskDiv.attr("data-task-id");
+                var stepDiv = $(this).find('.stepNode');
+                var stepId = stepDiv.attr("data-step-id");
                 event.preventDefault();
                 // NOTE : hasClass() not reliable inside SVG
                 if ($(this).attr('class').match(/\bFAILED\b/)) {
-                    luigi.getErrorTrace(taskId, function (error) {
+                    luigi.getErrorTrace(stepId, function (error) {
                         showErrorTrace(error);
                     });
                 }
                 else {
-                    fragmentQuery['taskId'] = taskId;
+                    fragmentQuery['stepId'] = stepId;
                     window.location.href = 'index.html#' + URI.buildQuery(fragmentQuery);
                 }
             });
         }
         else {
             $(".graph-node-a").click(function(event) {
-                var taskId = $(this).attr("data-task-id");
-                var status = $(this).attr("data-task-status");
+                var stepId = $(this).attr("data-step-id");
+                var status = $(this).attr("data-step-status");
                 if (status == "FAILED") {
                     event.preventDefault();
-                    luigi.getErrorTrace(taskId, function(error) {
+                    luigi.getErrorTrace(stepId, function(error) {
                        showErrorTrace(error);
                     });
                 }
@@ -621,7 +621,7 @@ function visualiserApp(luigi) {
         $('#serverSideCheckbox').click(function(e) {
             e.preventDefault();
             changeState('filterOnServer', this.checked ? '1' : null);
-            updateTasks();
+            updateSteps();
         });
 
         $("#invertCheckbox").click(function(e) {
@@ -635,10 +635,10 @@ function visualiserApp(luigi) {
             changeState('hideDone', this.checked ? '1' : null);
         });
         $("a[href=#list]").click(function() { location.hash=""; });
-        $("#loadTaskForm").submit(function(event) {
+        $("#loadStepForm").submit(function(event) {
             event.preventDefault();
-            var taskId = $(this).find("input").val();
-            changeState('taskId', taskId.length > 0 ? taskId : null);
+            var stepId = $(this).find("input").val();
+            changeState('stepId', stepId.length > 0 ? stepId : null);
         });
 
         $('.info-box').on('click', function () {
@@ -655,7 +655,7 @@ function visualiserApp(luigi) {
           When the accompanying button is pressed we force a reload.
          */
         $('#serverSide').on('change', 'label', function () {
-            updateTasks();
+            updateSteps();
         });
     }
 
@@ -666,14 +666,14 @@ function visualiserApp(luigi) {
         }
     }
 
-    function getDurations(tasks, listId){
+    function getDurations(steps, listId){
         var durations = {};
         for (var i = 0; i < listId.length; i++) {
-            for (var j = 0; j < tasks.length; j++) {
-                if (listId[i] === tasks[j].taskId) {
-                    // The duration of the task from when it started running to when it finished.
-                    var finishTime = new Date(tasks[j].last_updated*1000);
-                    var startTime = new Date(tasks[j].time_running*1000);
+            for (var j = 0; j < steps.length; j++) {
+                if (listId[i] === steps[j].stepId) {
+                    // The duration of the step from when it started running to when it finished.
+                    var finishTime = new Date(steps[j].last_updated*1000);
+                    var startTime = new Date(steps[j].time_running*1000);
                     durations[listId[i]] = new Date(finishTime - startTime);
                 }
             }
@@ -681,18 +681,18 @@ function visualiserApp(luigi) {
         return durations;
     }
 
-    function getParam(tasks, id){
-        for (var i = 0; i < tasks.length; i++) {
-            if (tasks[i].taskId === id) {
-                return tasks[i].worker_running;
+    function getParam(steps, id){
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i].stepId === id) {
+                return steps[i].worker_running;
             }
         }
     }
 
-    function getStatusTasks(tasks){
+    function getStatusSteps(steps){
         var status;
-        for (var i = 0; i < tasks.length; i++) {
-            if (tasks[i].status === "DONE") {
+        for (var i = 0; i < steps.length; i++) {
+            if (steps[i].status === "DONE") {
                 status = true;
             } else {
                 return false;
@@ -701,7 +701,7 @@ function visualiserApp(luigi) {
         return status;
     }
 
-    function drawGraphETL(tasks, paint){
+    function drawGraphETL(steps, paint){
         // Set up zoom support
         var svg = d3.select("#mysvg");
         var inner = svg.select("g"),
@@ -711,10 +711,10 @@ function visualiserApp(luigi) {
             });
         svg.call(zoom);
 
-        // Create map of taskId to task
-        var taskIdMap = {};
-        $.each(tasks, function (i, task) {
-            taskIdMap[task.taskId] = task;
+        // Create map of stepId to step
+        var stepIdMap = {};
+        $.each(steps, function (i, step) {
+            stepIdMap[step.stepId] = step;
         });
 
         var render = new dagreD3.render();
@@ -731,16 +731,16 @@ function visualiserApp(luigi) {
         });
 
         function draw(isUpdate) {
-            for (var id in tasks) {
-                var task = tasks[id];
-                var className = task.status;
+            for (var id in steps) {
+                var step = steps[id];
+                var className = step.status;
 
-                var html = "<div class='taskNode' data-task-id='" + task.taskId + "'>";
+                var html = "<div class='stepNode' data-step-id='" + step.stepId + "'>";
                 html += "<span class=status></span>";
-                html += "<span class=name>"+task.name+"</span>";
-                html += "<span class=queue><span class=counter>"+ task.status +"</span></span>";
+                html += "<span class=name>"+step.name+"</span>";
+                html += "<span class=queue><span class=counter>"+ step.status +"</span></span>";
                 html += "</div>";
-                g.setNode(task.taskId, {
+                g.setNode(step.stepId, {
                     labelType: "html",
                     label: html,
                     rx: 5,
@@ -748,27 +748,27 @@ function visualiserApp(luigi) {
                     padding: 0,
                     class: className
                 });
-                if (task.inputQueue) {
-                    for (var i =  0; i < task.inputQueue.length; i++) {
-                        // Destination node may not be in tasks if this is an inverted graph
-                        if (taskIdMap[task.inputQueue[i]] !== undefined) {
-                            if (task.status === "DONE") {
-                                var durations = getDurations(tasks, task.inputQueue);
-                                var duration = durations[task.inputQueue[i]];
+                if (step.inputQueue) {
+                    for (var i =  0; i < step.inputQueue.length; i++) {
+                        // Destination node may not be in steps if this is an inverted graph
+                        if (stepIdMap[step.inputQueue[i]] !== undefined) {
+                            if (step.status === "DONE") {
+                                var durations = getDurations(steps, step.inputQueue);
+                                var duration = durations[step.inputQueue[i]];
                                 var oneDayInMilliseconds = 24 * 60 * 60 * 1000;
                                 var durationLabel;
                                 if (duration.getTime() < oneDayInMilliseconds) {
-                                    // Label task duration in stripped ISO format (hh:mm:ss.f)
+                                    // Label step duration in stripped ISO format (hh:mm:ss.f)
                                     durationLabel = duration.toISOString().substr(11, 12);
                                 } else {
                                     durationLabel = "> 24h";
                                 }
-                                g.setEdge(task.inputQueue[i], task.taskId, {
+                                g.setEdge(step.inputQueue[i], step.stepId, {
                                     label: durationLabel,
                                     width: 40
                                 });
                             } else {
-                                g.setEdge(task.inputQueue[i], task.taskId, {
+                                g.setEdge(step.inputQueue[i], step.stepId, {
                                     width: 40
                                 });
                             }
@@ -796,7 +796,7 @@ function visualiserApp(luigi) {
             }
 
             inner.selectAll("g.node")
-                .attr("title", function(v) { return styleTooltip(v, getParam(tasks, v)); })
+                .attr("title", function(v) { return styleTooltip(v, getParam(steps, v)); })
                 .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
         }
         draw();
@@ -805,9 +805,9 @@ function visualiserApp(luigi) {
     /*
        DataTables functions
      */
-    // Remove tasks of a given category and add new ones.
-    function updateTaskCategory(dt, category, tasks) {
-        var taskMap = {};
+    // Remove steps of a given category and add new ones.
+    function updateStepCategory(dt, category, steps) {
+        var stepMap = {};
 
         var mostImportantCategory = function (cat1, cat2) {
             var priorities = [
@@ -834,35 +834,35 @@ function visualiserApp(luigi) {
         };
 
         dt.rows(function (i, data) {
-            taskMap[data.taskId] = data.category;
+            stepMap[data.stepId] = data.category;
             return data.category === category;
         }).remove();
 
-        var taskCount;
-        /* Check for integers in tasks.  This indicates max-shown-tasks was exceeded */
-        if (tasks.length === 1 && typeof(tasks[0]) === 'number') {
-            taskCount = tasks[0] === -1 ? 'unknown' : tasks[0];
-            missingCategories[category] = {name: category, count: taskCount};
+        var stepCount;
+        /* Check for integers in steps.  This indicates max-shown-steps was exceeded */
+        if (steps.length === 1 && typeof(steps[0]) === 'number') {
+            stepCount = steps[0] === -1 ? 'unknown' : steps[0];
+            missingCategories[category] = {name: category, count: stepCount};
         }
         else {
-            var displayTasks = tasks.map(taskToDisplayTask);
-            displayTasks = displayTasks.filter(function (obj) {
+            var displaySteps = steps.map(stepToDisplayStep);
+            displaySteps = displaySteps.filter(function (obj) {
                 if (obj === null) {
                     return false;
                 }
-                if (category === mostImportantCategory(category, taskMap[obj.taskId])) {
+                if (category === mostImportantCategory(category, stepMap[obj.stepId])) {
                     obj.category = category;
                     return true;
                 }
                 return false;
             });
-            dt.rows.add(displayTasks);
-            taskCount = displayTasks.length;
+            dt.rows.add(displaySteps);
+            stepCount = displaySteps.length;
             delete missingCategories[category];
         }
 
-        $('#'+category+'_info').find('.info-box-number').html(taskCount);
-        $('#'+category+'_info i.fa').removeClass().addClass('fa fa-'+taskIcons[category]);
+        $('#'+category+'_info').find('.info-box-number').html(stepCount);
+        $('#'+category+'_info i.fa').removeClass().addClass('fa fa-'+stepIcons[category]);
     }
 
     function updateCurrentFilter() {
@@ -870,14 +870,14 @@ function visualiserApp(luigi) {
         currentFilter.tableFilter = dt.search();
 
         if ((currentFilter.tableFilter === "") &&
-            ($.isEmptyObject(currentFilter.taskCategory)) &&
-            (currentFilter.taskFamily === "")) {
+            ($.isEmptyObject(currentFilter.stepCategory)) &&
+            (currentFilter.stepFamily === "")) {
 
             content = '';
         }
         else {
-            if (currentFilter.taskCategory !== "") {
-                currentFilter.catNames = $.map(currentFilter.taskCategory, function (x) {
+            if (currentFilter.stepCategory !== "") {
+                currentFilter.catNames = $.map(currentFilter.stepCategory, function (x) {
                     return {name: x};
                 });
             }
@@ -902,47 +902,47 @@ function visualiserApp(luigi) {
         }
     }
 
-    function updateTasks() {
+    function updateSteps() {
         $('.status-info .info-box-number').text('?');
         $('.status-info i.fa').removeClass().addClass('fa fa-spinner fa-pulse');
 
-        var ajax1 = luigi.getRunningTaskList(function(runningTasks) {
-            updateTaskCategory(dt, 'RUNNING', runningTasks);
+        var ajax1 = luigi.getRunningStepList(function(runningSteps) {
+            updateStepCategory(dt, 'RUNNING', runningSteps);
         });
 
-        var ajax2 = luigi.getBatchRunningTaskList(function(batchRunningTasks) {
-            updateTaskCategory(dt, 'BATCH_RUNNING', batchRunningTasks);
+        var ajax2 = luigi.getBatchRunningStepList(function(batchRunningSteps) {
+            updateStepCategory(dt, 'BATCH_RUNNING', batchRunningSteps);
         });
 
-        var ajax3 = luigi.getFailedTaskList(function(failedTasks) {
-            updateTaskCategory(dt, 'FAILED', failedTasks);
+        var ajax3 = luigi.getFailedStepList(function(failedSteps) {
+            updateStepCategory(dt, 'FAILED', failedSteps);
         });
 
-        var ajax4 = luigi.getUpstreamFailedTaskList(function(upstreamFailedTasks) {
-            updateTaskCategory(dt, 'UPSTREAM_FAILED', upstreamFailedTasks);
+        var ajax4 = luigi.getUpstreamFailedStepList(function(upstreamFailedSteps) {
+            updateStepCategory(dt, 'UPSTREAM_FAILED', upstreamFailedSteps);
         });
 
-        var ajax5 = luigi.getDisabledTaskList(function(disabledTasks) {
-            updateTaskCategory(dt, 'DISABLED', disabledTasks);
+        var ajax5 = luigi.getDisabledStepList(function(disabledSteps) {
+            updateStepCategory(dt, 'DISABLED', disabledSteps);
         });
 
-        var ajax6 = luigi.getUpstreamDisabledTaskList(function(upstreamDisabledTasks) {
-            updateTaskCategory(dt, 'UPSTREAM_DISABLED', upstreamDisabledTasks);
+        var ajax6 = luigi.getUpstreamDisabledStepList(function(upstreamDisabledSteps) {
+            updateStepCategory(dt, 'UPSTREAM_DISABLED', upstreamDisabledSteps);
         });
 
-        var ajax7 = luigi.getPendingTaskList(function(pendingTasks) {
-            updateTaskCategory(dt, 'PENDING', pendingTasks);
+        var ajax7 = luigi.getPendingStepList(function(pendingSteps) {
+            updateStepCategory(dt, 'PENDING', pendingSteps);
         });
 
-        var ajax8 = luigi.getDoneTaskList(function(doneTasks) {
-            updateTaskCategory(dt, 'DONE', doneTasks);
+        var ajax8 = luigi.getDoneStepList(function(doneSteps) {
+            updateStepCategory(dt, 'DONE', doneSteps);
         });
 
         $.when(ajax1, ajax2, ajax3, ajax4, ajax5, ajax6, ajax7, ajax8).done(function () {
             dt.draw();
 
             $('.sidebar').html(renderSidebar(dt.column(1).data()));
-            var selectedFamily = $('.sidebar-menu').find('li[data-task="' + currentFilter.taskFamily + '"]')[0];
+            var selectedFamily = $('.sidebar-menu').find('li[data-step="' + currentFilter.stepFamily + '"]')[0];
             selectSidebarItem(selectedFamily);
 
             if (selectedFamily) {
@@ -957,13 +957,13 @@ function visualiserApp(luigi) {
 
             $('.sidebar-menu').on('click', 'li:not(.sidebar-folder)', function (e) {
                 e.stopPropagation();
-                if (this.dataset.task) {
+                if (this.dataset.step) {
                     selectSidebarItem(this);
                     if ($(this).hasClass('active')) {
-                        filterByTaskFamily(this.dataset.task, dt);
+                        filterByStepFamily(this.dataset.step, dt);
                     }
                     else {
-                        filterByTaskFamily("", dt);
+                        filterByStepFamily("", dt);
                     }
                 }
             });
@@ -974,8 +974,8 @@ function visualiserApp(luigi) {
                 this.classList.toggle('expanded')
             })
 
-            $('#clear-task-filter').on('click', function () {
-                filterByTaskFamily("", dt);
+            $('#clear-step-filter').on('click', function () {
+                filterByStepFamily("", dt);
             });
 
             if ($.isEmptyObject(missingCategories)) {
@@ -990,7 +990,7 @@ function visualiserApp(luigi) {
     }
 
     function updateSidebar(tabName) {
-        if (tabName === 'taskList') {
+        if (tabName === 'stepList') {
             $('body').removeClass('sidebar-collapse');
         }
         else {
@@ -1012,8 +1012,8 @@ function visualiserApp(luigi) {
     }
 
     /**
-     * Return HTML of a task parameter dictionary
-     * @param params: task parameter dictionary
+     * Return HTML of a step parameter dictionary
+     * @param params: step parameter dictionary
      */
     function renderParams(params) {
         var htmls = [];
@@ -1131,8 +1131,8 @@ function visualiserApp(luigi) {
     $(document).ready(function() {
         loadTemplates();
 
-        luigi.hasTaskHistory(function(hasTaskHistory) {
-            if (hasTaskHistory) {
+        luigi.hasStepHistory(function(hasStepHistory) {
+            if (hasStepHistory) {
                 $('#topNavbar').append(renderTemplate('topNavbarItem', {
                     label: "History",
                     href: "../../history",
@@ -1182,7 +1182,7 @@ function visualiserApp(luigi) {
             });
         });
 
-        dt = $('#taskTable').DataTable({
+        dt = $('#stepTable').DataTable({
             stateSave: true,
             stateSaveCallback: function(settings, data) {
                 // Save data table state to browser's hash.
@@ -1201,8 +1201,8 @@ function visualiserApp(luigi) {
                     delete state.family;
                 }
 
-                if (currentFilter.taskCategory.length > 0) {
-                    state.statuses = JSON.stringify(currentFilter.taskCategory);
+                if (currentFilter.stepCategory.length > 0) {
+                    state.statuses = JSON.stringify(currentFilter.stepCategory);
                 } else {
                     delete state.statuses;
                 }
@@ -1240,7 +1240,7 @@ function visualiserApp(luigi) {
                 var status_search = {};
                 if (fragmentQuery.statuses) {
                     var statuses = JSON.parse(fragmentQuery.statuses);
-                    currentFilter.taskCategory = statuses;
+                    currentFilter.stepCategory = statuses;
                     status_search = {'search': categoryQuery(statuses), 'regex': true};
                 }
 
@@ -1275,12 +1275,12 @@ function visualiserApp(luigi) {
                 {
                     data: 'category',
                     render: function (data, type, row) {
-                        return taskCategoryIcon(data) + ' ' + data;
+                        return stepCategoryIcon(data) + ' ' + data;
                     }
                 },
-                {data: 'taskName'},
+                {data: 'stepName'},
                 {
-                    data: 'taskParams',
+                    data: 'stepParams',
                     render: function(data, type, row) {
                         var params = JSON.parse(data);
                         if (row.resources !== '{}') {
@@ -1309,38 +1309,38 @@ function visualiserApp(luigi) {
                       'Filter on Server <input type="checkbox" id="serverSideCheckbox"/>' +
                       '</label></form>');
 
-        // If using server-side filter we need to updateTasks every time the filter changes
+        // If using server-side filter we need to updateSteps every time the filter changes
 
-        $('#taskTable_filter').on('keyup paste', 'input', function () {
+        $('#stepTable_filter').on('keyup paste', 'input', function () {
             if ($('#serverSideCheckbox')[0].checked) {
                 clearTimeout(typingTimer);
                 if ($(this).val) {
-                    typingTimer = setTimeout(updateTasks, 400);
+                    typingTimer = setTimeout(updateSteps, 400);
                 }
             }
         });
 
         processHashChange();
-        updateTasks();
+        updateSteps();
         bindListEvents();
 
-        $('#taskTable tbody').on('click', 'td.details-control .showError', function () {
+        $('#stepTable tbody').on('click', 'td.details-control .showError', function () {
             var tr = $(this).closest('tr');
             var row = dt.row( tr );
             var data = row.data();
-            luigi.getErrorTrace(data.taskId, function(error) {
+            luigi.getErrorTrace(data.stepId, function(error) {
                 showErrorTrace(error);
             });
         } );
 
-        $('#taskTable tbody').on('click', 'td.details-control .forgiveFailures', function (ev) {
+        $('#stepTable tbody').on('click', 'td.details-control .forgiveFailures', function (ev) {
             var that = $(this);
             var tr = that.closest('tr');
             var row = dt.row( tr );
             var data = row.data();
-            luigi.forgiveFailures(data.taskId, function(data) {
+            luigi.forgiveFailures(data.stepId, function(data) {
                 if (ev.altKey) {
-                    updateTasks(); // update may not be cheap
+                    updateSteps(); // update may not be cheap
                 } else {
                     that.tooltip('hide');
                     that.remove();
@@ -1348,14 +1348,14 @@ function visualiserApp(luigi) {
             });
         } );
 
-        $('#taskTable tbody').on('click', 'td.details-control .markAsDone', function (ev) {
+        $('#stepTable tbody').on('click', 'td.details-control .markAsDone', function (ev) {
             var that = $(this);
             var tr = that.closest('tr');
             var row = dt.row( tr );
             var data = row.data();
-            luigi.markAsDone(data.taskId, function(data) {
+            luigi.markAsDone(data.stepId, function(data) {
                 if (ev.altKey) {
-                    updateTasks(); // update may not be cheap
+                    updateSteps(); // update may not be cheap
                 } else {
                     that.tooltip('hide');
                     that.remove();
@@ -1363,11 +1363,11 @@ function visualiserApp(luigi) {
             });
         } );
 
-        $('#taskTable tbody').on('click', 'td.details-control .re-enable-button', function (ev) {
+        $('#stepTable tbody').on('click', 'td.details-control .re-enable-button', function (ev) {
             var that = $(this);
-            luigi.reEnable(that.attr("data-task-id"), function(data) {
+            luigi.reEnable(that.attr("data-step-id"), function(data) {
                 if (ev.altKey) {
-                    updateTasks(); // update may not be cheap
+                    updateSteps(); // update may not be cheap
                 } else {
                     that.tooltip('hide');
                     that.remove();
@@ -1375,12 +1375,12 @@ function visualiserApp(luigi) {
             });
         });
 
-        $('#taskTable tbody').on('click', 'td.details-control .statusMessage', function () {
+        $('#stepTable tbody').on('click', 'td.details-control .statusMessage', function () {
             var data = $(this).data();
             showStatusMessage(data);
         });
 
-        $('#taskTable tbody').on('click', 'td.details-control .schedulerMessage', function () {
+        $('#stepTable tbody').on('click', 'td.details-control .schedulerMessage', function () {
             var data = $(this).data();
             showSchedulerMessageModal(data);
         });
@@ -1497,29 +1497,29 @@ function visualiserApp(luigi) {
             var state = {};
             var tabId = $(this).attr('data-tab');
 
-            if (tabId == 'taskList') {
+            if (tabId == 'stepList') {
                 var order = dt.order();
                 var search = dt.search();
-                state.tab = 'tasks';
+                state.tab = 'steps';
 
-                if ($('select[name=taskTable_length]').val() !== '10') {
+                if ($('select[name=stepTable_length]').val() !== '10') {
                     // Add length to hash only if the value is not default.
-                    state.length = $('select[name=taskTable_length]').val();
+                    state.length = $('select[name=stepTable_length]').val();
                 }
 
                 if ($('#serverSideCheckbox').is(':checked')) {
                     state.filterOnServer = '1';
                 }
 
-                var family = $('#familySidebar li.active').attr('data-task');
+                var family = $('#familySidebar li.active').attr('data-step');
                 if (family) {
                     state.family = family;
                 } else {
                     delete state.family;
                 }
 
-                if (currentFilter.taskCategory.length > 0) {
-                    state.statuses = JSON.stringify(currentFilter.taskCategory);
+                if (currentFilter.stepCategory.length > 0) {
+                    state.statuses = JSON.stringify(currentFilter.stepCategory);
                 } else {
                     delete state.statuses;
                 }
@@ -1541,8 +1541,8 @@ function visualiserApp(luigi) {
                     state.hideDone = '1';
                 }
 
-                if ($('#idTaskForm input.search-query').val()) {
-                    state.taskId = $('#idTaskForm input.search-query').val();
+                if ($('#idStepForm input.search-query').val()) {
+                    state.stepId = $('#idStepForm input.search-query').val();
                 }
 
                 if ($('#invertCheckbox').is(':checked')) {

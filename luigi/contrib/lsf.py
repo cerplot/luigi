@@ -37,10 +37,10 @@ import luigi
 import luigi.configuration
 from luigi.contrib.hadoop import create_packages_archive
 from luigi.contrib import lsf_runner
-from luigi.task_status import PENDING, FAILED, DONE, RUNNING, UNKNOWN
+from luigi.step_status import PENDING, FAILED, DONE, RUNNING, UNKNOWN
 
 """
-LSF batch system Tasks.
+LSF batch system Steps.
 =======================
 
 What's LSF? see http://en.wikipedia.org/wiki/Platform_LSF
@@ -95,7 +95,7 @@ def kill_job(job_id):
     subprocess.call(['bkill', job_id])
 
 
-class LSFJobTask(luigi.Task):
+class LSFJobStep(luigi.Step):
     """
     Takes care of uploading and executing an LSF job
     """
@@ -116,7 +116,7 @@ class LSFJobTask(luigi.Task):
 
     job_status = None
 
-    def fetch_task_failures(self):
+    def fetch_step_failures(self):
         """
         Read in the error file from bsub
         """
@@ -128,7 +128,7 @@ class LSFJobTask(luigi.Task):
             errors = ''
         return errors
 
-    def fetch_task_output(self):
+    def fetch_step_output(self):
         """
         Read in the output file
         """
@@ -145,14 +145,14 @@ class LSFJobTask(luigi.Task):
         base_tmp_dir = self.shared_tmp_dir
 
         random_id = '%016x' % random.getrandbits(64)
-        task_name = random_id + self.task_id
+        step_name = random_id + self.step_id
         # If any parameters are directories, if we don't
         # replace the separators on *nix, it'll create a weird nested directory
-        task_name = task_name.replace("/", "::")
+        step_name = step_name.replace("/", "::")
 
         # Max filename length
         max_filename_length = os.fstatvfs(0).f_namemax
-        self.tmp_dir = os.path.join(base_tmp_dir, task_name[:max_filename_length])
+        self.tmp_dir = os.path.join(base_tmp_dir, step_name[:max_filename_length])
 
         LOGGER.info("Tmp dir: %s", self.tmp_dir)
         os.makedirs(self.tmp_dir)
@@ -195,7 +195,7 @@ class LSFJobTask(luigi.Task):
         """
         Subclass this for where you're doing your actual work.
 
-        Why not run(), like other tasks? Because we need run to always be
+        Why not run(), like other steps? Because we need run to always be
         something that the Worker can call, and that's the real logical place to
         do LSF scheduling.
         So, the work will happen in work().
@@ -260,7 +260,7 @@ class LSFJobTask(luigi.Task):
         # The result will be of the format
         # Job <123> is submitted ot queue <myqueue>
         # So get the number in those first brackets.
-        # I cannot think of a better workaround that leaves logic on the Task side of things.
+        # I cannot think of a better workaround that leaves logic on the Step side of things.
         LOGGER.info("### JOB SUBMISSION OUTPUT: %s", str(output))
         self.job_id = int(output.split("<")[1].split(">")[0])
         LOGGER.info(
@@ -301,7 +301,7 @@ class LSFJobTask(luigi.Task):
                 LOGGER.info("Job is pending...")
             elif lsf_status == "DONE" or lsf_status == "EXIT":
                 # Then the job could either be failed or done.
-                errors = self.fetch_task_failures()
+                errors = self.fetch_step_failures()
                 if not errors:
                     self.job_status = DONE
                     LOGGER.info("Job is done")
@@ -346,9 +346,9 @@ class LSFJobTask(luigi.Task):
         # self._finish()
 
 
-class LocalLSFJobTask(LSFJobTask):
+class LocalLSFJobStep(LSFJobStep):
     """
-    A local version of JobTask, for easier debugging.
+    A local version of JobStep, for easier debugging.
     """
 
     def run(self):

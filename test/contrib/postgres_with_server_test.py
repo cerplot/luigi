@@ -64,7 +64,7 @@ class CopyToTestDB(postgres.CopyToTable):
     password = password
 
 
-class TestPostgresTask(CopyToTestDB):
+class TestPostgresStep(CopyToTestDB):
     table = 'test_table'
     columns = (('test_text', 'text'),
                ('test_int', 'int'),
@@ -109,7 +109,7 @@ class Metric2(MetricBase):
 
 
 @pytest.mark.postgres
-class TestPostgresImportTask(unittest.TestCase):
+class TestPostgresImportStep(unittest.TestCase):
 
     def test_default_escape(self):
         self.assertEqual(postgres.default_escape('foo'), 'foo')
@@ -119,15 +119,15 @@ class TestPostgresImportTask(unittest.TestCase):
                          '\\n\\r\\\\\\t\\\\N\\\\')
 
     def test_repeat(self):
-        task = TestPostgresTask()
-        conn = task.output().connect()
+        step = TestPostgresStep()
+        conn = step.output().connect()
         conn.autocommit = True
         cursor = conn.cursor()
-        cursor.execute('DROP TABLE IF EXISTS {table}'.format(table=task.table))
+        cursor.execute('DROP TABLE IF EXISTS {table}'.format(table=step.table))
         cursor.execute('DROP TABLE IF EXISTS {marker_table}'.format(marker_table=postgres.PostgresTarget.marker_table))
 
-        luigi.build([task], local_scheduler=True)
-        luigi.build([task], local_scheduler=True)  # try to schedule twice
+        luigi.build([step], local_scheduler=True)
+        luigi.build([step], local_scheduler=True)  # try to schedule twice
 
         cursor.execute("""SELECT test_text, test_int, test_float
                           FROM test_table

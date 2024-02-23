@@ -255,13 +255,13 @@ class TestDropboxTarget(unittest.TestCase):
         self.dropbox_api._session.close()
 
     def test_download_from_dropboxtarget_to_local(self):
-        class Download(luigi.ExternalTask):
+        class Download(luigi.ExternalStep):
             dbx_path = luigi.Parameter()
 
             def output(self):
                 return luigi.contrib.dropbox.DropboxTarget(self.dbx_path, DROPBOX_APP_TOKEN, format=NopFormat())
 
-        class DbxToLocalTask(luigi.Task):
+        class DbxToLocalStep(luigi.Step):
             local_path = luigi.Parameter()
             dbx_path = luigi.Parameter()
 
@@ -277,7 +277,7 @@ class TestDropboxTarget(unittest.TestCase):
                     localfile.write(remote_contents * 3)
 
         tmp_file = tempfile.mkdtemp() + os.sep + "tmp.file"
-        luigi.build([DbxToLocalTask(dbx_path=DROPBOX_TEST_SIMPLE_FILE, local_path=tmp_file)],
+        luigi.build([DbxToLocalStep(dbx_path=DROPBOX_TEST_SIMPLE_FILE, local_path=tmp_file)],
                     local_scheduler=True)
 
         expected_contents = self.initial_contents * 3
@@ -289,7 +289,7 @@ class TestDropboxTarget(unittest.TestCase):
     def test_write_small_text_file_to_dropbox(self):
         small_input_text = "The greatest glory in living lies not in never falling\nbut in rising every time we fall."
 
-        class WriteToDrobopxTest(luigi.Task):
+        class WriteToDrobopxTest(luigi.Step):
             def output(self):
                 return luigi.contrib.dropbox.DropboxTarget(DROPBOX_TEST_FILE_TO_UPLOAD_TEXT, DROPBOX_APP_TOKEN)
 
@@ -305,7 +305,7 @@ class TestDropboxTarget(unittest.TestCase):
         large_contents = b"X\n\xe2\x28\xa1" * multiplier
         output_file = DROPBOX_TEST_FILE_TO_UPLOAD_LARGE + str(multiplier)
 
-        class WriteToDrobopxTest(luigi.Task):
+        class WriteToDrobopxTest(luigi.Step):
             def output(self):
                 return luigi.contrib.dropbox.DropboxTarget(output_file, DROPBOX_APP_TOKEN,
                                                            format=luigi.format.Nop)
@@ -330,7 +330,7 @@ class TestDropboxTarget(unittest.TestCase):
     def test_write_using_nondefault_format(self):
         contents = b"X\n\xe2\x28\xa1"
 
-        class WriteToDrobopxTest(luigi.Task):
+        class WriteToDrobopxTest(luigi.Step):
             def output(self):
                 return luigi.contrib.dropbox.DropboxTarget(DROPBOX_TEST_FILE_TO_UPLOAD_BZIP2, DROPBOX_APP_TOKEN,
                                                            format=luigi.format.Bzip2)
@@ -347,7 +347,7 @@ class TestDropboxTarget(unittest.TestCase):
     def test_write_using_a_temporary_path(self):
         contents = b"X\n\xe2\x28\xa1"
 
-        class WriteToDrobopxTest(luigi.Task):
+        class WriteToDrobopxTest(luigi.Step):
             def output(self):
                 return luigi.contrib.dropbox.DropboxTarget(DROPBOX_TEST_FILE_TO_UPLOAD_BIN, DROPBOX_APP_TOKEN)
 

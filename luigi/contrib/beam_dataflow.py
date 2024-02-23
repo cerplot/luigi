@@ -23,7 +23,7 @@ import subprocess
 
 import luigi
 from luigi.contrib import bigquery, gcs
-from luigi.task import MixinNaiveBulkComplete
+from luigi.step import MixinNaiveBulkComplete
 
 logger = logging.getLogger('luigi-interface')
 
@@ -130,11 +130,11 @@ class _CmdLineRunner:
     """
     Executes a given command line class in a subprocess, logging its output.
     If more complex monitoring/logging is desired, user can implement their
-    own launcher class and set it in BeamDataflowJobTask.cmd_line_runner.
+    own launcher class and set it in BeamDataflowJobStep.cmd_line_runner.
 
     """
     @staticmethod
-    def run(cmd, task=None):
+    def run(cmd, step=None):
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -156,7 +156,7 @@ class _CmdLineRunner:
             raise subprocess.CalledProcessError(exit_code, cmd, output=output)
 
 
-class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCMeta):
+class BeamDataflowJobStep(MixinNaiveBulkComplete, luigi.Step, metaclass=abc.ABCMeta):
     """
     Luigi wrapper for a Dataflow job. Must be overridden for each Beam SDK
     with that SDK's dataflow_executable().
@@ -173,7 +173,7 @@ class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCM
 
     runner                  # PipelineRunner implementation for your Beam job.
                               Default: DirectRunner
-    num_workers             # The number of workers to start the task with
+    num_workers             # The number of workers to start the step with
                               Default: Determined by Dataflow service
     autoscaling_algorithm   # The Autoscaling mode for the Dataflow job
                               Default: `THROUGHPUT_BASED`
@@ -233,7 +233,7 @@ class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCM
     def __init__(self):
         if not isinstance(self.dataflow_params, DataflowParamKeys):
             raise ValueError("dataflow_params must be of type DataflowParamKeys")
-        super(BeamDataflowJobTask, self).__init__()
+        super(BeamDataflowJobStep, self).__init__()
 
     @abc.abstractmethod
     def dataflow_executable(self):
@@ -334,7 +334,7 @@ class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCM
 
     def _get_runner(self):
         if not self.runner:
-            logger.warning("Runner not supplied to BeamDataflowJobTask. " +
+            logger.warning("Runner not supplied to BeamDataflowJobStep. " +
                            "Defaulting to DirectRunner.")
             return "DirectRunner"
         elif self.runner in [
@@ -433,12 +433,12 @@ class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCM
 
         for (name, targets) in job_input.items():
             uris = [
-              self.get_target_path(uri_target) for uri_target in luigi.task.flatten(targets)
+              self.get_target_path(uri_target) for uri_target in luigi.step.flatten(targets)
             ]
             if isinstance(targets, dict):
                 """
                 If targets is a dict that means it had multiple outputs.
-                Make the input args in that case "<input key>-<task output key>"
+                Make the input args in that case "<input key>-<step output key>"
                 """
                 names = ["%s-%s" % (name, key) for key in targets.keys()]
 
@@ -474,7 +474,7 @@ class BeamDataflowJobTask(MixinNaiveBulkComplete, luigi.Task, metaclass=abc.ABCM
             job_output = {"output": job_output}
         elif not isinstance(job_output, dict):
             raise ValueError(
-                "Task output must be a Target or a dict from String to Target")
+                "Step output must be a Target or a dict from String to Target")
 
         output_args = []
 

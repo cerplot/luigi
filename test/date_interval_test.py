@@ -92,28 +92,28 @@ class DateIntervalTest(LuigiTestCase):
         month = luigi.date_interval.Month(2012, 11)
         other = luigi.date_interval.Month(2012, 10)
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
             di = DI(default=month)
 
-        class MyTaskNoDefault(luigi.Task):
+        class MyStepNoDefault(luigi.Step):
             di = DI()
 
-        self.assertEqual(MyTask().di, month)
-        in_parse(["MyTask", "--di", "2012-10"],
-                 lambda task: self.assertEqual(task.di, other))
-        task = MyTask(month)
-        self.assertEqual(task.di, month)
-        task = MyTask(di=month)
-        self.assertEqual(task.di, month)
-        task = MyTask(other)
-        self.assertNotEqual(task.di, month)
+        self.assertEqual(MyStep().di, month)
+        in_parse(["MyStep", "--di", "2012-10"],
+                 lambda step: self.assertEqual(step.di, other))
+        step = MyStep(month)
+        self.assertEqual(step.di, month)
+        step = MyStep(di=month)
+        self.assertEqual(step.di, month)
+        step = MyStep(other)
+        self.assertNotEqual(step.di, month)
 
         def fail1():
-            return MyTaskNoDefault()
+            return MyStepNoDefault()
         self.assertRaises(luigi.parameter.MissingParameterException, fail1)
 
-        in_parse(["MyTaskNoDefault", "--di", "2012-10"],
-                 lambda task: self.assertEqual(task.di, other))
+        in_parse(["MyStepNoDefault", "--di", "2012-10"],
+                 lambda step: self.assertEqual(step.di, other))
 
     def test_hours(self):
         d = DI().parse('2015')

@@ -45,7 +45,7 @@ def is_writable():
     return unittest.skipIf(not exists, 'Can\'t write to temporary directory')
 
 
-class TaskA(luigi.Task):
+class StepA(luigi.Step):
     i = luigi.IntParameter(default=0)
 
     def output(self):
@@ -64,29 +64,29 @@ class TaskA(luigi.Task):
         self.output().done()
 
 
-class TaskB(TaskA):
+class StepB(StepA):
     def requires(self):
-        return TaskA(i=10)
+        return StepA(i=10)
 
 
-class TaskC(TaskA):
+class StepC(StepA):
     def requires(self):
-        return TaskA(i=5)
+        return StepA(i=5)
 
 
-class TaskD(TaskA):
+class StepD(StepA):
     def requires(self):
-        return [TaskB(), TaskC(), TaskA(i=20)]
+        return [StepB(), StepC(), StepA(i=20)]
 
 
-class TaskWrap(luigi.WrapperTask):
+class StepWrap(luigi.WrapperStep):
     def requires(self):
-        return [TaskA(), TaskD()]
+        return [StepA(), StepD()]
 
 
 def reset():
-    # Force tasks to be executed again (because multiple pipelines are executed inside of the same process)
-    t = TaskA().output()
+    # Force steps to be executed again (because multiple pipelines are executed inside of the same process)
+    t = StepA().output()
     with t.unique.get_lock():
         t.unique.value = 0
 
@@ -98,12 +98,12 @@ class RunAnywayTargetTest(unittest.TestCase):
 
         fn = os.path.join(temp_dir(), 'luigi-simulate-test.tmp')
 
-        luigi.build([TaskWrap()], local_scheduler=True)
+        luigi.build([StepWrap()], local_scheduler=True)
         with open(fn, 'r') as f:
             data = f.read().strip().split('\n')
 
         data.sort()
-        reference = ['TaskA=0', 'TaskA=10', 'TaskA=20', 'TaskA=5', 'TaskB=0', 'TaskC=0', 'TaskD=0']
+        reference = ['StepA=0', 'StepA=10', 'StepA=20', 'StepA=5', 'StepB=0', 'StepC=0', 'StepD=0']
         reference.sort()
 
         os.remove(fn)

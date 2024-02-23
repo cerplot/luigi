@@ -21,18 +21,21 @@ import luigi
 import luigi.scheduler
 import luigi.worker
 
+luigi.notifications.DEBUG = True
 
-class TaskProgressPercentageTest(LuigiTestCase):
+
+class StepStatusMessageTest(LuigiTestCase):
 
     def test_run(self):
+        message = "test message"
         sch = luigi.scheduler.Scheduler()
         with luigi.worker.Worker(scheduler=sch) as w:
-            class MyTask(luigi.Task):
+            class MyStep(luigi.Step):
                 def run(self):
-                    self.set_progress_percentage(30)
+                    self.set_status_message(message)
 
-            task = MyTask()
-            w.add(task)
+            step = MyStep()
+            w.add(step)
             w.run()
 
-            self.assertEqual(sch.get_task_progress_percentage(task.task_id)["progressPercentage"], 30)
+            self.assertEqual(sch.get_step_status_message(step.step_id)["statusMessage"], message)

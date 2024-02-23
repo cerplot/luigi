@@ -33,8 +33,8 @@ max_total_nodes = 50
 current_nodes = 0
 
 
-class Foo(luigi.Task):
-    task_namespace = 'examples'
+class Foo(luigi.Step):
+    step_namespace = 'examples'
 
     def run(self):
         print("Running Foo")
@@ -46,8 +46,8 @@ class Foo(luigi.Task):
             yield Bar(i)
 
 
-class Bar(luigi.Task):
-    task_namespace = 'examples'
+class Bar(luigi.Step):
+    step_namespace = 'examples'
 
     num = luigi.IntParameter()
 
@@ -66,9 +66,9 @@ class Bar(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
+        Returns the target output for this step.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         time.sleep(1)

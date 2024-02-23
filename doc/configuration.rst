@@ -68,11 +68,11 @@ Parameters from config Ingestion
 --------------------------------
 
 All parameters can be overridden from configuration files. For instance if you
-have a Task definition:
+have a Step definition:
 
 .. code:: python
 
-    class DailyReport(luigi.contrib.hadoop.JobTask):
+    class DailyReport(luigi.contrib.hadoop.JobStep):
         date = luigi.DateParameter(default=datetime.date.today())
         # ...
 
@@ -130,7 +130,7 @@ interactions between the worker and scheduler.
 autoload_range
   .. versionadded:: 2.8.11
 
-  If false, prevents range tasks from autoloading. They can still be loaded
+  If false, prevents range steps from autoloading. They can still be loaded
   using ``--module luigi.tools.range``. Defaults to true. Setting this to true
   explicitly disables the deprecation warning.
 
@@ -172,9 +172,9 @@ no_configure_logging
   If true, logging is not configured. Defaults to false.
 
 parallel_scheduling
-  If true, the scheduler will compute complete functions of tasks in
+  If true, the scheduler will compute complete functions of steps in
   parallel using multiprocessing. This can significantly speed up
-  scheduling, but requires that all tasks can be pickled.
+  scheduling, but requires that all steps can be pickled.
   Defaults to false.
 
 parallel_scheduling_processes
@@ -263,10 +263,10 @@ ping_interval
   Number of seconds to wait between pinging scheduler to let it know
   that the worker is still alive. Defaults to 1.0.
 
-task_limit
+step_limit
   .. versionadded:: 1.0.25
 
-  Maximum number of tasks to schedule per invocation. Upon exceeding it,
+  Maximum number of steps to schedule per invocation. Upon exceeding it,
   the worker will issue a warning and proceed with the workflow obtained
   thus far. Prevents incidents due to spamming of the scheduler, usually
   accidental. Default: no limit.
@@ -274,9 +274,9 @@ task_limit
 timeout
   .. versionadded:: 1.0.20
 
-  Number of seconds after which to kill a task which has been running
-  for too long. This provides a default value for all tasks, which can
-  be overridden by setting the ``worker_timeout`` property in any task.
+  Number of seconds after which to kill a step which has been running
+  for too long. This provides a default value for all steps, which can
+  be overridden by setting the ``worker_timeout`` property in any step.
   Default value is 0, meaning no timeout.
 
 wait_interval
@@ -301,32 +301,32 @@ max_reschedules
   reschedule a job if it is found to not be done when attempting to run
   a dependent job. This defaults to 1.
 
-retry_external_tasks
-  If true, incomplete external tasks (i.e. tasks where the ``run()`` method is
+retry_external_steps
+  If true, incomplete external steps (i.e. steps where the ``run()`` method is
   NotImplemented) will be retested for completion while Luigi is running.
   This means that if external dependencies are satisfied after a workflow has
-  started, any tasks dependent on that resource will be eligible for running.
-  Note: Every time the task remains incomplete, it will count as FAILED, so
+  started, any steps dependent on that resource will be eligible for running.
+  Note: Every time the step remains incomplete, it will count as FAILED, so
   normal retry logic applies (see: ``retry_count`` and ``retry_delay``).
   This setting works best with ``worker_keep_alive: true``.
-  If false, external tasks will only be evaluated when Luigi is first invoked.
+  If false, external steps will only be evaluated when Luigi is first invoked.
   In this case, Luigi will not check whether external dependencies are
-  satisfied  while a workflow is in progress, so dependent tasks will remain
+  satisfied  while a workflow is in progress, so dependent steps will remain
   PENDING until the workflow is reinvoked.
   Defaults to false for backwards compatibility.
 
 no_install_shutdown_handler
   By default, workers will stop requesting new work and finish running
-  pending tasks after receiving a ``SIGUSR1`` signal. This provides a hook
+  pending steps after receiving a ``SIGUSR1`` signal. This provides a hook
   for gracefully shutting down workers that are in the process of running
-  (potentially expensive) tasks. If set to true, Luigi will NOT install
+  (potentially expensive) steps. If set to true, Luigi will NOT install
   this shutdown hook on workers. Note this hook does not work on Windows
   operating systems, or when jobs are launched outside the main execution
   thread.
   Defaults to false.
 
 send_failure_email
-  Controls whether the worker will send e-mails on task and scheduling
+  Controls whether the worker will send e-mails on step and scheduling
   failures. If set to false, workers will only send e-mails on
   framework errors during scheduling and all other e-mail must be
   handled by the scheduler.
@@ -334,9 +334,9 @@ send_failure_email
 
 check_unfulfilled_deps
   If true, the worker checks for completeness of dependencies before running a
-  task. In case unfulfilled dependencies are detected, an exception is raised
-  and the task will not run. This mechanism is useful to detect situations
-  where tasks do not create their outputs properly, or when targets were
+  step. In case unfulfilled dependencies are detected, an exception is raised
+  and the step will not run. This mechanism is useful to detect situations
+  where steps do not create their outputs properly, or when targets were
   removed after the dependency tree was built. It is recommended to disable
   this feature only when the completeness checks are known to be bottlenecks,
   e.g. when the ``exists()`` calls of the dependencies' outputs are
@@ -350,18 +350,18 @@ force_multiprocessing
   Defaults to false.
 
 check_complete_on_run
-  By default, luigi tasks are marked as 'done' when they finish running without
-  raising an error. When set to true, tasks will also verify that their outputs
+  By default, luigi steps are marked as 'done' when they finish running without
+  raising an error. When set to true, steps will also verify that their outputs
   exist when they finish running, and will fail immediately if the outputs are
   missing.
   Defaults to false.
 
-cache_task_completion
-  By default, luigi task processes might check the completion status multiple
-  times per task which is a safe way to avoid potential inconsistencies. For
-  tasks with many dynamic dependencies, yielded in multiple stages, this might
-  become expensive, e.g. in case the per-task completion check entails remote
-  resources. When set to true, completion checks are cached so that tasks
+cache_step_completion
+  By default, luigi step processes might check the completion status multiple
+  times per step which is a safe way to avoid potential inconsistencies. For
+  steps with many dynamic dependencies, yielded in multiple stages, this might
+  become expensive, e.g. in case the per-step completion check entails remote
+  resources. When set to true, completion checks are cached so that steps
   declared as complete once are not checked again.
   Defaults to false.
 
@@ -444,39 +444,39 @@ email_interval_minutes
   Defaults to 60.
 
 batch_mode
-  Controls how tasks are grouped together in the e-mail. Suppose we have
+  Controls how steps are grouped together in the e-mail. Suppose we have
   the following sequence of failures:
 
-  1. TaskA(a=1, b=1)
-  2. TaskA(a=1, b=1)
-  3. TaskA(a=2, b=1)
-  4. TaskA(a=1, b=2)
-  5. TaskB(a=1, b=1)
+  1. StepA(a=1, b=1)
+  2. StepA(a=1, b=1)
+  3. StepA(a=2, b=1)
+  4. StepA(a=1, b=2)
+  5. StepB(a=1, b=1)
 
   For any setting of batch_mode, the batch e-mail will record 5 failures
   and mention them in the subject. The difference is in how they will
   be displayed in the body. Here are example bodies with error_messages
   set to 0.
 
-  "all" only groups together failures for the exact same task:
+  "all" only groups together failures for the exact same step:
 
-  - TaskA(a=1, b=1) (2 failures)
-  - TaskA(a=1, b=2) (1 failure)
-  - TaskA(a=2, b=1) (1 failure)
-  - TaskB(a=1, b=1) (1 failure)
+  - StepA(a=1, b=1) (2 failures)
+  - StepA(a=1, b=2) (1 failure)
+  - StepA(a=2, b=1) (1 failure)
+  - StepB(a=1, b=1) (1 failure)
 
-  "family" groups together failures for tasks of the same family:
+  "family" groups together failures for steps of the same family:
 
-  - TaskA (4 failures)
-  - TaskB (1 failure)
+  - StepA (4 failures)
+  - StepB (1 failure)
 
-  "unbatched_params" groups together tasks that look the same after
-  removing batched parameters. So if TaskA has a batch_method set for
+  "unbatched_params" groups together steps that look the same after
+  removing batched parameters. So if StepA has a batch_method set for
   parameter a, we get the following:
 
-  - TaskA(b=1) (3 failures)
-  - TaskA(b=2) (1 failure)
-  - TaskB(a=1, b=2) (1 failure)
+  - StepA(b=1) (3 failures)
+  - StepA(b=2) (1 failure)
+  - StepB(a=1, b=2) (1 failure)
 
   Defaults to "unbatched_params", which is identical to "all" if you are
   not using batched parameters.
@@ -490,16 +490,16 @@ error_lines
   Defaults to 20.
 
 error_messages
-  Number of messages to preserve for each task group. As most tasks that
+  Number of messages to preserve for each step group. As most steps that
   fail repeatedly do so for similar reasons each time, it's not usually
   necessary to keep every message. This controls how many messages are
-  kept for each task or task group. The most recent error messages are
+  kept for each step or step group. The most recent error messages are
   kept. Set to 0 to not include error messages in the e-mails.
   Defaults to 1.
 
 group_by_error_messages
   Quite often, a system or cluster failure will cause many disparate
-  task types to fail for the same reason. This can cause a lot of noise
+  step types to fail for the same reason. This can cause a lot of noise
   in the batch e-mails. This cuts down on the noise by listing items
   with identical error messages together. Error messages are compared
   after limiting by ``error_lines``.
@@ -509,7 +509,7 @@ group_by_error_messages
 [hadoop]
 --------
 
-Parameters controlling basic hadoop tasks
+Parameters controlling basic hadoop steps
 
 command
   Name of command for running hadoop from the command line. Defaults to
@@ -569,7 +569,7 @@ tmp_dir
 [hive]
 ------
 
-Parameters controlling hive tasks
+Parameters controlling hive steps
 
 command
   Name of the command used to run hive on the command line. Defaults to
@@ -593,7 +593,7 @@ release
 [kubernetes]
 ------------
 
-Parameters controlling Kubernetes Job Tasks
+Parameters controlling Kubernetes Job Steps
 
 auth_method
   Authorization method to access the cluster.
@@ -673,7 +673,7 @@ is good practice to do so when you have a fixed set of resources.
 ---------
 
 Configure return codes for the Luigi binary. In the case of multiple return
-codes that could apply, for example a failing task and missing data, the
+codes that could apply, for example a failing step and missing data, the
 *numerically greatest* return code is returned.
 
 We recommend that you copy this set of exit codes to your ``luigi.cfg`` file:
@@ -686,33 +686,33 @@ We recommend that you copy this set of exit codes to your ``luigi.cfg`` file:
   already_running=10
   missing_data=20
   not_run=25
-  task_failed=30
+  step_failed=30
   scheduling_error=35
   unhandled_exception=40
 
 already_running
   This can happen in two different cases. Either the local lock file was taken
   at the time the invocation starts up. Or, the central scheduler have reported
-  that some tasks could not have been run, because other workers are already
-  running the tasks.
+  that some steps could not have been run, because other workers are already
+  running the steps.
 missing_data
-  For when an :py:class:`~luigi.task.ExternalTask` is not complete, and this
+  For when an :py:class:`~luigi.step.ExternalStep` is not complete, and this
   caused the worker to give up.  As an alternative to fiddling with this, see
   the [worker] keep_alive option.
 not_run
-  For when a task is not granted run permission by the scheduler. Typically
-  because of lack of resources, because the task has been already run by
-  another worker or because the attempted task is in DISABLED state.
+  For when a step is not granted run permission by the scheduler. Typically
+  because of lack of resources, because the step has been already run by
+  another worker or because the attempted step is in DISABLED state.
   Connectivity issues with the central scheduler might also cause this.
   This does not include the cases for which a run is not allowed due to missing
   dependencies (missing_data) or due to the fact that another worker is currently
-  running the task (already_running).
-task_failed
+  running the step (already_running).
+step_failed
   For signaling that there were last known to have failed. Typically because
   some exception have been raised.
 scheduling_error
-  For when a task's ``complete()`` or ``requires()`` method fails with an
-  exception, or when the limit number of tasks is reached.
+  For when a step's ``complete()`` or ``requires()`` method fails with an
+  exception, or when the limit number of steps is reached.
 unhandled_exception
   For internal Luigi errors.  Defaults to 4, since this type of error
   probably will not recover over time.
@@ -757,16 +757,16 @@ batch_emails
   Defaults to false.
 
 disable_hard_timeout
-  Hard time limit after which tasks will be disabled by the server if
-  they fail again, in seconds. It will disable the task if it fails
+  Hard time limit after which steps will be disabled by the server if
+  they fail again, in seconds. It will disable the step if it fails
   **again** after this amount of time. E.g. if this was set to 600
-  (i.e. 10 minutes), and the task first failed at 10:00am, the task would
+  (i.e. 10 minutes), and the step first failed at 10:00am, the step would
   be disabled if it failed again any time after 10:10am. Note: This setting
   does not consider the values of the ``retry_count`` or
   ``disable_window`` settings.
 
 retry_count
-  Number of times a task can fail within ``disable_window`` before
+  Number of times a step can fail within ``disable_window`` before
   the scheduler will automatically disable it. If not set, the scheduler
   will not automatically disable jobs.
 
@@ -780,13 +780,13 @@ disable_window
   scheduler forgets about disables that have occurred longer ago than
   this amount of time. Defaults to 3600 (1 hour).
 
-max_shown_tasks
+max_shown_steps
   .. versionadded:: 1.0.20
 
-  The maximum number of tasks returned in a task_list api call. This
-  will restrict the number of tasks shown in task lists in the
+  The maximum number of steps returned in a step_list api call. This
+  will restrict the number of steps shown in step lists in the
   visualiser. Small values can alleviate frozen browsers when there are
-  too many done tasks. This defaults to 100000 (one hundred thousand).
+  too many done steps. This defaults to 100000 (one hundred thousand).
 
 max_graph_nodes
   .. versionadded:: 2.0.0
@@ -798,15 +798,15 @@ max_graph_nodes
   dependencies of nodes that were sent. These nodes are given TRUNCATED
   status.
 
-record_task_history
-  If true, stores task history in a database. Defaults to false.
+record_step_history
+  If true, stores step history in a database. Defaults to false.
 
 remove_delay
-  Number of seconds to wait before removing a task that has no
+  Number of seconds to wait before removing a step that has no
   stakeholders. Defaults to 600 (10 minutes).
 
 retry_delay
-  Number of seconds to wait after a task failure to mark it pending
+  Number of seconds to wait after a step failure to mark it pending
   again. Defaults to 900 (15 minutes).
 
 state_path
@@ -829,7 +829,7 @@ state_path
 
 worker_disconnect_delay
   Number of seconds to wait after a worker has stopped pinging the
-  scheduler before removing it and marking all of its running tasks as
+  scheduler before removing it and marking all of its running steps as
   failed. Defaults to 60.
 
 pause_enabled
@@ -837,8 +837,8 @@ pause_enabled
   the visualiser.
 
 send_messages
-  When true, the scheduler is allowed to send messages to running tasks and
-  the central scheduler provides a simple prompt per task to send messages.
+  When true, the scheduler is allowed to send messages to running steps and
+  the central scheduler provides a simple prompt per step to send messages.
   Defaults to true.
 
 metrics_collector
@@ -898,11 +898,11 @@ username
 [spark]
 -------
 
-Parameters controlling the default execution of :py:class:`~luigi.contrib.spark.SparkSubmitTask` and :py:class:`~luigi.contrib.spark.PySparkTask`:
+Parameters controlling the default execution of :py:class:`~luigi.contrib.spark.SparkSubmitStep` and :py:class:`~luigi.contrib.spark.PySparkStep`:
 
 .. deprecated:: 1.1.1
    :py:class:`~luigi.contrib.spark.SparkJob`, :py:class:`~luigi.contrib.spark.Spark1xJob` and :py:class:`~luigi.contrib.spark.PySpark1xJob`
-    are deprecated. Please use :py:class:`~luigi.contrib.spark.SparkSubmitTask` or :py:class:`~luigi.contrib.spark.PySparkTask`.
+    are deprecated. Please use :py:class:`~luigi.contrib.spark.SparkSubmitStep` or :py:class:`~luigi.contrib.spark.PySparkStep`.
 
 spark_submit
   Command to run in order to submit spark jobs. Default: ``"spark-submit"``
@@ -977,7 +977,7 @@ hadoop_conf_dir
   Location of the hadoop conf dir. Sets HADOOP_CONF_DIR environment variable
   when running spark. Example: /etc/hadoop/conf
 
-*Extra configuration for PySparkTask jobs:*
+*Extra configuration for PySparkStep jobs:*
 
 py_packages
     Comma-separated list of local packages (in your python path) to be distributed to the cluster.
@@ -985,13 +985,13 @@ py_packages
 *Parameters controlling the execution of SparkJob jobs (deprecated):*
 
 
-[task_history]
+[step_history]
 --------------
 
-Parameters controlling storage of task history in a database
+Parameters controlling storage of step history in a database
 
 db_connection
-  Connection string for connecting to the task history db using
+  Connection string for connecting to the step history db using
   sqlalchemy.
 
 
@@ -1001,8 +1001,8 @@ db_connection
 Parameters controlling execution summary of a worker
 
 summary_length
-  Maximum number of tasks to show in an execution summary.  If the value is 0,
-  then all tasks will be displayed.  Default value is 5.
+  Maximum number of steps to show in an execution summary.  If the value is 0,
+  then all steps will be displayed.  Default value is 5.
 
 
 [webhdfs]
@@ -1045,26 +1045,26 @@ metric_namespace
   Optional prefix to add to the beginning of every metric sent to Datadog.
   Default value is "luigi".
 
-Per Task Retry-Policy
+Per Step Retry-Policy
 ---------------------
 
-Luigi also supports defining ``retry_policy`` per task.
+Luigi also supports defining ``retry_policy`` per step.
 
 .. code-block:: python
 
-    class GenerateWordsFromHdfs(luigi.Task):
+    class GenerateWordsFromHdfs(luigi.Step):
 
        retry_count = 2
 
         ...
 
-    class GenerateWordsFromRDBM(luigi.Task):
+    class GenerateWordsFromRDBM(luigi.Step):
 
        retry_count = 5
 
         ...
 
-    class CountLetters(luigi.Task):
+    class CountLetters(luigi.Step):
 
         def requires(self):
             return [GenerateWordsFromHdfs()]
@@ -1074,14 +1074,14 @@ Luigi also supports defining ``retry_policy`` per task.
 
         ...
 
-If none of retry-policy fields is defined per task, the field value will be **default** value which is defined in luigi config file.
+If none of retry-policy fields is defined per step, the field value will be **default** value which is defined in luigi config file.
 
 To make luigi sticks to the given retry-policy, be sure you run luigi worker with ``keep_alive`` config. Please check ``keep_alive`` config in :ref:`worker-config` section.
 
 Retry-Policy Fields
 -------------------
 
-The fields below are in retry-policy and they can be defined per task.
+The fields below are in retry-policy and they can be defined per step.
 
 * ``retry_count``
 * ``disable_hard_timeout``

@@ -14,62 +14,62 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from helpers import LuigiTestCase, RunOnceTask
+from helpers import LuigiTestCase, RunOnceStep
 
 import luigi
-import luigi.task
+import luigi.step
 from luigi.util import inherits, requires
 
 
 class BasicsTest(LuigiTestCase):
     # following tests using inherits decorator
-    def test_task_ids_using_inherits(self):
-        class ParentTask(luigi.Task):
+    def test_step_ids_using_inherits(self):
+        class ParentStep(luigi.Step):
             my_param = luigi.Parameter()
         luigi.namespace('blah')
 
-        @inherits(ParentTask)
-        class ChildTask(luigi.Task):
+        @inherits(ParentStep)
+        class ChildStep(luigi.Step):
             def requires(self):
-                return self.clone(ParentTask)
+                return self.clone(ParentStep)
         luigi.namespace('')
-        child_task = ChildTask(my_param='hello')
-        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
-        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+        child_step = ChildStep(my_param='hello')
+        self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
+        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
 
-    def test_task_ids_using_inherits_2(self):
+    def test_step_ids_using_inherits_2(self):
         # Here we use this decorator in a unnormal way.
         # But it should still work.
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             my_param = luigi.Parameter()
-        decorator = inherits(ParentTask)
+        decorator = inherits(ParentStep)
         luigi.namespace('blah')
 
-        class ChildTask(luigi.Task):
+        class ChildStep(luigi.Step):
             def requires(self):
                 return self.clone_parent()
         luigi.namespace('')
-        ChildTask = decorator(ChildTask)
-        child_task = ChildTask(my_param='hello')
-        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
-        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+        ChildStep = decorator(ChildStep)
+        child_step = ChildStep(my_param='hello')
+        self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
+        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
 
-    def test_task_ids_using_inherits_kwargs(self):
-        class ParentTask(luigi.Task):
+    def test_step_ids_using_inherits_kwargs(self):
+        class ParentStep(luigi.Step):
             my_param = luigi.Parameter()
         luigi.namespace('blah')
 
-        @inherits(parent=ParentTask)
-        class ChildTask(luigi.Task):
+        @inherits(parent=ParentStep)
+        class ChildStep(luigi.Step):
             def requires(self):
-                return self.clone(ParentTask)
+                return self.clone(ParentStep)
         luigi.namespace('')
-        child_task = ChildTask(my_param='hello')
-        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
-        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+        child_step = ChildStep(my_param='hello')
+        self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
+        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
 
     def _setup_parent_and_child_inherits(self):
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             my_parameter = luigi.Parameter()
             class_variable = 'notset'
 
@@ -79,73 +79,73 @@ class BasicsTest(LuigiTestCase):
             def complete(self):
                 return self.class_variable == 'actuallyset'
 
-        @inherits(ParentTask)
-        class ChildTask(RunOnceTask):
+        @inherits(ParentStep)
+        class ChildStep(RunOnceStep):
             def requires(self):
                 return self.clone_parent()
 
-        return ParentTask
+        return ParentStep
 
     def test_inherits_has_effect_run_child(self):
-        ParentTask = self._setup_parent_and_child_inherits()
-        self.assertTrue(self.run_locally_split('ChildTask --my-parameter actuallyset'))
-        self.assertEqual(ParentTask.class_variable, 'actuallyset')
+        ParentStep = self._setup_parent_and_child_inherits()
+        self.assertTrue(self.run_locally_split('ChildStep --my-parameter actuallyset'))
+        self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def test_inherits_has_effect_run_parent(self):
-        ParentTask = self._setup_parent_and_child_inherits()
-        self.assertTrue(self.run_locally_split('ParentTask --my-parameter actuallyset'))
-        self.assertEqual(ParentTask.class_variable, 'actuallyset')
+        ParentStep = self._setup_parent_and_child_inherits()
+        self.assertTrue(self.run_locally_split('ParentStep --my-parameter actuallyset'))
+        self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def _setup_inherits_inheritence(self):
-        class InheritedTask(luigi.Task):
+        class InheritedStep(luigi.Step):
             pass
 
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             pass
 
-        @inherits(InheritedTask)
-        class ChildTask(ParentTask):
+        @inherits(InheritedStep)
+        class ChildStep(ParentStep):
             pass
 
-        return ChildTask
+        return ChildStep
 
     def test_inherits_has_effect_MRO(self):
-        ChildTask = self._setup_inherits_inheritence()
-        self.assertNotEqual(str(ChildTask.__mro__[0]),
-                            str(ChildTask.__mro__[1]))
+        ChildStep = self._setup_inherits_inheritence()
+        self.assertNotEqual(str(ChildStep.__mro__[0]),
+                            str(ChildStep.__mro__[1]))
 
     # following tests using requires decorator
-    def test_task_ids_using_requries(self):
-        class ParentTask(luigi.Task):
+    def test_step_ids_using_requries(self):
+        class ParentStep(luigi.Step):
             my_param = luigi.Parameter()
         luigi.namespace('blah')
 
-        @requires(ParentTask)
-        class ChildTask(luigi.Task):
+        @requires(ParentStep)
+        class ChildStep(luigi.Step):
             pass
         luigi.namespace('')
-        child_task = ChildTask(my_param='hello')
-        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
-        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+        child_step = ChildStep(my_param='hello')
+        self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
+        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
 
-    def test_task_ids_using_requries_2(self):
+    def test_step_ids_using_requries_2(self):
         # Here we use this decorator in a unnormal way.
         # But it should still work.
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             my_param = luigi.Parameter()
-        decorator = requires(ParentTask)
+        decorator = requires(ParentStep)
         luigi.namespace('blah')
 
-        class ChildTask(luigi.Task):
+        class ChildStep(luigi.Step):
             pass
         luigi.namespace('')
-        ChildTask = decorator(ChildTask)
-        child_task = ChildTask(my_param='hello')
-        self.assertEqual(str(child_task), 'blah.ChildTask(my_param=hello)')
-        self.assertIn(ParentTask(my_param='hello'), luigi.task.flatten(child_task.requires()))
+        ChildStep = decorator(ChildStep)
+        child_step = ChildStep(my_param='hello')
+        self.assertEqual(str(child_step), 'blah.ChildStep(my_param=hello)')
+        self.assertIn(ParentStep(my_param='hello'), luigi.step.flatten(child_step.requires()))
 
     def _setup_parent_and_child(self):
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             my_parameter = luigi.Parameter()
             class_variable = 'notset'
 
@@ -155,51 +155,51 @@ class BasicsTest(LuigiTestCase):
             def complete(self):
                 return self.class_variable == 'actuallyset'
 
-        @requires(ParentTask)
-        class ChildTask(RunOnceTask):
+        @requires(ParentStep)
+        class ChildStep(RunOnceStep):
             pass
 
-        return ParentTask
+        return ParentStep
 
     def test_requires_has_effect_run_child(self):
-        ParentTask = self._setup_parent_and_child()
-        self.assertTrue(self.run_locally_split('ChildTask --my-parameter actuallyset'))
-        self.assertEqual(ParentTask.class_variable, 'actuallyset')
+        ParentStep = self._setup_parent_and_child()
+        self.assertTrue(self.run_locally_split('ChildStep --my-parameter actuallyset'))
+        self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def test_requires_has_effect_run_parent(self):
-        ParentTask = self._setup_parent_and_child()
-        self.assertTrue(self.run_locally_split('ParentTask --my-parameter actuallyset'))
-        self.assertEqual(ParentTask.class_variable, 'actuallyset')
+        ParentStep = self._setup_parent_and_child()
+        self.assertTrue(self.run_locally_split('ParentStep --my-parameter actuallyset'))
+        self.assertEqual(ParentStep.class_variable, 'actuallyset')
 
     def _setup_requires_inheritence(self):
-        class RequiredTask(luigi.Task):
+        class RequiredStep(luigi.Step):
             pass
 
-        class ParentTask(luigi.Task):
+        class ParentStep(luigi.Step):
             pass
 
-        @requires(RequiredTask)
-        class ChildTask(ParentTask):
+        @requires(RequiredStep)
+        class ChildStep(ParentStep):
             pass
 
-        return ChildTask
+        return ChildStep
 
     def test_requires_has_effect_MRO(self):
-        ChildTask = self._setup_requires_inheritence()
-        self.assertNotEqual(str(ChildTask.__mro__[0]),
-                            str(ChildTask.__mro__[1]))
+        ChildStep = self._setup_requires_inheritence()
+        self.assertNotEqual(str(ChildStep.__mro__[0]),
+                            str(ChildStep.__mro__[1]))
 
     def test_kwargs_requires_gives_named_inputs(self):
-        class ParentTask(RunOnceTask):
+        class ParentStep(RunOnceStep):
             def output(self):
                 return "Target"
 
-        @requires(parent_1=ParentTask, parent_2=ParentTask)
-        class ChildTask(RunOnceTask):
+        @requires(parent_1=ParentStep, parent_2=ParentStep)
+        class ChildStep(RunOnceStep):
             resulting_input = 'notset'
 
             def run(self):
                 self.__class__.resulting_input = self.input()
 
-        self.assertTrue(self.run_locally_split('ChildTask'))
-        self.assertEqual(ChildTask.resulting_input, {'parent_1': 'Target', 'parent_2': 'Target'})
+        self.assertTrue(self.run_locally_split('ChildStep'))
+        self.assertEqual(ChildStep.resulting_input, {'parent_1': 'Target', 'parent_2': 'Target'})

@@ -26,7 +26,7 @@ from luigi.mock import MockTarget
 luigi.notifications.DEBUG = True
 
 
-class Report(luigi.Task):
+class Report(luigi.Step):
     date = luigi.DateParameter()
 
     def run(self):
@@ -40,7 +40,7 @@ class Report(luigi.Task):
         return MockTarget(self.date.strftime('/tmp/report-%Y-%m-%d'))
 
 
-class ReportReader(luigi.Task):
+class ReportReader(luigi.Step):
     date = luigi.DateParameter()
 
     def requires(self):
@@ -57,18 +57,18 @@ class ReportReader(luigi.Task):
         return False
 
 
-class CurrencyExchanger(luigi.Task):
-    task = luigi.Parameter()
+class CurrencyExchanger(luigi.Step):
+    step = luigi.Parameter()
     currency_to = luigi.Parameter()
 
     exchange_rates = {('USD', 'USD'): decimal.Decimal(1),
                       ('EUR', 'USD'): decimal.Decimal('1.25')}
 
     def requires(self):
-        return self.task  # Note that you still need to state this explicitly
+        return self.step  # Note that you still need to state this explicitly
 
     def get_line(self, line):
-        amount, currency_from = self.task.get_line(line)
+        amount, currency_from = self.step.get_line(line)
         return amount * self.exchange_rates[(currency_from, self.currency_to)], self.currency_to
 
     def complete(self):
@@ -77,13 +77,13 @@ class CurrencyExchanger(luigi.Task):
 
 class InstanceWrapperTest(unittest.TestCase):
 
-    ''' This test illustrates that tasks can have tasks as parameters
+    ''' This test illustrates that steps can have steps as parameters
 
     This is a more complicated variant of factorial_test.py which is an example of
-    tasks communicating directly with other tasks. In this case, a task takes another
-    task as a parameter and wraps it.
+    steps communicating directly with other steps. In this case, a step takes another
+    step as a parameter and wraps it.
 
-    Also see wrap_test.py for an example of a task class wrapping another task class.
+    Also see wrap_test.py for an example of a step class wrapping another step class.
 
     Not the most useful pattern, but there's actually been a few cases where it was
     pretty handy to be able to do that. I'm adding it as a unit test to make sure that

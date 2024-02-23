@@ -16,7 +16,7 @@ svg {
     overflow: inherit;
 }
 
-.taskRow {
+.stepRow {
   word-break:break-all;
 }
 
@@ -181,11 +181,11 @@ span.status-icon {
   min-height: 80px;
 }
 
-#taskTable_filter {
+#stepTable_filter {
   margin-top: 9px;
 }
 
-#loadTaskForm input {
+#loadStepForm input {
   width: 20em;
 }
 
@@ -208,16 +208,16 @@ span.status-icon {
   padding-left: 10px;
 }
 
-#clear-task-filter {
+#clear-step-filter {
   margin-left: 20px;
   cursor: pointer;
 }
 
-#clear-task-filter:hover {
+#clear-step-filter:hover {
   opacity: 0.9;
 }
 
-#clear-task-filter:active {
+#clear-step-filter:active {
   box-shadow: inset -2px 3px 1px rgba(0,0,0,0.2);
 }
 

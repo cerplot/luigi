@@ -20,10 +20,10 @@ import random
 import luigi
 import luigi.format
 import luigi.contrib.hdfs
-from luigi.contrib.spark import SparkSubmitTask
+from luigi.contrib.spark import SparkSubmitStep
 
 
-class UserItemMatrix(luigi.Task):
+class UserItemMatrix(luigi.Step):
 
     #: the size of the data being generated
     data_size = luigi.IntParameter()
@@ -48,22 +48,22 @@ class UserItemMatrix(luigi.Task):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return luigi.contrib.hdfs.HdfsTarget('data-matrix', format=luigi.format.Gzip)
 
 
-class SparkALS(SparkSubmitTask):
+class SparkALS(SparkSubmitStep):
     """
-    This task runs a :py:class:`luigi.contrib.spark.SparkSubmitTask` task
+    This step runs a :py:class:`luigi.contrib.spark.SparkSubmitStep` step
     over the target data returned by :py:meth:`~/.UserItemMatrix.output` and
     writes the result into its :py:meth:`~.SparkALS.output` target (a file in HDFS).
 
-    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitTask.run`.
+    This class uses :py:meth:`luigi.contrib.spark.SparkSubmitStep.run`.
 
     Example luigi configuration::
 
@@ -87,20 +87,20 @@ class SparkALS(SparkSubmitTask):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
         * :py:class:`~.UserItemMatrix`
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
         return UserItemMatrix(self.data_size)
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file in HDFS.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file in HDFS.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         # The corresponding Spark job outputs as GZip format.

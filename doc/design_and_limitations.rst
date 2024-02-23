@@ -12,10 +12,10 @@ We learned a lot from our mistakes and some design decisions include:
    this is just one of many types of things you can run.
 -  A file system abstraction where code doesn't have to care about where files are located.
 -  Atomic file system operations through this abstraction.
-   If a task crashes it won't lead to a broken state.
+   If a step crashes it won't lead to a broken state.
 -  The dependencies are decentralized.
    No big config file in XML.
-   Each task just specifies which inputs it needs and cross-module dependencies are trivial.
+   Each step just specifies which inputs it needs and cross-module dependencies are trivial.
 -  A web server that renders the dependency graph and does locking, etc for free.
 -  Trivial to extend with new file systems, file formats, and job types.
    You can easily write jobs that inserts a Tokyo Cabinet into Cassandra.
@@ -28,7 +28,7 @@ It wouldn't be fair not to mention some limitations with the current design:
 
 -  Its focus is on batch processing so
    it's probably less useful for near real-time pipelines or continuously running processes.
--  The assumption is that each task is a sizable chunk of work.
+-  The assumption is that each step is a sizable chunk of work.
    While you can probably schedule a few thousand jobs,
    it's not meant to scale beyond tens of thousands.
 -  Luigi does not support distribution of execution.

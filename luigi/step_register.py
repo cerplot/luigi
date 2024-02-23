@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 """
-Define the centralized register of all :class:`~luigi.task.Task` classes.
+Define the centralized register of all :class:`~luigi.step.Step` classes.
 """
 
 import abc
@@ -24,34 +24,34 @@ import logging
 logger = logging.getLogger('luigi-interface')
 
 
-class TaskClassException(Exception):
+class StepClassException(Exception):
     pass
 
 
-class TaskClassNotFoundException(TaskClassException):
+class StepClassNotFoundException(StepClassException):
     pass
 
 
-class TaskClassAmbigiousException(TaskClassException):
+class StepClassAmbigiousException(StepClassException):
     pass
 
 
 class Register(abc.ABCMeta):
     """
-    The Metaclass of :py:class:`Task`.
+    The Metaclass of :py:class:`Step`.
 
-    Acts as a global registry of Tasks with the following properties:
+    Acts as a global registry of Steps with the following properties:
 
     1. Cache instances of objects so that eg. ``X(1, 2, 3)`` always returns the
        same object.
-    2. Keep track of all subclasses of :py:class:`Task` and expose them.
+    2. Keep track of all subclasses of :py:class:`Step` and expose them.
     """
     __instance_cache = {}
     _default_namespace_dict = {}
     _reg = []
     AMBIGUOUS_CLASS = object()  # Placeholder denoting an error
     """If this value is returned by :py:meth:`_get_reg` then there is an
-    ambiguous task name (two :py:class:`Task` have the same name). This denotes
+    ambiguous step name (two :py:class:`Step` have the same name). This denotes
     an error."""
 
     def __new__(metacls, classname, bases, classdict, **kwargs):
@@ -60,7 +60,7 @@ class Register(abc.ABCMeta):
 
         Also register all subclasses.
 
-        When the set or inherited namespace evaluates to ``None``, set the task namespace to
+        When the set or inherited namespace evaluates to ``None``, set the step namespace to
         whatever the currently declared namespace is.
         """
         cls = super(Register, metacls).__new__(metacls, classname, bases, classdict, **kwargs)
@@ -72,7 +72,7 @@ class Register(abc.ABCMeta):
         """
         Custom class instantiation utilizing instance cache.
 
-        If a Task has already been instantiated with the same parameters,
+        If a Step has already been instantiated with the same parameters,
         the previous instance is returned to reduce number of object instances.
         """
         def instantiate():
@@ -114,38 +114,38 @@ class Register(abc.ABCMeta):
         cls.__instance_cache = None
 
     @property
-    def task_family(cls):
+    def step_family(cls):
         """
         Internal note: This function will be deleted soon.
         """
-        task_namespace = cls.get_task_namespace()
-        if not task_namespace:
+        step_namespace = cls.get_step_namespace()
+        if not step_namespace:
             return cls.__name__
         else:
-            return f"{task_namespace}.{cls.__name__}"
+            return f"{step_namespace}.{cls.__name__}"
 
     @classmethod
     def _get_reg(cls):
         """Return all of the registered classes.
 
-        :return:  an ``dict`` of task_family -> class
+        :return:  an ``dict`` of step_family -> class
         """
-        # We have to do this on-demand in case task names have changed later
+        # We have to do this on-demand in case step names have changed later
         reg = dict()
-        for task_cls in cls._reg:
-            if not task_cls._visible_in_registry:
+        for step_cls in cls._reg:
+            if not step_cls._visible_in_registry:
                 continue
 
-            name = task_cls.get_task_family()
+            name = step_cls.get_step_family()
             if name in reg and \
                     (reg[name] == Register.AMBIGUOUS_CLASS or  # Check so issubclass doesn't crash
-                     not issubclass(task_cls, reg[name])):
+                     not issubclass(step_cls, reg[name])):
                 # Registering two different classes - this means we can't instantiate them by name
                 # The only exception is if one class is a subclass of the other. In that case, we
                 # instantiate the most-derived class (this fixes some issues with decorator wrappers).
                 reg[name] = Register.AMBIGUOUS_CLASS
             else:
-                reg[name] = task_cls
+                reg[name] = step_cls
 
         return reg
 
@@ -153,47 +153,47 @@ class Register(abc.ABCMeta):
     def _set_reg(cls, reg):
         """The writing complement of _get_reg
         """
-        cls._reg = [task_cls for task_cls in reg.values() if task_cls is not cls.AMBIGUOUS_CLASS]
+        cls._reg = [step_cls for step_cls in reg.values() if step_cls is not cls.AMBIGUOUS_CLASS]
 
     @classmethod
-    def task_names(cls):
+    def step_names(cls):
         """
-        List of task names as strings
+        List of step names as strings
         """
         return sorted(cls._get_reg().keys())
 
     @classmethod
-    def tasks_str(cls):
+    def steps_str(cls):
         """
         Human-readable register contents dump.
         """
-        return ','.join(cls.task_names())
+        return ','.join(cls.step_names())
 
     @classmethod
-    def get_task_cls(cls, name):
+    def get_step_cls(cls, name):
         """
         Returns an unambiguous class or raises an exception.
         """
-        task_cls = cls._get_reg().get(name)
-        if not task_cls:
-            raise TaskClassNotFoundException(cls._missing_task_msg(name))
+        step_cls = cls._get_reg().get(name)
+        if not step_cls:
+            raise StepClassNotFoundException(cls._missing_step_msg(name))
 
-        if task_cls == cls.AMBIGUOUS_CLASS:
-            raise TaskClassAmbigiousException('Task %r is ambiguous' % name)
-        return task_cls
+        if step_cls == cls.AMBIGUOUS_CLASS:
+            raise StepClassAmbigiousException('Step %r is ambiguous' % name)
+        return step_cls
 
     @classmethod
     def get_all_params(cls):
         """
-        Compiles and returns all parameters for all :py:class:`Task`.
+        Compiles and returns all parameters for all :py:class:`Step`.
 
         :return: a generator of tuples (TODO: we should make this more elegant)
         """
-        for task_name, task_cls in cls._get_reg().items():
-            if task_cls == cls.AMBIGUOUS_CLASS:
+        for step_name, step_cls in cls._get_reg().items():
+            if step_cls == cls.AMBIGUOUS_CLASS:
                 continue
-            for param_name, param_obj in task_cls.get_params():
-                yield task_name, (not task_cls.use_cmdline_section), param_name, param_obj
+            for param_name, param_obj in step_cls.get_params():
+                yield step_name, (not step_cls.use_cmdline_section), param_name, param_obj
 
     @staticmethod
     def _editdistance(a, b):
@@ -213,14 +213,14 @@ class Register(abc.ABCMeta):
         return r1[len(b)]
 
     @classmethod
-    def _missing_task_msg(cls, task_name):
-        weighted_tasks = [(Register._editdistance(task_name, task_name_2), task_name_2) for task_name_2 in cls.task_names()]
-        ordered_tasks = sorted(weighted_tasks, key=lambda pair: pair[0])
-        candidates = [task for (dist, task) in ordered_tasks if dist <= 5 and dist < len(task)]
+    def _missing_step_msg(cls, step_name):
+        weighted_steps = [(Register._editdistance(step_name, step_name_2), step_name_2) for step_name_2 in cls.step_names()]
+        ordered_steps = sorted(weighted_steps, key=lambda pair: pair[0])
+        candidates = [step for (dist, step) in ordered_steps if dist <= 5 and dist < len(step)]
         if candidates:
-            return "No task %s. Did you mean:\n%s" % (task_name, '\n'.join(candidates))
+            return "No step %s. Did you mean:\n%s" % (step_name, '\n'.join(candidates))
         else:
-            return "No task %s. Candidates are: %s" % (task_name, cls.tasks_str())
+            return "No step %s. Candidates are: %s" % (step_name, cls.steps_str())
 
     @classmethod
     def _get_namespace(mcs, module_name):
@@ -243,11 +243,11 @@ class Register(abc.ABCMeta):
             yield ''
 
 
-def load_task(module, task_name, params_str):
+def load_step(module, step_name, params_str):
     """
-    Imports task dynamically given a module and a task name.
+    Imports step dynamically given a module and a step name.
     """
     if module is not None:
         __import__(module)
-    task_cls = Register.get_task_cls(task_name)
-    return task_cls.from_str_params(params_str)
+    step_cls = Register.get_step_cls(step_name)
+    return step_cls.from_str_params(params_str)

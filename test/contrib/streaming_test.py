@@ -6,13 +6,13 @@ import unittest
 from luigi import Parameter
 from luigi.contrib import mrrunner
 
-from luigi.contrib.hadoop import HadoopJobRunner, JobTask
+from luigi.contrib.hadoop import HadoopJobRunner, JobStep
 from luigi.contrib.hdfs import HdfsTarget
 
 import pytest
 
 
-class MockStreamingJob(JobTask):
+class MockStreamingJob(JobStep):
     package_binary = Parameter(default=None)
 
     def output(self):
@@ -21,7 +21,7 @@ class MockStreamingJob(JobTask):
         return rv
 
 
-class MockStreamingJobWithExtraArguments(JobTask):
+class MockStreamingJobWithExtraArguments(JobStep):
     package_binary = Parameter(default=None)
 
     def extra_streaming_arguments(self):

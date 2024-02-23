@@ -45,12 +45,12 @@ class TestDataflowParamKeys(beam_dataflow.DataflowParamKeys):
     labels = "labels"
 
 
-class TestRequires(luigi.ExternalTask):
+class TestRequires(luigi.ExternalStep):
     def output(self):
         return luigi.LocalTarget(path='some-input-dir')
 
 
-class SimpleTestTask(beam_dataflow.BeamDataflowJobTask):
+class SimpleTestStep(beam_dataflow.BeamDataflowJobStep):
     dataflow_params = TestDataflowParamKeys()
 
     def requires(self):
@@ -63,7 +63,7 @@ class SimpleTestTask(beam_dataflow.BeamDataflowJobTask):
         return ['java', 'com.spotify.luigi.SomeJobClass']
 
 
-class FullTestTask(beam_dataflow.BeamDataflowJobTask):
+class FullTestStep(beam_dataflow.BeamDataflowJobStep):
     project = 'some-project'
     runner = 'DirectRunner'
     temp_location = 'some-temp'
@@ -98,7 +98,7 @@ class FullTestTask(beam_dataflow.BeamDataflowJobTask):
         return ['java', 'com.spotify.luigi.SomeJobClass']
 
 
-class FilePatternsTestTask(beam_dataflow.BeamDataflowJobTask):
+class FilePatternsTestStep(beam_dataflow.BeamDataflowJobStep):
     dataflow_params = TestDataflowParamKeys()
 
     def requires(self):
@@ -117,7 +117,7 @@ class FilePatternsTestTask(beam_dataflow.BeamDataflowJobTask):
         return ['java', 'com.spotify.luigi.SomeJobClass']
 
 
-class DummyCmdLineTestTask(beam_dataflow.BeamDataflowJobTask):
+class DummyCmdLineTestStep(beam_dataflow.BeamDataflowJobStep):
     dataflow_params = TestDataflowParamKeys()
 
     def dataflow_executable(self):
@@ -136,8 +136,8 @@ class DummyCmdLineTestTask(beam_dataflow.BeamDataflowJobTask):
 class BeamDataflowTest(unittest.TestCase):
 
     def test_dataflow_simple_cmd_line_args(self):
-        task = SimpleTestTask()
-        task.runner = 'DirectRunner'
+        step = SimpleTestStep()
+        step.runner = 'DirectRunner'
 
         expected = [
             'java',
@@ -147,11 +147,11 @@ class BeamDataflowTest(unittest.TestCase):
             '--output=some-output.txt'
         ]
 
-        self.assertEqual(task._mk_cmd_line(), expected)
+        self.assertEqual(step._mk_cmd_line(), expected)
 
     def test_dataflow_full_cmd_line_args(self):
-        full_test_task = FullTestTask()
-        cmd_line_args = full_test_task._mk_cmd_line()
+        full_test_step = FullTestStep()
+        cmd_line_args = full_test_step._mk_cmd_line()
 
         expected = [
             'java',
@@ -183,20 +183,20 @@ class BeamDataflowTest(unittest.TestCase):
         self.assertEqual(cmd_line_args, expected)
 
     def test_dataflow_with_file_patterns(self):
-        cmd_line_args = FilePatternsTestTask()._mk_cmd_line()
+        cmd_line_args = FilePatternsTestStep()._mk_cmd_line()
 
         self.assertIn('--input1=some-input-dir/part-*', cmd_line_args)
         self.assertIn('--input2=some-input-dir/*.some-ext', cmd_line_args)
 
     def test_dataflow_with_invalid_file_patterns(self):
-        task = FilePatternsTestTask()
-        task.file_pattern = MagicMock(return_value='notadict')
+        step = FilePatternsTestStep()
+        step.file_pattern = MagicMock(return_value='notadict')
         with self.assertRaises(ValueError):
-            task._mk_cmd_line()
+            step._mk_cmd_line()
 
     def test_dataflow_input_arg_formatting(self):
-        class TestTaskListOfTargetsInput(SimpleTestTask):
-            class TestRequiresListOfTargets(luigi.ExternalTask):
+        class TestStepListOfTargetsInput(SimpleTestStep):
+            class TestRequiresListOfTargets(luigi.ExternalStep):
                 def output(self):
                     return [luigi.LocalTarget(path='some-input-1'),
                             luigi.LocalTarget(path='some-input-2')]
@@ -204,12 +204,12 @@ class BeamDataflowTest(unittest.TestCase):
             def requires(self):
                 return self.TestRequiresListOfTargets()
 
-        task_list_input = TestTaskListOfTargetsInput()
-        self.assertEqual(task_list_input._format_input_args(),
+        step_list_input = TestStepListOfTargetsInput()
+        self.assertEqual(step_list_input._format_input_args(),
                          ['--input=some-input-1/part-*,some-input-2/part-*'])
 
-        class TestTaskListOfTuplesInput(SimpleTestTask):
-            class TestRequiresListOfTuples(luigi.ExternalTask):
+        class TestStepListOfTuplesInput(SimpleTestStep):
+            class TestRequiresListOfTuples(luigi.ExternalStep):
                 def output(self):
                     return [('input1', luigi.LocalTarget(path='some-input-1')),
                             ('input2', luigi.LocalTarget(path='some-input-2'))]
@@ -217,13 +217,13 @@ class BeamDataflowTest(unittest.TestCase):
             def requires(self):
                 return self.TestRequiresListOfTuples()
 
-        task_list_tuples_input = TestTaskListOfTuplesInput()
-        self.assertEqual(task_list_tuples_input._format_input_args(),
+        step_list_tuples_input = TestStepListOfTuplesInput()
+        self.assertEqual(step_list_tuples_input._format_input_args(),
                          ['--input1=some-input-1/part-*',
                           '--input2=some-input-2/part-*'])
 
-        class TestTaskDictInput(SimpleTestTask):
-            class TestRequiresDict(luigi.ExternalTask):
+        class TestStepDictInput(SimpleTestStep):
+            class TestRequiresDict(luigi.ExternalStep):
                 def output(self):
                     return {'input1': luigi.LocalTarget(path='some-input-1'),
                             'input2': luigi.LocalTarget(path='some-input-2')}
@@ -231,24 +231,24 @@ class BeamDataflowTest(unittest.TestCase):
             def requires(self):
                 return self.TestRequiresDict()
 
-        task_dict_input = TestTaskDictInput()
-        self.assertEqual(task_dict_input._format_input_args(),
+        step_dict_input = TestStepDictInput()
+        self.assertEqual(step_dict_input._format_input_args(),
                          ['--input1=some-input-1/part-*',
                           '--input2=some-input-2/part-*'])
 
-        class TestTaskTupleInput(SimpleTestTask):
-            class TestRequiresTuple(luigi.ExternalTask):
+        class TestStepTupleInput(SimpleTestStep):
+            class TestRequiresTuple(luigi.ExternalStep):
                 def output(self):
                     return 'some-key', luigi.LocalTarget(path='some-input')
 
             def requires(self):
                 return self.TestRequiresTuple()
 
-        task_tuple_input = TestTaskTupleInput()
-        self.assertEqual(task_tuple_input._format_input_args(),
+        step_tuple_input = TestStepTupleInput()
+        self.assertEqual(step_tuple_input._format_input_args(),
                          ['--some-key=some-input/part-*'])
 
-    def test_task_output_arg_completion(self):
+    def test_step_output_arg_completion(self):
         class TestCompleteTarget(luigi.Target):
             def exists(self):
                 return True
@@ -257,108 +257,108 @@ class BeamDataflowTest(unittest.TestCase):
             def exists(self):
                 return False
 
-        class TestTaskDictOfCompleteOutput(SimpleTestTask):
+        class TestStepDictOfCompleteOutput(SimpleTestStep):
             def output(self):
                 return {
                     "output": TestCompleteTarget()
                 }
 
-        self.assertEqual(TestTaskDictOfCompleteOutput().complete(), True)
+        self.assertEqual(TestStepDictOfCompleteOutput().complete(), True)
 
-        class TestTaskDictOfIncompleteOutput(SimpleTestTask):
+        class TestStepDictOfIncompleteOutput(SimpleTestStep):
             def output(self):
                 return {
                     "output": TestIncompleteTarget()
                 }
 
-        self.assertEqual(TestTaskDictOfIncompleteOutput().complete(), False)
+        self.assertEqual(TestStepDictOfIncompleteOutput().complete(), False)
 
-        class TestTaskDictOfMixedCompleteOutput(SimpleTestTask):
+        class TestStepDictOfMixedCompleteOutput(SimpleTestStep):
             def output(self):
                 return {
                     "output1": TestIncompleteTarget(),
                     "output2": TestCompleteTarget()
                 }
 
-        self.assertEqual(TestTaskDictOfMixedCompleteOutput().complete(), False)
+        self.assertEqual(TestStepDictOfMixedCompleteOutput().complete(), False)
 
     def test_get_target_path(self):
         bq_target = bigquery.BigQueryTarget("p", "d", "t", client="fake_client")
         self.assertEqual(
-            SimpleTestTask.get_target_path(bq_target),
+            SimpleTestStep.get_target_path(bq_target),
             "p:d.t")
 
         gcs_target = gcs.GCSTarget("gs://foo/bar.txt", client="fake_client")
         self.assertEqual(
-            SimpleTestTask.get_target_path(gcs_target),
+            SimpleTestStep.get_target_path(gcs_target),
             "gs://foo/bar.txt")
 
         with self.assertRaises(ValueError):
-            SimpleTestTask.get_target_path("not_a_target")
+            SimpleTestStep.get_target_path("not_a_target")
 
     def test_dataflow_runner_resolution(self):
-        task = SimpleTestTask()
+        step = SimpleTestStep()
         # Test that supported runners are passed through
         for runner in ["DirectRunner", "DataflowRunner"]:
-            task.runner = runner
-            self.assertEqual(task._get_runner(), runner)
+            step.runner = runner
+            self.assertEqual(step._get_runner(), runner)
 
         # Test that unsupported runners throw an error
-        task.runner = "UnsupportedRunner"
+        step.runner = "UnsupportedRunner"
         with self.assertRaises(ValueError):
-            task._get_runner()
+            step._get_runner()
 
     def test_dataflow_successful_run_callbacks(self):
-        task = DummyCmdLineTestTask()
+        step = DummyCmdLineTestStep()
 
-        task.before_run = MagicMock()
-        task.validate_output = MagicMock()
-        task.on_successful_run = MagicMock()
-        task.on_successful_output_validation = MagicMock()
-        task.cleanup_on_error = MagicMock()
+        step.before_run = MagicMock()
+        step.validate_output = MagicMock()
+        step.on_successful_run = MagicMock()
+        step.on_successful_output_validation = MagicMock()
+        step.cleanup_on_error = MagicMock()
 
-        task.run()
+        step.run()
 
-        task.before_run.assert_called_once_with()
-        task.validate_output.assert_called_once_with()
-        task.cleanup_on_error.assert_not_called()
-        task.on_successful_run.assert_called_once_with()
-        task.on_successful_output_validation.assert_called_once_with()
+        step.before_run.assert_called_once_with()
+        step.validate_output.assert_called_once_with()
+        step.cleanup_on_error.assert_not_called()
+        step.on_successful_run.assert_called_once_with()
+        step.on_successful_output_validation.assert_called_once_with()
 
     def test_dataflow_successful_run_invalid_output_callbacks(self):
-        task = DummyCmdLineTestTask()
+        step = DummyCmdLineTestStep()
 
-        task.before_run = MagicMock()
-        task.validate_output = MagicMock(return_value=False)
-        task.on_successful_run = MagicMock()
-        task.on_successful_output_validation = MagicMock()
-        task.cleanup_on_error = MagicMock()
+        step.before_run = MagicMock()
+        step.validate_output = MagicMock(return_value=False)
+        step.on_successful_run = MagicMock()
+        step.on_successful_output_validation = MagicMock()
+        step.cleanup_on_error = MagicMock()
 
         with self.assertRaises(ValueError):
-            task.run()
+            step.run()
 
-        task.before_run.assert_called_once_with()
-        task.validate_output.assert_called_once_with()
-        task.cleanup_on_error.assert_called_once_with(mock.ANY)
-        task.on_successful_run.assert_called_once_with()
-        task.on_successful_output_validation.assert_not_called()
+        step.before_run.assert_called_once_with()
+        step.validate_output.assert_called_once_with()
+        step.cleanup_on_error.assert_called_once_with(mock.ANY)
+        step.on_successful_run.assert_called_once_with()
+        step.on_successful_output_validation.assert_not_called()
 
     @patch('luigi.contrib.beam_dataflow.subprocess.Popen.wait', return_value=1)
     @patch('luigi.contrib.beam_dataflow.os._exit', side_effect=OSError)
     def test_dataflow_failed_run_callbacks(self, popen, os_exit):
-        task = DummyCmdLineTestTask()
+        step = DummyCmdLineTestStep()
 
-        task.before_run = MagicMock()
-        task.validate_output = MagicMock()
-        task.on_successful_run = MagicMock()
-        task.on_successful_output_validation = MagicMock()
-        task.cleanup_on_error = MagicMock()
+        step.before_run = MagicMock()
+        step.validate_output = MagicMock()
+        step.on_successful_run = MagicMock()
+        step.on_successful_output_validation = MagicMock()
+        step.cleanup_on_error = MagicMock()
 
         with self.assertRaises(OSError):
-            task.run()
+            step.run()
 
-        task.before_run.assert_called_once_with()
-        task.validate_output.assert_not_called()
-        task.cleanup_on_error.assert_called_once_with(mock.ANY)
-        task.on_successful_run.assert_not_called()
-        task.on_successful_output_validation.assert_not_called()
+        step.before_run.assert_called_once_with()
+        step.validate_output.assert_not_called()
+        step.cleanup_on_error.assert_called_once_with(mock.ANY)
+        step.on_successful_run.assert_not_called()
+        step.on_successful_output_validation.assert_not_called()

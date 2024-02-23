@@ -175,8 +175,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                 mock_add_columns,
                                                 mock_update_columns,
                                                 mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
@@ -190,8 +190,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                  mock_add_columns,
                                                  mock_update_columns,
                                                  mock_metadata_columns_enabled):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         self.assertFalse(mock_add_columns.called)
         self.assertFalse(mock_update_columns.called)
@@ -205,8 +205,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                      mock_add_columns,
                                                      mock_update_columns,
                                                      mock_metadata_columns_enabled):
-        task = DummyS3CopyJSONToTableBase()
-        task.run()
+        step = DummyS3CopyJSONToTableBase()
+        step.run()
 
         self.assertTrue(mock_add_columns.called)
         self.assertTrue(mock_update_columns.called)
@@ -220,8 +220,8 @@ class TestS3CopyToTableWithMetaColumns(unittest.TestCase):
                                                       mock_add_columns,
                                                       mock_update_columns,
                                                       mock_metadata_columns_enabled):
-        task = DummyS3CopyJSONToTableBase()
-        task.run()
+        step = DummyS3CopyJSONToTableBase()
+        step.run()
 
         self.assertFalse(mock_add_columns.called)
         self.assertFalse(mock_update_columns.called)
@@ -239,7 +239,7 @@ class TestS3CopyToTable(unittest.TestCase):
         except KeyError:
             pass
 
-        task = DummyS3CopyToTableBase()
+        step = DummyS3CopyToTableBase()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -250,13 +250,13 @@ class TestS3CopyToTable(unittest.TestCase):
                        .return_value)
 
         with self.assertRaises(NotImplementedError):
-            task.copy(mock_cursor, task.s3_load_path())
+            step.copy(mock_cursor, step.s3_load_path())
 
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_table(self, mock_redshift_target, mock_copy):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -268,24 +268,24 @@ class TestS3CopyToTable(unittest.TestCase):
 
         # `mock_redshift_target` is the mocked `RedshiftTarget` object
         # returned by S3CopyToTable.output(self).
-        mock_redshift_target.assert_called_with(database=task.database,
-                                                host=task.host,
-                                                update_id=task.task_id,
-                                                user=task.user,
-                                                table=task.table,
-                                                password=task.password)
+        mock_redshift_target.assert_called_with(database=step.database,
+                                                host=step.host,
+                                                update_id=step.step_id,
+                                                user=step.user,
+                                                table=step.table,
+                                                password=step.password)
 
         # Check if the `S3CopyToTable.s3_load_path` class attribute was
         # successfully referenced in the `S3CopyToTable.run` method, which is
         # in-turn passed to `S3CopyToTable.copy` and other functions in `run`
         # (see issue #995).
-        mock_copy.assert_called_with(mock_cursor, task.s3_load_path())
+        mock_copy.assert_called_with(mock_cursor, step.s3_load_path())
 
         # Check the SQL query in `S3CopyToTable.does_table_exist`.
         mock_cursor.execute.assert_called_with("select 1 as table_exists "
                                                "from pg_table_def "
                                                "where tablename = lower(%s) limit 1",
-                                               (task.table,))
+                                               (step.table,))
 
         return
 
@@ -299,8 +299,8 @@ class TestS3CopyToTable(unittest.TestCase):
         Test missing table creation
         """
         # Ensure `S3CopyToTable.create_table` does not throw an error.
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         # Make sure the cursor was successfully used to create the table in
         # `create_table` as expected.
@@ -310,15 +310,15 @@ class TestS3CopyToTable(unittest.TestCase):
                                            .cursor
                                            .return_value)
         assert mock_cursor.execute.call_args_list[0][0][0].startswith(
-            "CREATE  TABLE %s" % task.table)
+            "CREATE  TABLE %s" % step.table)
 
         return
 
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_schema(self, mock_redshift_target, mock_does_exist):
-        task = DummyS3CopyToTableKey(table='schema.table_with_schema')
-        task.run()
+        step = DummyS3CopyToTableKey(table='schema.table_with_schema')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -331,8 +331,8 @@ class TestS3CopyToTable(unittest.TestCase):
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=False)
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_missing_schema_with_no_schema(self, mock_redshift_target, mock_does_exist):
-        task = DummyS3CopyToTableKey(table='table_with_no_schema')
-        task.run()
+        step = DummyS3CopyToTableKey(table='table_with_no_schema')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -345,8 +345,8 @@ class TestS3CopyToTable(unittest.TestCase):
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.does_schema_exist", return_value=True)
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_existing_schema_with_schema(self, mock_redshift_target, mock_does_exist):
-        task = DummyS3CopyToTableKey(table='schema.table_with_schema')
-        task.run()
+        step = DummyS3CopyToTableKey(table='schema.table_with_schema')
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -366,8 +366,8 @@ class TestS3CopyToTable(unittest.TestCase):
         Test missing table creation with compression encodings
         """
         # Ensure `S3CopyToTable.create_table` does not throw an error.
-        task = DummyS3CopyToTableWithCompressionEncodings()
-        task.run()
+        step = DummyS3CopyToTableWithCompressionEncodings()
+        step.run()
 
         # Make sure the cursor was successfully used to create the table in
         # `create_table` as expected.
@@ -380,11 +380,11 @@ class TestS3CopyToTable(unittest.TestCase):
                 '{name} {type} ENCODE {encoding}'.format(
                     name=name,
                     type=type,
-                    encoding=encoding) for name, type, encoding in task.columns
+                    encoding=encoding) for name, type, encoding in step.columns
             )
 
         assert mock_cursor.execute.call_args_list[0][0][0].startswith(
-            "CREATE  TABLE %s (%s )" % (task.table, encode_string))
+            "CREATE  TABLE %s (%s )" % (step.table, encode_string))
 
         return
 
@@ -393,9 +393,9 @@ class TestS3CopyToTable(unittest.TestCase):
     def test_s3_copy_to_missing_table_with_table_constraints(self, mock_redshift_target, mock_does_exist):
         table_constraints = 'PRIMARY KEY (COL1, COL2)'
 
-        task = DummyS3CopyToTableKey(table_constraints=table_constraints)
+        step = DummyS3CopyToTableKey(table_constraints=table_constraints)
 
-        task.run()
+        step.run()
 
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
@@ -405,19 +405,19 @@ class TestS3CopyToTable(unittest.TestCase):
         columns_string = ','.join(
                 '{name} {type}'.format(
                     name=name,
-                    type=type) for name, type in task.columns
+                    type=type) for name, type in step.columns
             )
 
         executed_query = mock_cursor.execute.call_args_list[0][0][0]
-        expectation = "CREATE  TABLE %s (%s , PRIMARY KEY (COL1, COL2))" % (task.table, columns_string)
+        expectation = "CREATE  TABLE %s (%s , PRIMARY KEY (COL1, COL2))" % (step.table, columns_string)
 
         assert executed_query.startswith(expectation)
 
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_temp_table(self, mock_redshift_target, mock_copy):
-        task = DummyS3CopyToTempTable()
-        task.run()
+        step = DummyS3CopyToTempTable()
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -430,32 +430,32 @@ class TestS3CopyToTable(unittest.TestCase):
         # `mock_redshift_target` is the mocked `RedshiftTarget` object
         # returned by S3CopyToTable.output(self).
         mock_redshift_target.assert_called_once_with(
-            database=task.database,
-            host=task.host,
-            update_id=task.task_id,
-            user=task.user,
-            table=task.table,
-            password=task.password,
+            database=step.database,
+            host=step.host,
+            update_id=step.step_id,
+            user=step.user,
+            table=step.table,
+            password=step.password,
         )
 
         # Check if the `S3CopyToTable.s3_load_path` class attribute was
         # successfully referenced in the `S3CopyToTable.run` method, which is
         # in-turn passed to `S3CopyToTable.copy` and other functions in `run`
         # (see issue #995).
-        mock_copy.assert_called_once_with(mock_cursor, task.s3_load_path())
+        mock_copy.assert_called_once_with(mock_cursor, step.s3_load_path())
 
         # Check the SQL query in `S3CopyToTable.does_table_exist`. # temp table
         mock_cursor.execute.assert_any_call(
             "select 1 as table_exists "
             "from pg_table_def "
             "where tablename = lower(%s) limit 1",
-            (task.table,),
+            (step.table,),
         )
 
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_valid_columns(self, mock_redshift_target):
-        task = DummyS3CopyToTableKey()
-        task.run()
+        step = DummyS3CopyToTableKey()
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -468,12 +468,12 @@ class TestS3CopyToTable(unittest.TestCase):
         # `mock_redshift_target` is the mocked `RedshiftTarget` object
         # returned by S3CopyToTable.output(self).
         mock_redshift_target.assert_called_once_with(
-            database=task.database,
-            host=task.host,
-            update_id=task.task_id,
-            user=task.user,
-            table=task.table,
-            password=task.password,
+            database=step.database,
+            host=step.host,
+            update_id=step.step_id,
+            user=step.user,
+            table=step.table,
+            password=step.password,
         )
 
         # To get the proper intendation in the multiline `COPY` statement the
@@ -492,8 +492,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_default_columns(self, mock_redshift_target):
-        task = DummyS3CopyToTableKey(columns=[])
-        task.run()
+        step = DummyS3CopyToTableKey(columns=[])
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -506,12 +506,12 @@ class TestS3CopyToTable(unittest.TestCase):
         # `mock_redshift_target` is the mocked `RedshiftTarget` object
         # returned by S3CopyToTable.output(self).
         mock_redshift_target.assert_called_once_with(
-            database=task.database,
-            host=task.host,
-            update_id=task.task_id,
-            user=task.user,
-            table=task.table,
-            password=task.password,
+            database=step.database,
+            host=step.host,
+            update_id=step.step_id,
+            user=step.user,
+            table=step.table,
+            password=step.password,
         )
 
         # To get the proper intendation in the multiline `COPY` statement the
@@ -530,8 +530,8 @@ class TestS3CopyToTable(unittest.TestCase):
 
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_with_nonetype_columns(self, mock_redshift_target):
-        task = DummyS3CopyToTableKey(columns=None)
-        task.run()
+        step = DummyS3CopyToTableKey(columns=None)
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -544,12 +544,12 @@ class TestS3CopyToTable(unittest.TestCase):
         # `mock_redshift_target` is the mocked `RedshiftTarget` object
         # returned by S3CopyToTable.output(self).
         mock_redshift_target.assert_called_once_with(
-            database=task.database,
-            host=task.host,
-            update_id=task.task_id,
-            user=task.user,
-            table=task.table,
-            password=task.password,
+            database=step.database,
+            host=step.host,
+            update_id=step.step_id,
+            user=step.user,
+            table=step.table,
+            password=step.password,
         )
 
         # To get the proper intendation in the multiline `COPY` statement the
@@ -572,8 +572,8 @@ class TestS3CopyToSchemaTable(unittest.TestCase):
     @mock.patch("luigi.contrib.redshift.S3CopyToTable.copy")
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_s3_copy_to_table(self, mock_redshift_target, mock_copy):
-        task = DummyS3CopyToTableKey(table='dummy_schema.dummy_table')
-        task.run()
+        step = DummyS3CopyToTableKey(table='dummy_schema.dummy_table')
+        step.run()
 
         # The mocked connection cursor passed to
         # S3CopyToTable.copy(self, cursor, f).
@@ -589,11 +589,11 @@ class TestS3CopyToSchemaTable(unittest.TestCase):
             "from information_schema.tables "
             "where table_schema = lower(%s) and "
             "table_name = lower(%s) limit 1",
-            tuple(task.table.split('.')),
+            tuple(step.table.split('.')),
         )
 
 
-class DummyRedshiftUnloadTask(luigi.contrib.redshift.RedshiftUnloadTask):
+class DummyRedshiftUnloadStep(luigi.contrib.redshift.RedshiftUnloadStep):
     # Class attributes taken from `DummyPostgresImporter` in
     # `../postgres_test.py`.
     host = 'dummy_host'
@@ -617,15 +617,15 @@ class DummyRedshiftUnloadTask(luigi.contrib.redshift.RedshiftUnloadTask):
 
 
 @pytest.mark.aws
-class TestRedshiftUnloadTask(unittest.TestCase):
+class TestRedshiftUnloadStep(unittest.TestCase):
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_redshift_unload_command(self, mock_redshift_target):
 
-        task = DummyRedshiftUnloadTask()
-        task.run()
+        step = DummyRedshiftUnloadStep()
+        step.run()
 
         # The mocked connection cursor passed to
-        # RedshiftUnloadTask.
+        # RedshiftUnloadStep.
         mock_cursor = (mock_redshift_target.return_value
                                            .connect
                                            .return_value
@@ -659,11 +659,11 @@ class TestRedshiftAutocommitQuery(unittest.TestCase):
     @mock.patch("luigi.contrib.redshift.RedshiftTarget")
     def test_redshift_autocommit_query(self, mock_redshift_target):
 
-        task = DummyRedshiftAutocommitQuery()
-        task.run()
+        step = DummyRedshiftAutocommitQuery()
+        step.run()
 
         # The mocked connection cursor passed to
-        # RedshiftUnloadTask.
+        # RedshiftUnloadStep.
         mock_connect = (mock_redshift_target.return_value
                                             .connect
                                             .return_value)
@@ -673,7 +673,7 @@ class TestRedshiftAutocommitQuery(unittest.TestCase):
 
 
 @pytest.mark.aws
-class TestRedshiftManifestTask(unittest.TestCase):
+class TestRedshiftManifestStep(unittest.TestCase):
     def test_run(self):
         with mock_s3():
             client = S3Client()
@@ -687,7 +687,7 @@ class TestRedshiftManifestTask(unittest.TestCase):
 
             m = mock.mock_open()
             with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
-                t = redshift.RedshiftManifestTask(path, folder_paths)
+                t = redshift.RedshiftManifestStep(path, folder_paths)
                 luigi.build([t], local_scheduler=True)
 
             expected_manifest_output = json.dumps(
@@ -711,7 +711,7 @@ class TestRedshiftManifestTask(unittest.TestCase):
 
             m = mock.mock_open()
             with mock.patch('luigi.contrib.s3.S3Target.open', m, create=True):
-                t = redshift.RedshiftManifestTask(path, folder_paths)
+                t = redshift.RedshiftManifestStep(path, folder_paths)
                 luigi.build([t], local_scheduler=True)
 
             expected_manifest_output = json.dumps(

@@ -32,17 +32,17 @@ import pytest
 from helpers import skipOnTravisAndGithubActions
 
 
-class BaseTask(luigi.Task):
+class BaseStep(luigi.Step):
 
-    TASK_LIST = ["item%d\tproperty%d\n" % (i, i) for i in range(10)]
+    STEP_LIST = ["item%d\tproperty%d\n" % (i, i) for i in range(10)]
 
     def output(self):
-        return MockTarget("BaseTask", mirror_on_stderr=True)
+        return MockTarget("BaseStep", mirror_on_stderr=True)
 
     def run(self):
         out = self.output().open("w")
-        for task in self.TASK_LIST:
-            out.write(task)
+        for step in self.STEP_LIST:
+            out.write(step)
         out.close()
 
 
@@ -62,8 +62,8 @@ class TestSQLA(unittest.TestCase):
         self.connect_args = {'timeout': 5.0}
         self.engine = sqlalchemy.create_engine(self.connection_string, connect_args=self.connect_args)
 
-        # Create SQLATask and store in self
-        class SQLATask(sqla.CopyToTable):
+        # Create SQLAStep and store in self
+        class SQLAStep(sqla.CopyToTable):
             columns = [
                 (["item", sqlalchemy.String(64)], {}),
                 (["property", sqlalchemy.String(64)], {})
@@ -74,9 +74,9 @@ class TestSQLA(unittest.TestCase):
             chunk_size = 1
 
             def requires(self):
-                return BaseTask()
+                return BaseStep()
 
-        self.SQLATask = SQLATask
+        self.SQLAStep = SQLAStep
 
     def tearDown(self):
         self._clear_tables()
@@ -136,23 +136,23 @@ class TestSQLA(unittest.TestCase):
             meta = sqlalchemy.MetaData()
             meta.reflect(bind=engine)
             self.assertEqual({'table_updates', 'item_property'}, set(meta.tables.keys()))
-            table = meta.tables[self.SQLATask.table]
+            table = meta.tables[self.SQLAStep.table]
             s = sqlalchemy.select([sqlalchemy.func.count(table.c.item)])
             result = conn.execute(s).fetchone()
-            self.assertEqual(len(BaseTask.TASK_LIST), result[0])
+            self.assertEqual(len(BaseStep.STEP_LIST), result[0])
             s = sqlalchemy.select([table]).order_by(table.c.item)
             result = conn.execute(s).fetchall()
-            for i in range(len(BaseTask.TASK_LIST)):
-                given = BaseTask.TASK_LIST[i].strip("\n").split("\t")
+            for i in range(len(BaseStep.STEP_LIST)):
+                given = BaseStep.STEP_LIST[i].strip("\n").split("\t")
                 given = (str(given[0]), str(given[1]))
                 self.assertEqual(given, tuple(result[i]))
 
     def test_rows(self):
-        task, task0 = self.SQLATask(), BaseTask()
-        luigi.build([task, task0], local_scheduler=True, workers=self.NUM_WORKERS)
+        step, step0 = self.SQLAStep(), BaseStep()
+        luigi.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
 
-        for i, row in enumerate(task.rows()):
-            given = BaseTask.TASK_LIST[i].strip("\n").split("\t")
+        for i, row in enumerate(step.rows()):
+            given = BaseStep.STEP_LIST[i].strip("\n").split("\t")
             self.assertEqual(row, given)
 
     def test_run(self):
@@ -161,13 +161,13 @@ class TestSQLA(unittest.TestCase):
         inserting more rows into the db.
         :return:
         """
-        task, task0 = self.SQLATask(), BaseTask()
-        self.engine = sqlalchemy.create_engine(task.connection_string)
-        luigi.build([task0, task], local_scheduler=True)
+        step, step0 = self.SQLAStep(), BaseStep()
+        self.engine = sqlalchemy.create_engine(step.connection_string)
+        luigi.build([step0, step], local_scheduler=True)
         self._check_entries(self.engine)
 
         # rerun and the num entries should be the same
-        luigi.build([task0, task], local_scheduler=True, workers=self.NUM_WORKERS)
+        luigi.build([step0, step], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_run_with_chunk_size(self):
@@ -175,10 +175,10 @@ class TestSQLA(unittest.TestCase):
         The chunk_size can be specified in order to control the batch size for inserts.
         :return:
         """
-        task, task0 = self.SQLATask(), BaseTask()
-        self.engine = sqlalchemy.create_engine(task.connection_string)
-        task.chunk_size = 2  # change chunk size and check it runs ok
-        luigi.build([task, task0], local_scheduler=True, workers=self.NUM_WORKERS)
+        step, step0 = self.SQLAStep(), BaseStep()
+        self.engine = sqlalchemy.create_engine(step.connection_string)
+        step.chunk_size = 2  # change chunk size and check it runs ok
+        luigi.build([step, step0], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_reflect(self):
@@ -187,16 +187,16 @@ class TestSQLA(unittest.TestCase):
         completely skip the columns part. It is not even required at that point.
         :return:
         """
-        SQLATask = self.SQLATask
+        SQLAStep = self.SQLAStep
 
-        class AnotherSQLATask(sqla.CopyToTable):
+        class AnotherSQLAStep(sqla.CopyToTable):
             connection_string = self.connection_string
             table = "item_property"
             reflect = True
             chunk_size = 1
 
             def requires(self):
-                return SQLATask()
+                return SQLAStep()
 
             def copy(self, conn, ins_rows, table_bound):
                 ins = table_bound.update().\
@@ -205,11 +205,11 @@ class TestSQLA(unittest.TestCase):
                 conn.execute(ins, ins_rows)
 
             def rows(self):
-                for line in BaseTask.TASK_LIST:
+                for line in BaseStep.STEP_LIST:
                     yield line.strip("\n").split("\t")
 
-        task0, task1, task2 = AnotherSQLATask(), self.SQLATask(), BaseTask()
-        luigi.build([task0, task1, task2], local_scheduler=True, workers=self.NUM_WORKERS)
+        step0, step1, step2 = AnotherSQLAStep(), self.SQLAStep(), BaseStep()
+        luigi.build([step0, step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_create_marker_table(self):
@@ -223,7 +223,7 @@ class TestSQLA(unittest.TestCase):
 
     def test_touch(self):
         """
-        Touch takes care of creating a checkpoint for task completion
+        Touch takes care of creating a checkpoint for step completion
         :return:
         """
         target = sqla.SQLAlchemyTarget(self.connection_string, "test_table", "12312123")
@@ -245,14 +245,14 @@ class TestSQLA(unittest.TestCase):
             chunk_size = 1
 
             def rows(self):
-                tasks = [("item0", "property0"), ("item1", "property1"), ("item2", "property2"), ("item3", "property3"),
+                steps = [("item0", "property0"), ("item1", "property1"), ("item2", "property2"), ("item3", "property3"),
                          ("item4", "property4"), ("item5", "property5"), ("item6", "property6"), ("item7", "property7"),
                          ("item8", "property8"), ("item9", "property9")]
-                for row in tasks:
+                for row in steps:
                     yield row
 
-        task = SQLARowOverloadTest()
-        luigi.build([task], local_scheduler=True, workers=self.NUM_WORKERS)
+        step = SQLARowOverloadTest()
+        luigi.build([step], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_column_row_separator(self):
@@ -260,19 +260,19 @@ class TestSQLA(unittest.TestCase):
         Test alternate column row separator works
         :return:
         """
-        class ModBaseTask(luigi.Task):
+        class ModBaseStep(luigi.Step):
 
             def output(self):
-                return MockTarget("ModBaseTask", mirror_on_stderr=True)
+                return MockTarget("ModBaseStep", mirror_on_stderr=True)
 
             def run(self):
                 out = self.output().open("w")
-                tasks = ["item%d,property%d\n" % (i, i) for i in range(10)]
-                for task in tasks:
-                    out.write(task)
+                steps = ["item%d,property%d\n" % (i, i) for i in range(10)]
+                for step in steps:
+                    out.write(step)
                 out.close()
 
-        class ModSQLATask(sqla.CopyToTable):
+        class ModSQLAStep(sqla.CopyToTable):
             columns = [
                 (["item", sqlalchemy.String(64)], {}),
                 (["property", sqlalchemy.String(64)], {})
@@ -283,10 +283,10 @@ class TestSQLA(unittest.TestCase):
             chunk_size = 1
 
             def requires(self):
-                return ModBaseTask()
+                return ModBaseStep()
 
-        task1, task2 = ModBaseTask(), ModSQLATask()
-        luigi.build([task1, task2], local_scheduler=True, workers=self.NUM_WORKERS)
+        step1, step2 = ModBaseStep(), ModSQLAStep()
+        luigi.build([step1, step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_update_rows_test(self):
@@ -294,18 +294,18 @@ class TestSQLA(unittest.TestCase):
         Overload the copy() method and implement an update action.
         :return:
         """
-        class ModBaseTask(luigi.Task):
+        class ModBaseStep(luigi.Step):
 
             def output(self):
-                return MockTarget("BaseTask", mirror_on_stderr=True)
+                return MockTarget("BaseStep", mirror_on_stderr=True)
 
             def run(self):
                 out = self.output().open("w")
-                for task in self.TASK_LIST:
-                    out.write("dummy_" + task)
+                for step in self.STEP_LIST:
+                    out.write("dummy_" + step)
                 out.close()
 
-        class ModSQLATask(sqla.CopyToTable):
+        class ModSQLAStep(sqla.CopyToTable):
             connection_string = self.connection_string
             table = "item_property"
             columns = [
@@ -315,16 +315,16 @@ class TestSQLA(unittest.TestCase):
             chunk_size = 1
 
             def requires(self):
-                return ModBaseTask()
+                return ModBaseStep()
 
-        class UpdateSQLATask(sqla.CopyToTable):
+        class UpdateSQLAStep(sqla.CopyToTable):
             connection_string = self.connection_string
             table = "item_property"
             reflect = True
             chunk_size = 1
 
             def requires(self):
-                return ModSQLATask()
+                return ModSQLAStep()
 
             def copy(self, conn, ins_rows, table_bound):
                 ins = table_bound.update().\
@@ -333,21 +333,21 @@ class TestSQLA(unittest.TestCase):
                 conn.execute(ins, ins_rows)
 
             def rows(self):
-                for task in self.TASK_LIST:
-                    yield task.strip("\n").split("\t")
+                for step in self.STEP_LIST:
+                    yield step.strip("\n").split("\t")
 
-        # Running only task1, and task2 should fail
-        task1, task2, task3 = ModBaseTask(), ModSQLATask(), UpdateSQLATask()
-        luigi.build([task1, task2, task3], local_scheduler=True, workers=self.NUM_WORKERS)
+        # Running only step1, and step2 should fail
+        step1, step2, step3 = ModBaseStep(), ModSQLAStep(), UpdateSQLAStep()
+        luigi.build([step1, step2, step3], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     @skipOnTravisAndGithubActions('AssertionError: 10 != 7; https://travis-ci.org/spotify/luigi/jobs/156732446')
-    def test_multiple_tasks(self):
+    def test_multiple_steps(self):
         """
-        Test a case where there are multiple tasks
+        Test a case where there are multiple steps
         :return:
         """
-        class SmallSQLATask(sqla.CopyToTable):
+        class SmallSQLAStep(sqla.CopyToTable):
             item = luigi.Parameter()
             property = luigi.Parameter()
             columns = [
@@ -361,30 +361,30 @@ class TestSQLA(unittest.TestCase):
             def rows(self):
                 yield (self.item, self.property)
 
-        class ManyBaseTask(luigi.Task):
+        class ManyBaseStep(luigi.Step):
             def requires(self):
-                for t in BaseTask.TASK_LIST:
+                for t in BaseStep.STEP_LIST:
                     item, property = t.strip().split("\t")
-                    yield SmallSQLATask(item=item, property=property)
+                    yield SmallSQLAStep(item=item, property=property)
 
-        task2 = ManyBaseTask()
-        luigi.build([task2], local_scheduler=True, workers=self.NUM_WORKERS)
+        step2 = ManyBaseStep()
+        luigi.build([step2], local_scheduler=True, workers=self.NUM_WORKERS)
         self._check_entries(self.engine)
 
     def test_multiple_engines(self):
         """
-        Test case where different tasks require different SQL engines.
+        Test case where different steps require different SQL engines.
         """
         alt_db = self.get_connection_string("sqlatest2.db")
 
-        class MultiEngineTask(self.SQLATask):
+        class MultiEngineStep(self.SQLAStep):
             connection_string = alt_db
 
-        task0, task1, task2 = BaseTask(), self.SQLATask(), MultiEngineTask()
-        self.assertTrue(task1.output().engine != task2.output().engine)
-        luigi.build([task2, task1, task0], local_scheduler=True, workers=self.NUM_WORKERS)
-        self._check_entries(task1.output().engine)
-        self._check_entries(task2.output().engine)
+        step0, step1, step2 = BaseStep(), self.SQLAStep(), MultiEngineStep()
+        self.assertTrue(step1.output().engine != step2.output().engine)
+        luigi.build([step2, step1, step0], local_scheduler=True, workers=self.NUM_WORKERS)
+        self._check_entries(step1.output().engine)
+        self._check_entries(step2.output().engine)
 
 
 @pytest.mark.contrib

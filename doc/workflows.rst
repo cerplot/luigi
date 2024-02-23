@@ -2,10 +2,10 @@ Building workflows
 ------------------
 
 There are two fundamental building blocks of Luigi -
-the :class:`~luigi.task.Task` class and the :class:`~luigi.target.Target` class.
+the :class:`~luigi.step.Step` class and the :class:`~luigi.target.Target` class.
 Both are abstract classes and expect a few methods to be implemented.
 In addition to those two concepts,
-the :class:`~luigi.parameter.Parameter` class is an important concept that governs how a Task is run.
+the :class:`~luigi.parameter.Parameter` class is an important concept that governs how a Step is run.
 
 Target
 ~~~~~~
@@ -34,48 +34,48 @@ could be read (``mode='r'``) from or written to (``mode='w'``).
 Luigi comes with Gzip support by providing ``format=format.Gzip``.
 Adding support for other formats is pretty simple.
 
-Task
+Step
 ~~~~
 
-The :class:`~luigi.task.Task` class is a bit more conceptually interesting because this is
+The :class:`~luigi.step.Step` class is a bit more conceptually interesting because this is
 where computation is done.
 There are a few methods that can be implemented to alter its behavior,
-most notably :func:`~luigi.task.Task.run`, :func:`~luigi.task.Task.output` and :func:`~luigi.task.Task.requires`.
+most notably :func:`~luigi.step.Step.run`, :func:`~luigi.step.Step.output` and :func:`~luigi.step.Step.requires`.
 
-Tasks consume Targets that were created by some other task. They usually also output targets:
+Steps consume Targets that were created by some other step. They usually also output targets:
 
-    .. figure:: task_with_targets.png
-       :alt: Task and targets
+    .. figure:: step_with_targets.png
+       :alt: Step and targets
 
-You can define dependencies between *Tasks* using the :py:meth:`~luigi.task.Task.requires` method. See :doc:`/tasks` for more info.
+You can define dependencies between *Steps* using the :py:meth:`~luigi.step.Step.requires` method. See :doc:`/steps` for more info.
 
-    .. figure:: tasks_with_dependencies.png
-       :alt: Tasks and dependencies
+    .. figure:: steps_with_dependencies.png
+       :alt: Steps and dependencies
 
-Each task defines its outputs using the :py:meth:`~luigi.task.Task.output` method.
-Additionally, there is a helper method :py:meth:`~luigi.task.Task.input` that returns the corresponding Target classes for each Task dependency.
+Each step defines its outputs using the :py:meth:`~luigi.step.Step.output` method.
+Additionally, there is a helper method :py:meth:`~luigi.step.Step.input` that returns the corresponding Target classes for each Step dependency.
 
-    .. figure:: tasks_input_output_requires.png
-       :alt: Tasks and methods
+    .. figure:: steps_input_output_requires.png
+       :alt: Steps and methods
 
 .. _Parameter:
 
 Parameter
 ~~~~~~~~~
 
-The Task class corresponds to some type of job that is run, but in
+The Step class corresponds to some type of job that is run, but in
 general you want to allow some form of parameterization of it.
-For instance, if your Task class runs a Hadoop job to create a report every night,
+For instance, if your Step class runs a Hadoop job to create a report every night,
 you probably want to make the date a parameter of the class.
 See :doc:`/parameters` for more info.
 
-    .. figure:: task_parameters.png
-       :alt: Tasks with parameters
+    .. figure:: step_parameters.png
+       :alt: Steps with parameters
 
 Dependencies
 ~~~~~~~~~~~~
 
-Using tasks, targets, and parameters, Luigi lets you express arbitrary dependencies in *code*, rather than using some kind of awkward config DSL.
+Using steps, targets, and parameters, Luigi lets you express arbitrary dependencies in *code*, rather than using some kind of awkward config DSL.
 This is really useful because in the real world, dependencies are often very messy.
 For instance, some examples of the dependencies you might encounter:
 

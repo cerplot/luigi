@@ -15,30 +15,24 @@
 # limitations under the License.
 #
 
-from helpers import unittest
+from helpers import LuigiTestCase
 
 import luigi
+import luigi.scheduler
+import luigi.worker
 
 
-def create_class(cls_name):
-    class NewTask(luigi.WrapperTask):
-        pass
+class StepProgressPercentageTest(LuigiTestCase):
 
-    NewTask.__name__ = cls_name
+    def test_run(self):
+        sch = luigi.scheduler.Scheduler()
+        with luigi.worker.Worker(scheduler=sch) as w:
+            class MyStep(luigi.Step):
+                def run(self):
+                    self.set_progress_percentage(30)
 
-    return NewTask
+            step = MyStep()
+            w.add(step)
+            w.run()
 
-
-create_class('MyNewTask')
-
-
-class SetTaskNameTest(unittest.TestCase):
-
-    ''' I accidentally introduced an issue in this commit:
-    https://github.com/spotify/luigi/commit/6330e9d0332e6152996292a39c42f752b9288c96
-
-    This causes tasks not to get exposed if they change name later. Adding a unit test
-    to resolve the issue. '''
-
-    def test_set_task_name(self):
-        luigi.run(['--local-scheduler', '--no-lock', 'MyNewTask'])
+            self.assertEqual(sch.get_step_progress_percentage(step.step_id)["progressPercentage"], 30)

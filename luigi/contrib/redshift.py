@@ -24,7 +24,7 @@ import os
 import luigi
 from luigi.contrib import postgres
 from luigi.contrib import rdbms
-from luigi.contrib.s3 import S3PathTask, S3Target
+from luigi.contrib.s3 import S3PathStep, S3Target
 
 logger = logging.getLogger('luigi-interface')
 
@@ -40,8 +40,8 @@ except ImportError:
 class _CredentialsMixin():
     """
     This mixin is used to provide the same credential properties
-    for AWS to all Redshift tasks. It also provides a helper method
-    to generate the credentials string for the task.
+    for AWS to all Redshift steps. It also provides a helper method
+    to generate the credentials string for the step.
     """
 
     @property
@@ -99,7 +99,7 @@ class _CredentialsMixin():
 
     def _credentials(self):
         """
-        Return a credential string for the provided task. If no valid
+        Return a credential string for the provided step. If no valid
         credentials are set, raise a NotImplementedError.
         """
 
@@ -118,7 +118,7 @@ class _CredentialsMixin():
             raise NotImplementedError("Missing Credentials. "
                                       "Ensure one of the pairs of auth args below are set "
                                       "in a configuration file, environment variables or by "
-                                      "being overridden in the task: "
+                                      "being overridden in the step: "
                                       "'aws_access_key_id' AND 'aws_secret_access_key' OR "
                                       "'aws_account_id' AND 'aws_arn_role_name'")
 
@@ -143,7 +143,7 @@ class RedshiftTarget(postgres.PostgresTarget):
 
 class S3CopyToTable(rdbms.CopyToTable, _CredentialsMixin):
     """
-    Template task for inserting a data set into Redshift from s3.
+    Template step for inserting a data set into Redshift from s3.
 
     Usage:
 
@@ -506,7 +506,7 @@ class S3CopyToTable(rdbms.CopyToTable, _CredentialsMixin):
 
 class S3CopyJSONToTable(S3CopyToTable, _CredentialsMixin):
     """
-    Template task for inserting a JSON data set into Redshift from s3.
+    Template step for inserting a JSON data set into Redshift from s3.
 
     Usage:
 
@@ -561,9 +561,9 @@ class S3CopyJSONToTable(S3CopyToTable, _CredentialsMixin):
                  self.jsonpath, self.copy_json_options, self.copy_options))
 
 
-class RedshiftManifestTask(S3PathTask):
+class RedshiftManifestStep(S3PathStep):
     """
-    Generic task to generate a manifest file that can be used
+    Generic step to generate a manifest file that can be used
     in S3CopyToTable in order to copy multiple files from your
     s3 folder into a redshift table at once.
 
@@ -607,9 +607,9 @@ class RedshiftManifestTask(S3PathTask):
         target.close()
 
 
-class KillOpenRedshiftSessions(luigi.Task):
+class KillOpenRedshiftSessions(luigi.Step):
     """
-    An task for killing any open Redshift sessions
+    An step for killing any open Redshift sessions
     in a given database. This is necessary to prevent open user sessions
     with transactions against the table from blocking drop or truncate
     table commands.
@@ -651,7 +651,7 @@ class KillOpenRedshiftSessions(luigi.Task):
         This update id will be a unique identifier
         for this insert on this table.
         """
-        return self.task_id
+        return self.step_id
 
     def output(self):
         """
@@ -710,14 +710,14 @@ class KillOpenRedshiftSessions(luigi.Task):
 
 class RedshiftQuery(postgres.PostgresQuery):
     """
-    Template task for querying an Amazon Redshift database
+    Template step for querying an Amazon Redshift database
 
     Usage:
     Subclass and override the required `host`, `database`, `user`, `password`, `table`, and `query` attributes.
 
     Override the `run` method if your use case requires some action with the query result.
 
-    Task instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
+    Step instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
 
     To customize the query signature as recorded in the database marker table, override the `update_id` property.
     """
@@ -738,15 +738,15 @@ class RedshiftQuery(postgres.PostgresQuery):
         )
 
 
-class RedshiftUnloadTask(postgres.PostgresQuery, _CredentialsMixin):
+class RedshiftUnloadStep(postgres.PostgresQuery, _CredentialsMixin):
     """
-    Template task for running UNLOAD on an Amazon Redshift database
+    Template step for running UNLOAD on an Amazon Redshift database
 
     Usage:
     Subclass and override the required `host`, `database`, `user`, `password`, `table`, and `query` attributes.
     Optionally, override the `autocommit` attribute to run the query in autocommit mode - this is necessary to run VACUUM for example.
     Override the `run` method if your use case requires some action with the query result.
-    Task instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
+    Step instances require a dynamic `update_id`, e.g. via parameter(s), otherwise the query will only execute once
     To customize the query signature as recorded in the database marker table, override the `update_id` property.
     You can also override the attributes provided by the CredentialsMixin if they are not supplied by your configuration or environment variables.
     """
@@ -784,7 +784,7 @@ class RedshiftUnloadTask(postgres.PostgresQuery, _CredentialsMixin):
             unload_options=self.unload_options,
             credentials=self._credentials())
 
-        logger.info('Executing unload query from task: {name}'.format(name=self.__class__))
+        logger.info('Executing unload query from step: {name}'.format(name=self.__class__))
 
         cursor = connection.cursor()
         cursor.execute(unload_query)

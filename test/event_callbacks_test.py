@@ -18,9 +18,9 @@
 from helpers import unittest
 
 import luigi
-from luigi import Event, Task, build
+from luigi import Event, Step, build
 from luigi.mock import MockTarget, MockFileSystem
-from luigi.task import flatten
+from luigi.step import flatten
 from mock import patch
 
 
@@ -28,7 +28,7 @@ class DummyException(Exception):
     pass
 
 
-class EmptyTask(Task):
+class EmptyStep(Step):
     fail = luigi.BoolParameter()
 
     def run(self):
@@ -37,7 +37,7 @@ class EmptyTask(Task):
             raise DummyException()
 
 
-class TaskWithBrokenDependency(Task):
+class StepWithBrokenDependency(Step):
 
     def requires(self):
         raise DummyException()
@@ -46,7 +46,7 @@ class TaskWithBrokenDependency(Task):
         pass
 
 
-class TaskWithCallback(Task):
+class StepWithCallback(Step):
 
     def run(self):
         print("Triggering event")
@@ -56,44 +56,44 @@ class TaskWithCallback(Task):
 class TestEventCallbacks(unittest.TestCase):
 
     def test_start_handler(self):
-        saved_tasks = []
+        saved_steps = []
 
-        @EmptyTask.event_handler(Event.START)
-        def save_task(task):
-            print("Saving task...")
-            saved_tasks.append(task)
+        @EmptyStep.event_handler(Event.START)
+        def save_step(step):
+            print("Saving step...")
+            saved_steps.append(step)
 
-        t = EmptyTask(True)
+        t = EmptyStep(True)
         build([t], local_scheduler=True)
-        self.assertEqual(saved_tasks, [t])
+        self.assertEqual(saved_steps, [t])
 
-    def _run_empty_task(self, fail):
+    def _run_empty_step(self, fail):
         progresses = []
         progresses_data = []
         successes = []
         failures = []
         exceptions = []
 
-        @EmptyTask.event_handler(Event.SUCCESS)
-        def success(task):
-            successes.append(task)
+        @EmptyStep.event_handler(Event.SUCCESS)
+        def success(step):
+            successes.append(step)
 
-        @EmptyTask.event_handler(Event.FAILURE)
-        def failure(task, exception):
-            failures.append(task)
+        @EmptyStep.event_handler(Event.FAILURE)
+        def failure(step, exception):
+            failures.append(step)
             exceptions.append(exception)
 
-        @EmptyTask.event_handler(Event.PROGRESS)
-        def progress(task, data):
-            progresses.append(task)
+        @EmptyStep.event_handler(Event.PROGRESS)
+        def progress(step, data):
+            progresses.append(step)
             progresses_data.append(data)
 
-        t = EmptyTask(fail)
+        t = EmptyStep(fail)
         build([t], local_scheduler=True)
         return t, progresses, progresses_data, successes, failures, exceptions
 
     def test_success(self):
-        t, progresses, progresses_data, successes, failures, exceptions = self._run_empty_task(False)
+        t, progresses, progresses_data, successes, failures, exceptions = self._run_empty_step(False)
         self.assertEqual(progresses, [t])
         self.assertEqual(progresses_data, [{"foo": "bar"}])
         self.assertEqual(successes, [t])
@@ -101,7 +101,7 @@ class TestEventCallbacks(unittest.TestCase):
         self.assertEqual(exceptions, [])
 
     def test_failure(self):
-        t, progresses, progresses_data, successes, failures, exceptions = self._run_empty_task(True)
+        t, progresses, progresses_data, successes, failures, exceptions = self._run_empty_step(True)
         self.assertEqual(progresses, [t])
         self.assertEqual(progresses_data, [{"foo": "bar"}])
         self.assertEqual(successes, [])
@@ -113,12 +113,12 @@ class TestEventCallbacks(unittest.TestCase):
         failures = []
         exceptions = []
 
-        @TaskWithBrokenDependency.event_handler(Event.BROKEN_TASK)
-        def failure(task, exception):
-            failures.append(task)
+        @StepWithBrokenDependency.event_handler(Event.BROKEN_STEP)
+        def failure(step, exception):
+            failures.append(step)
             exceptions.append(exception)
 
-        t = TaskWithBrokenDependency()
+        t = StepWithBrokenDependency()
         build([t], local_scheduler=True)
 
         self.assertEqual(failures, [t])
@@ -128,23 +128,23 @@ class TestEventCallbacks(unittest.TestCase):
     def test_custom_handler(self):
         dummies = []
 
-        @TaskWithCallback.event_handler("foo event")
+        @StepWithCallback.event_handler("foo event")
         def story_dummy():
             dummies.append("foo")
 
-        t = TaskWithCallback()
+        t = StepWithCallback()
         build([t], local_scheduler=True)
         self.assertEqual(dummies[0], "foo")
 
     def _run_processing_time_handler(self, fail):
         result = []
 
-        @EmptyTask.event_handler(Event.PROCESSING_TIME)
-        def save_task(task, processing_time):
-            result.append((task, processing_time))
+        @EmptyStep.event_handler(Event.PROCESSING_TIME)
+        def save_step(step, processing_time):
+            result.append((step, processing_time))
 
         times = [43.0, 1.0]
-        t = EmptyTask(fail)
+        t = EmptyStep(fail)
         with patch('luigi.worker.time') as mock:
             mock.time = times.pop
             build([t], local_scheduler=True)
@@ -154,8 +154,8 @@ class TestEventCallbacks(unittest.TestCase):
     def test_processing_time_handler_success(self):
         t, result = self._run_processing_time_handler(False)
         self.assertEqual(len(result), 1)
-        task, time = result[0]
-        self.assertTrue(task is t)
+        step, time = result[0]
+        self.assertTrue(step is t)
         self.assertEqual(time, 42.0)
 
     def test_processing_time_handler_failure(self):
@@ -179,7 +179,7 @@ def eval_contents(f):
 class ConsistentMockOutput:
 
     '''
-    Computes output location and contents from the task and its parameters. Rids us of writing ad-hoc boilerplate output() et al.
+    Computes output location and contents from the step and its parameters. Rids us of writing ad-hoc boilerplate output() et al.
     '''
     param = luigi.IntParameter(default=1)
 
@@ -188,10 +188,10 @@ class ConsistentMockOutput:
 
     def produce_output(self):
         with self.output().open('w') as o:
-            o.write(repr([self.task_id] + sorted([eval_contents(i) for i in flatten(self.input())])))
+            o.write(repr([self.step_id] + sorted([eval_contents(i) for i in flatten(self.input())])))
 
 
-class HappyTestFriend(ConsistentMockOutput, luigi.Task):
+class HappyTestFriend(ConsistentMockOutput, luigi.Step):
 
     '''
     Does trivial "work", outputting the list of inputs. Results in a convenient lispy comparable.
@@ -201,7 +201,7 @@ class HappyTestFriend(ConsistentMockOutput, luigi.Task):
         self.produce_output()
 
 
-class D(ConsistentMockOutput, luigi.ExternalTask):
+class D(ConsistentMockOutput, luigi.ExternalStep):
     pass
 
 
@@ -218,7 +218,7 @@ class B(HappyTestFriend):
 
 
 class A(HappyTestFriend):
-    task_namespace = 'event_callbacks'  # to prevent task name coflict between tests
+    step_namespace = 'event_callbacks'  # to prevent step name coflict between tests
 
     def requires(self):
         return [B(1), B(2)]
@@ -229,25 +229,25 @@ class TestDependencyEvents(unittest.TestCase):
     def tearDown(self):
         MockFileSystem().remove('')
 
-    def _run_test(self, task, expected_events):
+    def _run_test(self, step, expected_events):
         actual_events = {}
 
         # yucky to create separate callbacks; would be nicer if the callback
         # received an instance of a subclass of Event, so one callback could
         # accumulate all types
-        @luigi.Task.event_handler(Event.DEPENDENCY_DISCOVERED)
+        @luigi.Step.event_handler(Event.DEPENDENCY_DISCOVERED)
         def callback_dependency_discovered(*args):
-            actual_events.setdefault(Event.DEPENDENCY_DISCOVERED, set()).add(tuple(map(lambda t: t.task_id, args)))
+            actual_events.setdefault(Event.DEPENDENCY_DISCOVERED, set()).add(tuple(map(lambda t: t.step_id, args)))
 
-        @luigi.Task.event_handler(Event.DEPENDENCY_MISSING)
+        @luigi.Step.event_handler(Event.DEPENDENCY_MISSING)
         def callback_dependency_missing(*args):
-            actual_events.setdefault(Event.DEPENDENCY_MISSING, set()).add(tuple(map(lambda t: t.task_id, args)))
+            actual_events.setdefault(Event.DEPENDENCY_MISSING, set()).add(tuple(map(lambda t: t.step_id, args)))
 
-        @luigi.Task.event_handler(Event.DEPENDENCY_PRESENT)
+        @luigi.Step.event_handler(Event.DEPENDENCY_PRESENT)
         def callback_dependency_present(*args):
-            actual_events.setdefault(Event.DEPENDENCY_PRESENT, set()).add(tuple(map(lambda t: t.task_id, args)))
+            actual_events.setdefault(Event.DEPENDENCY_PRESENT, set()).add(tuple(map(lambda t: t.step_id, args)))
 
-        build([task], local_scheduler=True)
+        build([step], local_scheduler=True)
         self.assertEqual(actual_events, expected_events)
 
     def test_incomplete_dag(self):
@@ -255,21 +255,21 @@ class TestDependencyEvents(unittest.TestCase):
             D(param).produce_output()
         self._run_test(A(), {
             'event.core.dependency.discovered': {
-                (A(param=1).task_id, B(param=1).task_id),
-                (A(param=1).task_id, B(param=2).task_id),
-                (B(param=1).task_id, C(param=1).task_id),
-                (B(param=2).task_id, C(param=2).task_id),
-                (C(param=1).task_id, D(param=1).task_id),
-                (C(param=1).task_id, D(param=2).task_id),
-                (C(param=2).task_id, D(param=2).task_id),
-                (C(param=2).task_id, D(param=3).task_id),
+                (A(param=1).step_id, B(param=1).step_id),
+                (A(param=1).step_id, B(param=2).step_id),
+                (B(param=1).step_id, C(param=1).step_id),
+                (B(param=2).step_id, C(param=2).step_id),
+                (C(param=1).step_id, D(param=1).step_id),
+                (C(param=1).step_id, D(param=2).step_id),
+                (C(param=2).step_id, D(param=2).step_id),
+                (C(param=2).step_id, D(param=3).step_id),
             },
             'event.core.dependency.missing': {
-                (D(param=3).task_id,),
+                (D(param=3).step_id,),
             },
             'event.core.dependency.present': {
-                (D(param=1).task_id,),
-                (D(param=2).task_id,),
+                (D(param=1).step_id,),
+                (D(param=2).step_id,),
             },
         })
         self.assertFalse(A().output().exists())
@@ -279,28 +279,28 @@ class TestDependencyEvents(unittest.TestCase):
             D(param).produce_output()
         self._run_test(A(), {
             'event.core.dependency.discovered': {
-                (A(param=1).task_id, B(param=1).task_id),
-                (A(param=1).task_id, B(param=2).task_id),
-                (B(param=1).task_id, C(param=1).task_id),
-                (B(param=2).task_id, C(param=2).task_id),
-                (C(param=1).task_id, D(param=1).task_id),
-                (C(param=1).task_id, D(param=2).task_id),
-                (C(param=2).task_id, D(param=2).task_id),
-                (C(param=2).task_id, D(param=3).task_id),
+                (A(param=1).step_id, B(param=1).step_id),
+                (A(param=1).step_id, B(param=2).step_id),
+                (B(param=1).step_id, C(param=1).step_id),
+                (B(param=2).step_id, C(param=2).step_id),
+                (C(param=1).step_id, D(param=1).step_id),
+                (C(param=1).step_id, D(param=2).step_id),
+                (C(param=2).step_id, D(param=2).step_id),
+                (C(param=2).step_id, D(param=3).step_id),
             },
             'event.core.dependency.present': {
-                (D(param=1).task_id,),
-                (D(param=2).task_id,),
-                (D(param=3).task_id,),
+                (D(param=1).step_id,),
+                (D(param=2).step_id,),
+                (D(param=3).step_id,),
             },
         })
         self.assertEqual(eval_contents(A().output()),
-                         [A(param=1).task_id,
-                             [B(param=1).task_id,
-                                 [C(param=1).task_id,
-                                     [D(param=1).task_id],
-                                     [D(param=2).task_id]]],
-                             [B(param=2).task_id,
-                                 [C(param=2).task_id,
-                                     [D(param=2).task_id],
-                                     [D(param=3).task_id]]]])
+                         [A(param=1).step_id,
+                             [B(param=1).step_id,
+                                 [C(param=1).step_id,
+                                     [D(param=1).step_id],
+                                     [D(param=2).step_id]]],
+                             [B(param=2).step_id,
+                                 [C(param=2).step_id,
+                                     [D(param=2).step_id],
+                                     [D(param=3).step_id]]]])

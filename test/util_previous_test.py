@@ -23,7 +23,7 @@ import luigi.date_interval
 from luigi.util import get_previous_completed, previous
 
 
-class DateTaskOk(luigi.Task):
+class DateStepOk(luigi.Step):
     date = luigi.DateParameter()
 
     def complete(self):
@@ -31,25 +31,25 @@ class DateTaskOk(luigi.Task):
         return self.date in [datetime.date(2000, 2, 25), datetime.date(2000, 3, 1), datetime.date(2000, 3, 2)]
 
 
-class DateTaskOkTest(unittest.TestCase):
+class DateStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = DateTaskOk(datetime.date(2000, 3, 1))
-        prev = previous(task)
+        step = DateStepOk(datetime.date(2000, 3, 1))
+        prev = previous(step)
         self.assertEqual(prev.date, datetime.date(2000, 2, 29))
 
     def test_get_previous_completed(self):
-        task = DateTaskOk(datetime.date(2000, 3, 1))
-        prev = get_previous_completed(task, 5)
+        step = DateStepOk(datetime.date(2000, 3, 1))
+        prev = get_previous_completed(step, 5)
         self.assertEqual(prev.date, datetime.date(2000, 2, 25))
 
     def test_get_previous_completed_not_found(self):
-        task = DateTaskOk(datetime.date(2000, 3, 1))
-        prev = get_previous_completed(task, 4)
+        step = DateStepOk(datetime.date(2000, 3, 1))
+        prev = get_previous_completed(step, 4)
         self.assertEqual(None, prev)
 
 
-class DateHourTaskOk(luigi.Task):
+class DateHourStepOk(luigi.Step):
     hour = luigi.DateHourParameter()
 
     def complete(self):
@@ -57,25 +57,25 @@ class DateHourTaskOk(luigi.Task):
         return self.hour in [datetime.datetime(2000, 2, 29, 22), datetime.datetime(2000, 3, 1, 2), datetime.datetime(2000, 3, 1, 3)]
 
 
-class DateHourTaskOkTest(unittest.TestCase):
+class DateHourStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = DateHourTaskOk(datetime.datetime(2000, 3, 1, 2))
-        prev = previous(task)
+        step = DateHourStepOk(datetime.datetime(2000, 3, 1, 2))
+        prev = previous(step)
         self.assertEqual(prev.hour, datetime.datetime(2000, 3, 1, 1))
 
     def test_get_previous_completed(self):
-        task = DateHourTaskOk(datetime.datetime(2000, 3, 1, 2))
-        prev = get_previous_completed(task, 4)
+        step = DateHourStepOk(datetime.datetime(2000, 3, 1, 2))
+        prev = get_previous_completed(step, 4)
         self.assertEqual(prev.hour, datetime.datetime(2000, 2, 29, 22))
 
     def test_get_previous_completed_not_found(self):
-        task = DateHourTaskOk(datetime.datetime(2000, 3, 1, 2))
-        prev = get_previous_completed(task, 3)
+        step = DateHourStepOk(datetime.datetime(2000, 3, 1, 2))
+        prev = get_previous_completed(step, 3)
         self.assertEqual(None, prev)
 
 
-class DateMinuteTaskOk(luigi.Task):
+class DateMinuteStepOk(luigi.Step):
     minute = luigi.DateMinuteParameter()
 
     def complete(self):
@@ -83,109 +83,109 @@ class DateMinuteTaskOk(luigi.Task):
         return self.minute in [datetime.datetime(2000, 3, 1, 2, 0)]
 
 
-class DateMinuteTaskOkTest(unittest.TestCase):
+class DateMinuteStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = DateMinuteTaskOk(datetime.datetime(2000, 3, 1, 2, 3))
-        prev = previous(task)
+        step = DateMinuteStepOk(datetime.datetime(2000, 3, 1, 2, 3))
+        prev = previous(step)
         self.assertEqual(prev.minute, datetime.datetime(2000, 3, 1, 2, 2))
 
     def test_get_previous_completed(self):
-        task = DateMinuteTaskOk(datetime.datetime(2000, 3, 1, 2, 3))
-        prev = get_previous_completed(task, 3)
+        step = DateMinuteStepOk(datetime.datetime(2000, 3, 1, 2, 3))
+        prev = get_previous_completed(step, 3)
         self.assertEqual(prev.minute, datetime.datetime(2000, 3, 1, 2, 0))
 
     def test_get_previous_completed_not_found(self):
-        task = DateMinuteTaskOk(datetime.datetime(2000, 3, 1, 2, 3))
-        prev = get_previous_completed(task, 2)
+        step = DateMinuteStepOk(datetime.datetime(2000, 3, 1, 2, 3))
+        prev = get_previous_completed(step, 2)
         self.assertEqual(None, prev)
 
 
-class DateSecondTaskOk(luigi.Task):
+class DateSecondStepOk(luigi.Step):
     second = luigi.DateSecondParameter()
 
     def complete(self):
         return self.second in [datetime.datetime(2000, 3, 1, 2, 3, 4)]
 
 
-class DateSecondTaskOkTest(unittest.TestCase):
+class DateSecondStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = DateSecondTaskOk(datetime.datetime(2000, 3, 1, 2, 3, 7))
-        prev = previous(task)
+        step = DateSecondStepOk(datetime.datetime(2000, 3, 1, 2, 3, 7))
+        prev = previous(step)
         self.assertEqual(prev.second, datetime.datetime(2000, 3, 1, 2, 3, 6))
 
     def test_get_previous_completed(self):
-        task = DateSecondTaskOk(datetime.datetime(2000, 3, 1, 2, 3, 7))
-        prev = get_previous_completed(task, 3)
+        step = DateSecondStepOk(datetime.datetime(2000, 3, 1, 2, 3, 7))
+        prev = get_previous_completed(step, 3)
         self.assertEqual(prev.second, datetime.datetime(2000, 3, 1, 2, 3, 4))
 
     def test_get_previous_completed_not_found(self):
-        task = DateSecondTaskOk(datetime.datetime(2000, 3, 1, 2, 3))
-        prev = get_previous_completed(task, 2)
+        step = DateSecondStepOk(datetime.datetime(2000, 3, 1, 2, 3))
+        prev = get_previous_completed(step, 2)
         self.assertEqual(None, prev)
 
 
-class DateIntervalTaskOk(luigi.Task):
+class DateIntervalStepOk(luigi.Step):
     interval = luigi.DateIntervalParameter()
 
     def complete(self):
         return self.interval in [luigi.date_interval.Week(1999, 48), luigi.date_interval.Week(2000, 1), luigi.date_interval.Week(2000, 2)]
 
 
-class DateIntervalTaskOkTest(unittest.TestCase):
+class DateIntervalStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = DateIntervalTaskOk(luigi.date_interval.Week(2000, 1))
-        prev = previous(task)
+        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        prev = previous(step)
         self.assertEqual(prev.interval, luigi.date_interval.Week(1999, 52))
 
     def test_get_previous_completed(self):
-        task = DateIntervalTaskOk(luigi.date_interval.Week(2000, 1))
-        prev = get_previous_completed(task, 5)
+        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        prev = get_previous_completed(step, 5)
         self.assertEqual(prev.interval, luigi.date_interval.Week(1999, 48))
 
     def test_get_previous_completed_not_found(self):
-        task = DateIntervalTaskOk(luigi.date_interval.Week(2000, 1))
-        prev = get_previous_completed(task, 4)
+        step = DateIntervalStepOk(luigi.date_interval.Week(2000, 1))
+        prev = get_previous_completed(step, 4)
         self.assertEqual(None, prev)
 
 
-class ExtendedDateTaskOk(DateTaskOk):
+class ExtendedDateStepOk(DateStepOk):
     param1 = luigi.Parameter()
     param2 = luigi.IntParameter(default=2)
 
 
-class ExtendedDateTaskOkTest(unittest.TestCase):
+class ExtendedDateStepOkTest(unittest.TestCase):
 
     def test_previous(self):
-        task = ExtendedDateTaskOk(datetime.date(2000, 3, 1), "some value")
-        prev = previous(task)
+        step = ExtendedDateStepOk(datetime.date(2000, 3, 1), "some value")
+        prev = previous(step)
         self.assertEqual(prev.date, datetime.date(2000, 2, 29))
         self.assertEqual(prev.param1, "some value")
         self.assertEqual(prev.param2, 2)
 
 
-class MultiTemporalTaskNok(luigi.Task):
+class MultiTemporalStepNok(luigi.Step):
     date = luigi.DateParameter()
     hour = luigi.DateHourParameter()
 
 
-class MultiTemporalTaskNokTest(unittest.TestCase):
+class MultiTemporalStepNokTest(unittest.TestCase):
 
     def test_previous(self):
-        task = MultiTemporalTaskNok(datetime.date(2000, 1, 1), datetime.datetime(2000, 1, 1, 1))
-        self.assertRaises(NotImplementedError, previous, task)
-        self.assertRaises(NotImplementedError, get_previous_completed, task)
+        step = MultiTemporalStepNok(datetime.date(2000, 1, 1), datetime.datetime(2000, 1, 1, 1))
+        self.assertRaises(NotImplementedError, previous, step)
+        self.assertRaises(NotImplementedError, get_previous_completed, step)
 
 
-class NoTemporalTaskNok(luigi.Task):
+class NoTemporalStepNok(luigi.Step):
     param = luigi.Parameter()
 
 
-class NoTemporalTaskNokTest(unittest.TestCase):
+class NoTemporalStepNokTest(unittest.TestCase):
 
     def test_previous(self):
-        task = NoTemporalTaskNok("some value")
-        self.assertRaises(NotImplementedError, previous, task)
-        self.assertRaises(NotImplementedError, get_previous_completed, task)
+        step = NoTemporalStepNok("some value")
+        self.assertRaises(NotImplementedError, previous, step)
+        self.assertRaises(NotImplementedError, get_previous_completed, step)

@@ -15,8 +15,8 @@
 # limitations under the License.
 #
 """
-Abstract class for task history.
-Currently the only subclass is :py:class:`~luigi.db_task_history.DbTaskHistory`.
+Abstract class for step history.
+Currently the only subclass is :py:class:`~luigi.db_step_history.DbStepHistory`.
 """
 
 import abc
@@ -26,56 +26,56 @@ import logging
 logger = logging.getLogger('luigi-interface')
 
 
-class StoredTask:
+class StoredStep:
     """
-    Interface for methods on TaskHistory
+    Interface for methods on StepHistory
     """
 
-    # TODO : do we need this task as distinct from luigi.scheduler.Task?
-    #        this only records host and record_id in addition to task parameters.
+    # TODO : do we need this step as distinct from luigi.scheduler.Step?
+    #        this only records host and record_id in addition to step parameters.
 
-    def __init__(self, task, status, host=None):
-        self._task = task
+    def __init__(self, step, status, host=None):
+        self._step = step
         self.status = status
         self.record_id = None
         self.host = host
 
     @property
-    def task_family(self):
-        return self._task.family
+    def step_family(self):
+        return self._step.family
 
     @property
     def parameters(self):
-        return self._task.params
+        return self._step.params
 
 
-class TaskHistory(metaclass=abc.ABCMeta):
+class StepHistory(metaclass=abc.ABCMeta):
     """
-    Abstract Base Class for updating the run history of a task
+    Abstract Base Class for updating the run history of a step
     """
 
     @abc.abstractmethod
-    def task_scheduled(self, task):
+    def step_scheduled(self, step):
         pass
 
     @abc.abstractmethod
-    def task_finished(self, task, successful):
+    def step_finished(self, step, successful):
         pass
 
     @abc.abstractmethod
-    def task_started(self, task, worker_host):
+    def step_started(self, step, worker_host):
         pass
 
     # TODO(erikbern): should web method (find_latest_runs etc) be abstract?
 
 
-class NopHistory(TaskHistory):
+class NopHistory(StepHistory):
 
-    def task_scheduled(self, task):
+    def step_scheduled(self, step):
         pass
 
-    def task_finished(self, task, successful):
+    def step_finished(self, step, successful):
         pass
 
-    def task_started(self, task, worker_host):
+    def step_started(self, step, worker_host):
         pass

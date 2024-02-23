@@ -1,13 +1,13 @@
 Parameters
 ----------
 
-Parameters is the Luigi equivalent of creating a constructor for each Task.
+Parameters is the Luigi equivalent of creating a constructor for each Step.
 Luigi requires you to declare these parameters by instantiating
 :class:`~luigi.parameter.Parameter` objects on the class scope:
 
 .. code:: python
 
-    class DailyReport(luigi.contrib.hadoop.JobTask):
+    class DailyReport(luigi.contrib.hadoop.JobStep):
         date = luigi.DateParameter(default=datetime.date.today())
         # ...
 
@@ -19,7 +19,7 @@ Luigi also creates a command line parser that automatically handles the
 conversion from strings to Python types.
 This way you can invoke the job on the command line eg. by passing ``--date 2012-05-10``.
 
-The parameters are all set to their values on the Task object instance,
+The parameters are all set to their values on the Step object instance,
 i.e.
 
 .. code:: python
@@ -35,28 +35,28 @@ Same goes if you invoke Luigi on the command line.
 Instance caching
 ^^^^^^^^^^^^^^^^
 
-Tasks are uniquely identified by their class name and values of their
+Steps are uniquely identified by their class name and values of their
 parameters.
-In fact, within the same worker, two tasks of the same class with
+In fact, within the same worker, two steps of the same class with
 parameters of the same values are not just equal, but the same instance:
 
 .. code:: python
 
     >>> import luigi
     >>> import datetime
-    >>> class DateTask(luigi.Task):
+    >>> class DateStep(luigi.Step):
     ...   date = luigi.DateParameter()
     ...
     >>> a = datetime.date(2014, 1, 21)
     >>> b = datetime.date(2014, 1, 21)
     >>> a is b
     False
-    >>> c = DateTask(date=a)
-    >>> d = DateTask(date=b)
+    >>> c = DateStep(date=a)
+    >>> d = DateStep(date=b)
     >>> c
-    DateTask(date=2014-01-21)
+    DateStep(date=2014-01-21)
     >>> d
-    DateTask(date=2014-01-21)
+    DateStep(date=2014-01-21)
     >>> c is d
     True
 
@@ -64,21 +64,21 @@ Insignificant parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
 If a parameter is created with ``significant=False``,
-it is ignored as far as the Task signature is concerned.
-Tasks created with only insignificant parameters differing have the same signature but
+it is ignored as far as the Step signature is concerned.
+Steps created with only insignificant parameters differing have the same signature but
 are not the same instance:
 
 .. code:: python
 
-    >>> class DateTask2(DateTask):
+    >>> class DateStep2(DateStep):
     ...   other = luigi.Parameter(significant=False)
     ...
-    >>> c = DateTask2(date=a, other="foo")
-    >>> d = DateTask2(date=b, other="bar")
+    >>> c = DateStep2(date=a, other="foo")
+    >>> d = DateStep2(date=b, other="bar")
     >>> c
-    DateTask2(date=2014-01-21)
+    DateStep2(date=2014-01-21)
     >>> d
-    DateTask2(date=2014-01-21)
+    DateStep2(date=2014-01-21)
     >>> c.other
     'foo'
     >>> d.other
@@ -105,7 +105,7 @@ parameters are public, but you can also set them hidden or private.
 
 ``ParameterVisibility.HIDDEN`` - ignored in WEB-view, but saved into database if save db_history is true
 
-``ParameterVisibility.PRIVATE`` - visible only inside task.
+``ParameterVisibility.PRIVATE`` - visible only inside step.
 
 Parameter types
 ^^^^^^^^^^^^^^^
@@ -132,41 +132,41 @@ Setting parameter value for other classes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 All parameters are also exposed on a class level on the command line interface.
-For instance, say you have classes TaskA and TaskB:
+For instance, say you have classes StepA and StepB:
 
 .. code:: python
 
-    class TaskA(luigi.Task):
+    class StepA(luigi.Step):
         x = luigi.Parameter()
 
-    class TaskB(luigi.Task):
+    class StepB(luigi.Step):
         y = luigi.Parameter()
 
 
-You can run ``TaskB`` on the command line: ``luigi TaskB --y 42``.
-But you can also set the class value of ``TaskA`` by running
-``luigi TaskB --y 42 --TaskA-x 43``.
-This sets the value of ``TaskA.x`` to 43 on a *class* level.
-It is still possible to override it inside Python if you instantiate ``TaskA(x=44)``.
+You can run ``StepB`` on the command line: ``luigi StepB --y 42``.
+But you can also set the class value of ``StepA`` by running
+``luigi StepB --y 42 --StepA-x 43``.
+This sets the value of ``StepA.x`` to 43 on a *class* level.
+It is still possible to override it inside Python if you instantiate ``StepA(x=44)``.
 
 All parameters can also be set from the configuration file.
 For instance, you can put this in the config:
 
 .. code:: ini
 
-    [TaskA]
+    [StepA]
     x: 45
 
 
-Just as in the previous case, this will set the value of ``TaskA.x`` to 45 on the *class* level.
-And likewise, it is still possible to override it inside Python if you instantiate ``TaskA(x=44)``.
+Just as in the previous case, this will set the value of ``StepA.x`` to 45 on the *class* level.
+And likewise, it is still possible to override it inside Python if you instantiate ``StepA(x=44)``.
 
 Parameter resolution order
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Parameters are resolved in the following order of decreasing priority:
 
-1. Any value passed to the constructor, or task level value set on the command line (applies on an instance level)
+1. Any value passed to the constructor, or step level value set on the command line (applies on an instance level)
 2. Any value set on the command line (applies on a class level)
 3. Any configuration option (applies on a class level)
 4. Any default value provided to the parameter (applies on a class level)

@@ -33,11 +33,11 @@ From the AWS website:
 See `AWS Batch User Guide`_ for more details.
 
 To use AWS Batch, you create a jobDefinition JSON that defines a `docker run`_
-command, and then submit this JSON to the API to queue up the task. Behind the
+command, and then submit this JSON to the API to queue up the step. Behind the
 scenes, AWS Batch auto-scales a fleet of EC2 Container Service instances,
 monitors the load on these instances, and schedules the jobs.
 
-This `boto3-powered`_ wrapper allows you to create Luigi Tasks to submit Batch
+This `boto3-powered`_ wrapper allows you to create Luigi Steps to submit Batch
 ``jobDefinition``s. You can either pass a dict (mapping directly to the
 ``jobDefinition`` JSON) OR an Amazon Resource Name (arn) for a previously
 registered ``jobDefinition``.
@@ -71,7 +71,7 @@ logger = logging.getLogger(__name__)
 try:
     import boto3
 except ImportError:
-    logger.warning('boto3 is not installed. BatchTasks require boto3')
+    logger.warning('boto3 is not installed. BatchSteps require boto3')
 
 
 class BatchJobException(Exception):
@@ -113,7 +113,7 @@ class BatchClient:
             return matching_jobs[0]['jobId']
 
     def get_job_status(self, job_id):
-        """Retrieve task statuses from ECS API
+        """Retrieve step statuses from ECS API
 
         :param job_id (str): AWS Batch job uuid
 
@@ -151,7 +151,7 @@ class BatchClient:
         return response['jobId']
 
     def wait_on_job(self, job_id):
-        """Poll task status until STOPPED"""
+        """Poll step status until STOPPED"""
 
         while True:
             status = self.get_job_status(job_id)
@@ -185,13 +185,13 @@ class BatchClient:
         return response
 
 
-class BatchTask(luigi.Task):
+class BatchStep(luigi.Step):
 
     """
     Base class for an Amazon Batch job
 
     Amazon Batch requires you to register "job definitions", which are JSON
-    descriptions for how to issue the ``docker run`` command. This Luigi Task
+    descriptions for how to issue the ``docker run`` command. This Luigi Step
     requires a pre-registered Batch jobDefinition name passed as a Parameter
 
     :param job_definition (str): name of pre-registered jobDefinition
@@ -215,5 +215,5 @@ class BatchTask(luigi.Task):
 
     @property
     def parameters(self):
-        """Override to return a dict of parameters for the Batch Task"""
+        """Override to return a dict of parameters for the Batch Step"""
         return {}

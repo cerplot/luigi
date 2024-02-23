@@ -119,10 +119,10 @@ class CopyToTestIndex(CopyToIndex):
         return target
 
 
-class IndexingTask1(CopyToTestIndex):
+class IndexingStep1(CopyToTestIndex):
 
     """ Test the redundant version, where `_index` and `_type` are
-    given in the `docs` as well. A more DRY example is `IndexingTask2`. """
+    given in the `docs` as well. A more DRY example is `IndexingStep2`. """
 
     def docs(self):
         """ Return a list with a single doc. """
@@ -130,9 +130,9 @@ class IndexingTask1(CopyToTestIndex):
                  'name': 'sample', 'date': 'today'}]
 
 
-class IndexingTask2(CopyToTestIndex):
+class IndexingStep2(CopyToTestIndex):
 
-    """ Just another task. """
+    """ Just another step. """
 
     def docs(self):
         """ Return a list with a single doc. """
@@ -140,9 +140,9 @@ class IndexingTask2(CopyToTestIndex):
                  'name': 'another', 'date': 'today'}]
 
 
-class IndexingTask3(CopyToTestIndex):
+class IndexingStep3(CopyToTestIndex):
 
-    """ This task will request an empty index to start with. """
+    """ This step will request an empty index to start with. """
     purge_existing_index = True
 
     def docs(self):
@@ -163,7 +163,7 @@ def _cleanup():
 @pytest.mark.aws
 class CopyToIndexTest(unittest.TestCase):
 
-    """ Test indexing tasks. """
+    """ Test indexing steps. """
 
     @classmethod
     def setUpClass(cls):
@@ -179,55 +179,55 @@ class CopyToIndexTest(unittest.TestCase):
 
     def test_copy_to_index(self):
         """ Test a single document upload. """
-        task = IndexingTask1()
-        self.assertFalse(self.es.indices.exists(task.index))
-        self.assertFalse(task.complete())
-        luigi.build([task], local_scheduler=True)
-        self.assertTrue(self.es.indices.exists(task.index))
-        self.assertTrue(task.complete())
-        self.assertEqual(1, self.es.count(index=task.index).get('count'))
+        step = IndexingStep1()
+        self.assertFalse(self.es.indices.exists(step.index))
+        self.assertFalse(step.complete())
+        luigi.build([step], local_scheduler=True)
+        self.assertTrue(self.es.indices.exists(step.index))
+        self.assertTrue(step.complete())
+        self.assertEqual(1, self.es.count(index=step.index).get('count'))
         self.assertEqual({u'date': u'today', u'name': u'sample'},
-                         self.es.get_source(index=task.index,
-                                            doc_type=task.doc_type, id=123))
+                         self.es.get_source(index=step.index,
+                                            doc_type=step.doc_type, id=123))
 
     def test_copy_to_index_incrementally(self):
-        """ Test two tasks that upload docs into the same index. """
-        task1 = IndexingTask1()
-        task2 = IndexingTask2()
-        self.assertFalse(self.es.indices.exists(task1.index))
-        self.assertFalse(self.es.indices.exists(task2.index))
-        self.assertFalse(task1.complete())
-        self.assertFalse(task2.complete())
-        luigi.build([task1, task2], local_scheduler=True)
-        self.assertTrue(self.es.indices.exists(task1.index))
-        self.assertTrue(self.es.indices.exists(task2.index))
-        self.assertTrue(task1.complete())
-        self.assertTrue(task2.complete())
-        self.assertEqual(2, self.es.count(index=task1.index).get('count'))
-        self.assertEqual(2, self.es.count(index=task2.index).get('count'))
+        """ Test two steps that upload docs into the same index. """
+        step1 = IndexingStep1()
+        step2 = IndexingStep2()
+        self.assertFalse(self.es.indices.exists(step1.index))
+        self.assertFalse(self.es.indices.exists(step2.index))
+        self.assertFalse(step1.complete())
+        self.assertFalse(step2.complete())
+        luigi.build([step1, step2], local_scheduler=True)
+        self.assertTrue(self.es.indices.exists(step1.index))
+        self.assertTrue(self.es.indices.exists(step2.index))
+        self.assertTrue(step1.complete())
+        self.assertTrue(step2.complete())
+        self.assertEqual(2, self.es.count(index=step1.index).get('count'))
+        self.assertEqual(2, self.es.count(index=step2.index).get('count'))
 
         self.assertEqual({u'date': u'today', u'name': u'sample'},
-                         self.es.get_source(index=task1.index,
-                                            doc_type=task1.doc_type, id=123))
+                         self.es.get_source(index=step1.index,
+                                            doc_type=step1.doc_type, id=123))
 
         self.assertEqual({u'date': u'today', u'name': u'another'},
-                         self.es.get_source(index=task2.index,
-                                            doc_type=task2.doc_type, id=234))
+                         self.es.get_source(index=step2.index,
+                                            doc_type=step2.doc_type, id=234))
 
     def test_copy_to_index_purge_existing(self):
         """ Test purge_existing_index purges index. """
-        task1 = IndexingTask1()
-        task2 = IndexingTask2()
-        task3 = IndexingTask3()
-        luigi.build([task1, task2], local_scheduler=True)
-        luigi.build([task3], local_scheduler=True)
-        self.assertTrue(self.es.indices.exists(task3.index))
-        self.assertTrue(task3.complete())
-        self.assertEqual(1, self.es.count(index=task3.index).get('count'))
+        step1 = IndexingStep1()
+        step2 = IndexingStep2()
+        step3 = IndexingStep3()
+        luigi.build([step1, step2], local_scheduler=True)
+        luigi.build([step3], local_scheduler=True)
+        self.assertTrue(self.es.indices.exists(step3.index))
+        self.assertTrue(step3.complete())
+        self.assertEqual(1, self.es.count(index=step3.index).get('count'))
 
         self.assertEqual({u'date': u'today', u'name': u'yet another'},
-                         self.es.get_source(index=task3.index,
-                                            doc_type=task3.doc_type, id=234))
+                         self.es.get_source(index=step3.index,
+                                            doc_type=step3.doc_type, id=234))
 
 
 @pytest.mark.aws
@@ -255,8 +255,8 @@ class MarkerIndexTest(unittest.TestCase):
 
         self.assertRaises(elasticsearch.NotFoundError, will_raise)
 
-        task1 = IndexingTask1()
-        luigi.build([task1], local_scheduler=True)
+        step1 = IndexingStep1()
+        luigi.build([step1], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})
@@ -265,13 +265,13 @@ class MarkerIndexTest(unittest.TestCase):
         result = self.es.search(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                 body={'query': {'match_all': {}}})
         marker_doc = result.get('hits').get('hits')[0].get('_source')
-        self.assertEqual(task1.task_id, marker_doc.get('update_id'))
+        self.assertEqual(step1.step_id, marker_doc.get('update_id'))
         self.assertEqual(INDEX, marker_doc.get('target_index'))
         self.assertEqual(DOC_TYPE, marker_doc.get('target_doc_type'))
         self.assertTrue('date' in marker_doc)
 
-        task2 = IndexingTask2()
-        luigi.build([task2], local_scheduler=True)
+        step2 = IndexingStep2()
+        luigi.build([step2], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})
@@ -292,13 +292,13 @@ class MarkerIndexTest(unittest.TestCase):
         first = next(it)
         second = next(it)
         self.assertTrue(first.date < second.date)
-        self.assertEqual(first.update_id, task1.task_id)
-        self.assertEqual(second.update_id, task2.task_id)
+        self.assertEqual(first.update_id, step1.step_id)
+        self.assertEqual(second.update_id, step2.step_id)
 
 
-class IndexingTask4(CopyToTestIndex):
+class IndexingStep4(CopyToTestIndex):
 
-    """ Just another task. """
+    """ Just another step. """
     date = luigi.DateParameter(default=datetime.date(1970, 1, 1))
     marker_index_hist_size = 1
 
@@ -325,20 +325,20 @@ class IndexHistSizeTest(unittest.TestCase):
 
     def test_limited_history(self):
 
-        task4_1 = IndexingTask4(date=datetime.date(2000, 1, 1))
-        luigi.build([task4_1], local_scheduler=True)
+        step4_1 = IndexingStep4(date=datetime.date(2000, 1, 1))
+        luigi.build([step4_1], local_scheduler=True)
 
-        task4_2 = IndexingTask4(date=datetime.date(2001, 1, 1))
-        luigi.build([task4_2], local_scheduler=True)
+        step4_2 = IndexingStep4(date=datetime.date(2001, 1, 1))
+        luigi.build([step4_2], local_scheduler=True)
 
-        task4_3 = IndexingTask4(date=datetime.date(2002, 1, 1))
-        luigi.build([task4_3], local_scheduler=True)
+        step4_3 = IndexingStep4(date=datetime.date(2002, 1, 1))
+        luigi.build([step4_3], local_scheduler=True)
 
         result = self.es.count(index=MARKER_INDEX, doc_type=MARKER_DOC_TYPE,
                                body={'query': {'match_all': {}}})
         self.assertEqual(1, result.get('count'))
-        marker_index_document_id = task4_3.output().marker_index_document_id()
+        marker_index_document_id = step4_3.output().marker_index_document_id()
         result = self.es.get(id=marker_index_document_id, index=MARKER_INDEX,
                              doc_type=MARKER_DOC_TYPE)
-        self.assertEqual(task4_3.task_id,
+        self.assertEqual(step4_3.step_id,
                          result.get('_source').get('update_id'))

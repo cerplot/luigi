@@ -19,10 +19,10 @@
 """
 The pyspark program.
 
-This module will be run by spark-submit for PySparkTask jobs.
+This module will be run by spark-submit for PySparkStep jobs.
 
-The first argument is a path to the pickled instance of the PySparkTask,
-other arguments are the ones returned by PySparkTask.app_options()
+The first argument is a path to the pickled instance of the PySparkStep,
+other arguments are the ones returned by PySparkStep.app_options()
 
 """
 

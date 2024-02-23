@@ -23,17 +23,17 @@ import luigi
 logger = logging.getLogger('luigi-interface')
 
 
-class ExternalDailySnapshot(luigi.ExternalTask):
+class ExternalDailySnapshot(luigi.ExternalStep):
     """
     Abstract class containing a helper method to fetch the latest snapshot.
 
     Example::
 
-      class MyTask(luigi.Task):
+      class MyStep(luigi.Step):
         def requires(self):
           return PlaylistContent.latest()
 
-    All tasks subclassing :class:`ExternalDailySnapshot` must have a :class:`luigi.DateParameter`
+    All steps subclassing :class:`ExternalDailySnapshot` must have a :class:`luigi.DateParameter`
     named ``date``.
 
     You can also provide additional parameters to the class and also configure

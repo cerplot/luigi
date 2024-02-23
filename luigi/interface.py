@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 """
-This module contains the bindings for command line integration and dynamic loading of tasks
+This module contains the bindings for command line integration and dynamic loading of steps
 
 If you don't want to run luigi from the command line. You may use the methods
 defined in this module to programmatically run luigi.
@@ -32,14 +32,14 @@ from luigi import lock
 from luigi import parameter
 from luigi import rpc
 from luigi import scheduler
-from luigi import task
+from luigi import step
 from luigi import worker
 from luigi.execution_summary import LuigiRunResult
 from luigi.cmdline_parser import CmdlineParser
 from luigi.setup_logging import InterfaceLogging
 
 
-class core(task.Config):
+class core(step.Config):
 
     ''' Keeps track of a bunch of environment params.
 
@@ -85,7 +85,7 @@ class core(task.Config):
         description='Signal other processes to stop getting work if already running')
     workers = parameter.IntParameter(
         default=1,
-        description='Maximum number of parallel tasks to run')
+        description='Maximum number of parallel steps to run')
     logging_conf_file = parameter.Parameter(
         default='',
         description='Configuration file for logging')
@@ -106,10 +106,10 @@ class core(task.Config):
                     ' By default the number of available CPUs will be used')
     assistant = parameter.BoolParameter(
         default=False,
-        description='Run any task from the scheduler.')
+        description='Run any step from the scheduler.')
     help = parameter.BoolParameter(
         default=False,
-        description='Show most common flags and all task-specific flags',
+        description='Show most common flags and all step-specific flags',
         always_in_help=True)
     help_all = parameter.BoolParameter(
         default=False,
@@ -120,7 +120,7 @@ class core(task.Config):
 class _WorkerSchedulerFactory:
 
     def create_local_scheduler(self):
-        return scheduler.Scheduler(prune_on_get_work=True, record_task_history=False)
+        return scheduler.Scheduler(prune_on_get_work=True, record_step_history=False)
 
     def create_remote_scheduler(self, url):
         return rpc.RemoteScheduler(url)
@@ -130,12 +130,12 @@ class _WorkerSchedulerFactory:
             scheduler=scheduler, worker_processes=worker_processes, assistant=assistant)
 
 
-def _schedule_and_run(tasks, worker_scheduler_factory=None, override_defaults=None):
+def _schedule_and_run(steps, worker_scheduler_factory=None, override_defaults=None):
     """
-    :param tasks:
+    :param steps:
     :param worker_scheduler_factory:
     :param override_defaults:
-    :return: True if all tasks and their dependencies were successfully run (or already completed);
+    :return: True if all steps and their dependencies were successfully run (or already completed);
              False if any error occurred. It will return a detailed response of type LuigiRunResult
              instead of a boolean if detailed_summary=True.
     """
@@ -171,9 +171,9 @@ def _schedule_and_run(tasks, worker_scheduler_factory=None, override_defaults=No
     success = True
     logger = logging.getLogger('luigi-interface')
     with worker:
-        for t in tasks:
+        for t in steps:
             success &= worker.add(t, env_params.parallel_scheduling, env_params.parallel_scheduling_processes)
-        logger.info('Done scheduling tasks')
+        logger.info('Done scheduling steps')
         success &= worker.run()
     luigi_run_result = LuigiRunResult(worker, success)
     logger.info(luigi_run_result.summary_text)
@@ -201,7 +201,7 @@ def run(*args, **kwargs):
     return luigi_run_result if kwargs.get('detailed_summary') else luigi_run_result.scheduling_succeeded
 
 
-def _run(cmdline_args=None, main_task_cls=None,
+def _run(cmdline_args=None, main_step_cls=None,
          worker_scheduler_factory=None, use_dynamic_argparse=None, local_scheduler=False, detailed_summary=False):
     if use_dynamic_argparse is not None:
         warnings.warn("use_dynamic_argparse is deprecated, don't set it.",
@@ -209,15 +209,15 @@ def _run(cmdline_args=None, main_task_cls=None,
     if cmdline_args is None:
         cmdline_args = sys.argv[1:]
 
-    if main_task_cls:
-        cmdline_args.insert(0, main_task_cls.task_family)
+    if main_step_cls:
+        cmdline_args.insert(0, main_step_cls.step_family)
     if local_scheduler:
         cmdline_args.append('--local-scheduler')
     with CmdlineParser.global_instance(cmdline_args) as cp:
-        return _schedule_and_run([cp.get_task_obj()], worker_scheduler_factory)
+        return _schedule_and_run([cp.get_step_obj()], worker_scheduler_factory)
 
 
-def build(tasks, worker_scheduler_factory=None, detailed_summary=False, **env_params):
+def build(steps, worker_scheduler_factory=None, detailed_summary=False, **env_params):
     """
     Run internally, bypassing the cmdline parsing.
 
@@ -226,19 +226,19 @@ def build(tasks, worker_scheduler_factory=None, detailed_summary=False, **env_pa
 
     .. code-block:: python
 
-        luigi.build([MyTask1(), MyTask2()], local_scheduler=True)
+        luigi.build([MyStep1(), MyStep2()], local_scheduler=True)
 
     One notable difference is that `build` defaults to not using
     the identical process lock. Otherwise, `build` would only be
     callable once from each process.
 
-    :param tasks:
+    :param steps:
     :param worker_scheduler_factory:
     :param env_params:
-    :return: True if there were no scheduling errors, even if tasks may fail.
+    :return: True if there were no scheduling errors, even if steps may fail.
     """
     if "no_lock" not in env_params:
         env_params["no_lock"] = True
 
-    luigi_run_result = _schedule_and_run(tasks, worker_scheduler_factory, override_defaults=env_params)
+    luigi_run_result = _schedule_and_run(steps, worker_scheduler_factory, override_defaults=env_params)
     return luigi_run_result if detailed_summary else luigi_run_result.scheduling_succeeded

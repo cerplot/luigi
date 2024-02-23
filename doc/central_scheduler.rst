@@ -5,12 +5,12 @@ While the ``--local-scheduler`` flag is useful for development purposes,
 it's not recommended for production usage.
 The centralized scheduler serves two purposes:
 
--  Make sure two instances of the same task are not running simultaneously
+-  Make sure two instances of the same step are not running simultaneously
 -  Provide visualization of everything that's going on.
 
 Note that the central scheduler does not execute anything for you or
 help you with job parallelization.
-For running tasks periodically,
+For running steps periodically,
 the easiest thing to do is to trigger a Python script from cron or
 from a continuously running process.
 There is no central process that automatically triggers jobs.
@@ -39,20 +39,20 @@ see the :ref:`scheduler configuration section <scheduler-config>`.
 Note that ``luigid`` uses the same configuration files as the Luigi client
 (i.e. ``luigi.cfg`` or ``/etc/luigi/client.cfg`` by default).
 
-.. _TaskHistory:
+.. _StepHistory:
 
-Enabling Task History
+Enabling Step History
 ~~~~~~~~~~~~~~~~~~~~~
 
-Task History is an experimental feature in which
-additional information about tasks that have been executed are recorded in a relational database
+Step History is an experimental feature in which
+additional information about steps that have been executed are recorded in a relational database
 for historical analysis.
 This information is exposed via the Central Scheduler at ``/history``.
 
-To enable the task history,
-specify ``record_task_history = True`` in the
+To enable the step history,
+specify ``record_step_history = True`` in the
 ``[scheduler]`` section of ``luigi.cfg`` and
-specify ``db_connection`` under ``[task_history]``.
+specify ``db_connection`` under ``[step_history]``.
 The ``db_connection`` string is used to configure the `SQLAlchemy engine
 <http://docs.sqlalchemy.org/en/rel_0_9/core/engines.html>`_.
 When starting up,
@@ -64,13 +64,13 @@ Example configuration
 .. code:: ini
 
     [scheduler]
-    record_task_history = True
+    record_step_history = True
     state_path = /usr/local/var/luigi-state.pickle
 
-    [task_history]
-    db_connection = sqlite:////usr/local/var/luigi-task-hist.db
+    [step_history]
+    db_connection = sqlite:////usr/local/var/luigi-step-hist.db
 
-The task history has the following pages:
+The step history has the following pages:
 
 * ``/history``
   a reverse-cronological listing of runs from the past 24 hours.
@@ -86,12 +86,12 @@ The task history has the following pages:
     .. figure:: history_by_id.png
        :alt: By id screenshot
 * ``/history/by_name/{name}``
-  a listing of all runs of a task with the given task ``{name}``.
+  a listing of all runs of a step with the given step ``{name}``.
   Example screenshot:
 
     .. figure:: history_by_name.png
        :alt: By name screenshot
 * ``/history/by_params/{name}?data=params``
-  a listing of all runs of the task ``{name}`` restricted to runs with ``params`` matching the given history.
+  a listing of all runs of the step ``{name}`` restricted to runs with ``params`` matching the given history.
   The ``params`` is a json blob describing the parameters,
-  e.g. ``data={"foo": "bar"}`` looks for a task with ``foo=bar``.
+  e.g. ``data={"foo": "bar"}`` looks for a step with ``foo=bar``.

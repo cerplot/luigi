@@ -47,10 +47,10 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
 
             super(WorkerSchedulerCommunicationTest, self).run(result)
 
-    def wrapper_task(test_self):
+    def wrapper_step(test_self):
         tmp = tempfile.mkdtemp()
 
-        class MyTask(luigi.Task):
+        class MyStep(luigi.Step):
 
             n = luigi.IntParameter()
             delay = 3
@@ -64,12 +64,12 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
                 with self.output().open('w') as f:
                     f.write("content\n")
 
-        class Wrapper(MyTask):
+        class Wrapper(MyStep):
 
             delay = 0
 
             def requires(self):
-                return [MyTask(n=n) for n in range(self.n)]
+                return [MyStep(n=n) for n in range(self.n)]
 
         return Wrapper, tmp
 
@@ -103,15 +103,15 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
 
     @contextlib.contextmanager
     def run_wrapper(self, n):
-        # assign the wrapper task to the worker
-        Wrapper, tmp = self.wrapper_task()
+        # assign the wrapper step to the worker
+        Wrapper, tmp = self.wrapper_step()
         wrapper = Wrapper(n=n)
         self.assertTrue(self.w.add(wrapper))
 
         # check the initial number of worker processes
         self.assertEqual(1, self.w.worker_processes)
 
-        # run the task in a thread and while running, increase the number of worker processes
+        # run the step in a thread and while running, increase the number of worker processes
         # via an rpc message
         t = threading.Thread(target=self.w.run)
         t.start()
@@ -127,7 +127,7 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
 
     def test_dispatch_valid_message(self):
         with self.run_wrapper(3) as (wrapper, t):
-            # each of the wrapper task's tasks runs 3 seconds, and the ping/message dispatch
+            # each of the wrapper step's steps runs 3 seconds, and the ping/message dispatch
             # interval is 1 second, so it should be safe to wait 1 second here, add the message
             # which is then fetched by the keep alive thread and dispatched, so after additional 3
             # seconds, the worker will have a changed number of processes
@@ -137,9 +137,9 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
             t.join(3)
             self.assertEqual(2, self.w.worker_processes)
 
-            # after additional 3 seconds, the wrapper task + all required tasks should be completed
+            # after additional 3 seconds, the wrapper step + all required steps should be completed
             t.join(3)
-            self.assertTrue(all(task.complete() for task in wrapper.requires()))
+            self.assertTrue(all(step.complete() for step in wrapper.requires()))
             self.assertTrue(wrapper.complete())
 
     def test_dispatch_invalid_message(self):
@@ -154,9 +154,9 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
             t.join(3)
             self.assertEqual(1, self.w.worker_processes)
 
-            # after additional 3 seconds, the wrapper task and all required tasks should be completed
+            # after additional 3 seconds, the wrapper step and all required steps should be completed
             t.join(3)
-            self.assertTrue(all(task.complete() for task in wrapper.requires()))
+            self.assertTrue(all(step.complete() for step in wrapper.requires()))
             self.assertTrue(wrapper.complete())
 
     def test_dispatch_unregistered_message(self):
@@ -182,7 +182,7 @@ class WorkerSchedulerCommunicationTest(LuigiTestCase):
             t.join(3)
             self.assertEqual(1, self.w.worker_processes)
 
-            # after additional 3 seconds, the wrapper task and all required tasks should be completed
+            # after additional 3 seconds, the wrapper step and all required steps should be completed
             t.join(3)
-            self.assertTrue(all(task.complete() for task in wrapper.requires()))
+            self.assertTrue(all(step.complete() for step in wrapper.requires()))
             self.assertTrue(wrapper.complete())

@@ -26,17 +26,17 @@ import pytest
 from mock.mock import MagicMock
 
 from luigi.contrib import bigquery
-from luigi.contrib.bigquery import BigQueryLoadTask, BigQueryTarget, BQDataset, \
-    BigQueryRunQueryTask, BigQueryExtractTask, BigQueryClient
+from luigi.contrib.bigquery import BigQueryLoadStep, BigQueryTarget, BQDataset, \
+    BigQueryRunQueryStep, BigQueryExtractStep, BigQueryClient
 from luigi.contrib.gcs import GCSTarget
 
 
 @pytest.mark.gcloud
-class BigQueryLoadTaskTest(unittest.TestCase):
+class BigQueryLoadStepTest(unittest.TestCase):
 
     @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
-        class MyBigQueryLoadTask(BigQueryLoadTask):
+        class MyBigQueryLoadStep(BigQueryLoadStep):
             def source_uris(self):
                 return ['gs://_']
 
@@ -49,7 +49,7 @@ class BigQueryLoadTaskTest(unittest.TestCase):
             def output(self):
                 return BigQueryTarget(project_id='proj', dataset_id='ds', table_id='t')
 
-        job = MyBigQueryLoadTask()
+        job = MyBigQueryLoadStep()
         job.run()
 
         expected_body = {
@@ -71,10 +71,10 @@ class BigQueryLoadTaskTest(unittest.TestCase):
 
 
 @pytest.mark.gcloud
-class BigQueryRunQueryTaskTest(unittest.TestCase):
+class BigQueryRunQueryStepTest(unittest.TestCase):
     @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
-        class MyBigQueryRunQuery(BigQueryRunQueryTask):
+        class MyBigQueryRunQuery(BigQueryRunQueryStep):
             query = 'SELECT @thing'
             use_legacy_sql = False
 
@@ -118,10 +118,10 @@ class BigQueryRunQueryTaskTest(unittest.TestCase):
 
 
 @pytest.mark.gcloud
-class BigQueryExtractTaskTest(unittest.TestCase):
+class BigQueryExtractStepTest(unittest.TestCase):
     @mock.patch('luigi.contrib.bigquery.BigQueryClient.run_job')
     def test_configure_job(self, run_job):
-        class MyBigQueryExtractTask(BigQueryExtractTask):
+        class MyBigQueryExtractStep(BigQueryExtractStep):
             destination_format = 'AVRO'
 
             def configure_job(self, configuration):
@@ -134,7 +134,7 @@ class BigQueryExtractTaskTest(unittest.TestCase):
             def output(self):
                 return GCSTarget('gs://_')
 
-        job = MyBigQueryExtractTask()
+        job = MyBigQueryExtractStep()
         job.run()
 
         expected_body = {

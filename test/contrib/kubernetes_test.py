@@ -34,7 +34,7 @@ import unittest
 import luigi
 import logging
 import mock
-from luigi.contrib.kubernetes import KubernetesJobTask
+from luigi.contrib.kubernetes import KubernetesJobStep
 
 import pytest
 
@@ -48,7 +48,7 @@ except ImportError:
     raise unittest.SkipTest('pykube is not installed. This test requires pykube.')
 
 
-class SuccessJob(KubernetesJobTask):
+class SuccessJob(KubernetesJobStep):
     name = "success"
     spec_schema = {
         "containers": [{
@@ -59,7 +59,7 @@ class SuccessJob(KubernetesJobTask):
     }
 
 
-class FailJob(KubernetesJobTask):
+class FailJob(KubernetesJobStep):
     name = "fail"
     max_retrials = 3
     backoff_limit = 3
@@ -77,7 +77,7 @@ class FailJob(KubernetesJobTask):
 
 
 @pytest.mark.contrib
-class TestK8STask(unittest.TestCase):
+class TestK8SStep(unittest.TestCase):
 
     def test_success_job(self):
         success = luigi.run(["SuccessJob", "--local-scheduler"])
@@ -88,7 +88,7 @@ class TestK8STask(unittest.TestCase):
         self.assertRaises(RuntimeError, fail.run)
         # Check for retrials
         kube_api = HTTPClient(KubeConfig.from_file("~/.kube/config"))  # assumes minikube
-        jobs = Job.objects(kube_api).filter(selector="luigi_task_id="
+        jobs = Job.objects(kube_api).filter(selector="luigi_step_id="
                                                      + fail.job_uuid)
         self.assertEqual(len(jobs.response["items"]), 1)
         job = Job(kube_api, jobs.response["items"][0])
@@ -96,17 +96,17 @@ class TestK8STask(unittest.TestCase):
         self.assertTrue(job.obj["status"]["failed"] > fail.max_retrials)
         self.assertTrue(job.obj['spec']['template']['metadata']['labels'] == fail.labels())
 
-    @mock.patch.object(KubernetesJobTask, "_KubernetesJobTask__get_job_status")
-    @mock.patch.object(KubernetesJobTask, "signal_complete")
+    @mock.patch.object(KubernetesJobStep, "_KubernetesJobStep__get_job_status")
+    @mock.patch.object(KubernetesJobStep, "signal_complete")
     def test_output(self, mock_signal, mock_job_status):
         # mock that the job succeeded
         mock_job_status.return_value = "succeeded"
         # create a kubernetes job
-        kubernetes_job = KubernetesJobTask()
+        kubernetes_job = KubernetesJobStep()
         # set logger and uu_name due to logging in __track_job()
-        kubernetes_job._KubernetesJobTask__logger = logger
+        kubernetes_job._KubernetesJobStep__logger = logger
         kubernetes_job.uu_name = "test"
         # track the job (bc included in run method)
-        kubernetes_job._KubernetesJobTask__track_job()
+        kubernetes_job._KubernetesJobStep__track_job()
         # Make sure successful job signals
         self.assertTrue(mock_signal.called)

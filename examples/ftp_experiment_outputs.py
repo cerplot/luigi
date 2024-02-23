@@ -25,7 +25,7 @@ USER = "user"
 PWD = "some_password"
 
 
-class ExperimentTask(luigi.ExternalTask):
+class ExperimentStep(luigi.ExternalStep):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
@@ -33,17 +33,17 @@ class ExperimentTask(luigi.ExternalTask):
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file that will be created in a FTP server.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file that will be created in a FTP server.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return RemoteTarget('/experiment/output1.txt', HOST, username=USER, password=PWD)
 
     def run(self):
         """
-        The execution of this task will write 4 lines of data on this task's target output.
+        The execution of this step will write 4 lines of data on this step's target output.
         """
         with self.output().open('w') as outfile:
             print("data 0 200 10 50 60", file=outfile)
@@ -52,7 +52,7 @@ class ExperimentTask(luigi.ExternalTask):
             print("data 3 195 1 52 60", file=outfile)
 
 
-class ProcessingTask(luigi.Task):
+class ProcessingStep(luigi.Step):
     """
     This class represents something that was created elsewhere by an external process,
     so all we want to do is to implement the output method.
@@ -60,20 +60,20 @@ class ProcessingTask(luigi.Task):
 
     def requires(self):
         """
-        This task's dependencies:
+        This step's dependencies:
 
-        * :py:class:`~.ExperimentTask`
+        * :py:class:`~.ExperimentStep`
 
-        :return: object (:py:class:`luigi.task.Task`)
+        :return: object (:py:class:`luigi.step.Step`)
         """
-        return ExperimentTask()
+        return ExperimentStep()
 
     def output(self):
         """
-        Returns the target output for this task.
-        In this case, a successful execution of this task will create a file on the local filesystem.
+        Returns the target output for this step.
+        In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this task.
+        :return: the target output for this step.
         :rtype: object (:py:class:`~luigi.target.Target`)
         """
         return luigi.LocalTarget('/tmp/processeddata.txt')
@@ -84,7 +84,7 @@ class ProcessingTask(luigi.Task):
         sumval = 0.0
 
         # Target objects are a file system/format abstraction and this will return a file stream object
-        # NOTE: self.input() actually returns the ExperimentTask.output() target
+        # NOTE: self.input() actually returns the ExperimentStep.output() target
         for line in self.input().open('r'):
             values = line.split(" ")
             avg += float(values[2])
