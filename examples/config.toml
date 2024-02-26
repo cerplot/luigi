@@ -1,10 +1,7 @@
-
-[hdfs]
-client = "hadoopcli"
-namenode_host = "localhost"
-namenode_port = 50030
-
-# LOGGING
+import = [
+    'C:\dev\src\task_runner\examples\dynamic_requirements.py',
+    'C:\dev\src\task_runner\examples\dynamic_requirements2.py',
+]
 
 [logging]
 version = 1

@@ -1,26 +1,9 @@
 Configuration
 =============
 
-All configuration can be done by adding configuration files.
+All configuration can be done via configuration files.
 
-Supported config parsers:
-
-* ``cfg`` (default), based on Python's standard ConfigParser_. Values may refer to environment variables using ``${ENVVAR}`` syntax.
-* ``toml``
-
-.. _ConfigParser: https://docs.python.org/3/library/configparser.html
-
-You can choose right parser via ``TRUN_CONFIG_PARSER`` environment variable. For example, ``TRUN_CONFIG_PARSER=toml``.
-
-Default (cfg) parser are looked for in:
-
-* ``/etc/trun/client.cfg`` (deprecated)
-* ``/etc/trun/trun.cfg``
-* ``client.cfg`` (deprecated)
-* ``trun.cfg``
-* ``TRUN_CONFIG_PATH`` environment variable
-
-`TOML <https://github.com/toml-lang/toml>`_ parser are looked for in:
+Default parser are looked for in:
 
 * ``/etc/trun/trun.toml``
 * ``trun.toml``
@@ -32,48 +15,24 @@ These files are meant for both the client and ``trund``.
 If you decide to specify your own configuration you should make sure
 that both the client and ``trund`` load it properly.
 
-.. _ConfigParser.read: https://docs.python.org/3.6/library/configparser.html#configparser.ConfigParser.read
-
 The config file is broken into sections, each controlling a different part of the config.
 
-Example cfg config:
-
-.. code:: ini
-
-    [hadoop]
-    version=cdh4
-    streaming_jar=/usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar
-
-    [core]
-    scheduler_host=trun-host.mycompany.foo
-
-Example toml config:
+Example config:
 
 .. code:: python
-
-    [hadoop]
-    version = "cdh4"
-    streaming_jar = "/usr/lib/hadoop-xyz/hadoop-streaming-xyz-123.jar"
 
     [core]
     scheduler_host = "trun-host.mycompany.foo"
 
-Also see `examples/config.toml
-<https://github.com/spotify/trun/blob/master/examples/config.toml>`_
-for more complex example.
 
-.. _ParamConfigIngestion:
-
-Parameters from config Ingestion
---------------------------------
 
 All parameters can be overridden from configuration files. For instance if you
 have a Step definition:
 
 .. code:: python
 
-    class DailyReport(trun.contrib.hadoop.JobStep):
-        date = trun.DateParameter(default=datetime.date.today())
+    class DailyReport(JobStep):
+        date = DateParameter(default=datetime.date.today())
         # ...
 
 Then you can override the default value for ``DailyReport().date`` by providing

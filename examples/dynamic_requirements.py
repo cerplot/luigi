@@ -1,81 +1,64 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2012-2015 Spotify AB
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+from os import listdir
+from os.path import dirname
+from random import randint, sample, seed
+from time import sleep
 
-import os
-import random as rnd
-import time
-
-import trun
+from trun import Step, IntParameter, LocalTarget, DynamicRequirements, run
 
 
-class Configuration(trun.Step):
-    seed = trun.IntParameter()
+class Configuration(Step):
+    seed = IntParameter()
 
     def output(self):
-        """
-        Returns the target output for this step.
-        In this case, a successful execution of this step will create a file on the local filesystem.
+        """ Returns the target output for this step.
+        In this case, a successful execution of this
+        step will create a file on the local filesystem.
 
-        :return: the target output for this step.
-        :rtype: object (:py:class:`trun.target.Target`)
+        :return: The target output for this step.
+        :rtype: Object (:py:class:`target.Target`)
         """
-        return trun.LocalTarget('/tmp/Config_%d.txt' % self.seed)
+        return LocalTarget('/tmp/Config_%d.txt' % self.seed)
 
     def run(self):
-        time.sleep(5)
-        rnd.seed(self.seed)
+        sleep(5)
+        seed(self.seed)
 
         result = ','.join(
-            [str(x) for x in rnd.sample(list(range(300)), rnd.randint(7, 25))])
+            [str(x) for x in sample(list(range(300)), randint(7, 25))])
         with self.output().open('w') as f:
             f.write(result)
 
 
-class Data(trun.Step):
-    magic_number = trun.IntParameter()
+class Data(Step):
+    magic_number = IntParameter()
 
     def output(self):
-        """
-        Returns the target output for this step.
-        In this case, a successful execution of this step will create a file on the local filesystem.
+        """ Returns the target output for this step.
+        In this case, a successful execution of this
+        step will create a file on the local filesystem.
 
-        :return: the target output for this step.
-        :rtype: object (:py:class:`trun.target.Target`)
+        :return: The target output for this step.
+        :rtype: Object (`Target`)
         """
-        return trun.LocalTarget('/tmp/Data_%d.txt' % self.magic_number)
+        return LocalTarget('/tmp/Data_%d.txt' % self.magic_number)
 
     def run(self):
-        time.sleep(1)
+        sleep(1)
         with self.output().open('w') as f:
             f.write('%s' % self.magic_number)
 
 
-class Dynamic(trun.Step):
-    seed = trun.IntParameter(default=1)
+class Dynamic(Step):
+    seed = IntParameter(default=1)
 
     def output(self):
-        """
-        Returns the target output for this step.
+        """ Returns the target output for this step.
         In this case, a successful execution of this step will create a file on the local filesystem.
 
-        :return: the target output for this step.
-        :rtype: object (:py:class:`trun.target.Target`)
+        :return: The target output for this step.
+        :rtype: `Target`
         """
-        return trun.LocalTarget('/tmp/Dynamic_%d.txt' % self.seed)
+        return LocalTarget('/tmp/Dynamic_%d.txt' % self.seed)
 
     def run(self):
         # This could be done using regular requires method
@@ -101,11 +84,11 @@ class Dynamic(trun.Step):
             if not complete_fn(data_dependent_deps[0]):
                 return False
             paths = [step.output().path for step in data_dependent_deps]
-            basenames = os.listdir(os.path.dirname(paths[0]))  # a single fs call
-            return all(os.path.basename(path) in basenames for path in paths)
+            basenames = listdir(dirname(paths[0]))  # a single fs call
+            return all(path.basename(path) in basenames for path in paths)
 
-        yield trun.DynamicRequirements(data_dependent_deps, custom_complete)
+        yield DynamicRequirements(data_dependent_deps, custom_complete)
 
 
 if __name__ == '__main__':
-    trun.run()
+    run()
