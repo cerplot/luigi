@@ -1,5 +1,4 @@
 include README.rst
-include LICENSE
 include examples/*.py
 include test/*.py
 recursive-include trun/static *

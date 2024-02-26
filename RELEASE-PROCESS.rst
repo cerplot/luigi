@@ -1,5 +1,5 @@
-For maintainers of Trun, who have push access to pypi. Here's how you upload
-Trun to pypi.
+
+
 
 #. Make sure [twine](https://pypi.org/project/twine/) is installed ``pip install twine``.
 #. Update version number in `trun/__meta__.py`.
@@ -10,6 +10,3 @@ Trun to pypi.
 #. Upload to pypi by executing ``twine upload dist/*``
 #. Add a tag on github (https://github.com/spotify/trun/releases),
    including a handwritten changelog, possibly inspired from previous notes.
-
-Currently, Trun is not released on any particular schedule and it is not
-strictly abiding semantic versioning. Whenever possible, bump major version when you make incompatible API changes, minor version when you add functionality in a backwards compatible manner, and patch version when you make backwards compatible bug fixes.
