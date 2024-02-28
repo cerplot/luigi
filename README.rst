@@ -1165,3 +1165,90 @@ This code creates a new SQLite database file named test.db, creates a table name
 Please make sure to have the SQLite library installed and linked to your project.
 
 
+
+# Signal whinening in C++
+
+#include <iostream>
+#include <vector>
+#include <complex>
+#include <cmath>
+
+#define PI 3.14159265358979323846
+
+// Function to calculate the DFT
+std::vector<std::complex<double>> DFT(std::vector<double>& signal) {
+    int N = signal.size();
+    std::vector<std::complex<double>> dft(N);
+    for (int k = 0; k < N; k++) {
+        for (int n = 0; n < N; n++) {
+            double real = signal[n] * cos(2 * PI * k * n / N);
+            double imag = -signal[n] * sin(2 * PI * k * n / N);
+            dft[k] += std::complex<double>(real, imag);
+        }
+    }
+    return dft;
+}
+
+// Function to calculate the IDFT
+std::vector<double> IDFT(std::vector<std::complex<double>>& dft) {
+    int N = dft.size();
+    std::vector<double> idft(N);
+    for (int n = 0; n < N; n++) {
+        for (int k = 0; k < N; k++) {
+            double real = real(dft[k]) * cos(2 * PI * k * n / N);
+            double imag = imag(dft[k]) * sin(2 * PI * k * n / N);
+            idft[n] += (real - imag) / N;
+        }
+    }
+    return idft;
+}
+
+// Function to whiten the signal
+std::vector<double> whitenSignal(std::vector<double>& signal) {
+    // Calculate the DFT of the signal
+    std::vector<std::complex<double>> dft = DFT(signal);
+
+    // Divide each DFT coefficient by the magnitude of the frequency
+    for (int i = 0; i < dft.size(); i++) {
+        dft[i] /= std::abs(dft[i]);
+    }
+
+    // Calculate the IDFT of the whitened signal
+    std::vector<double> whitenedSignal = IDFT(dft);
+
+    return whitenedSignal;
+}
+
+int main() {
+    // Test the whitenSignal function
+    std::vector<double> signal = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::vector<double> whitenedSignal = whitenSignal(signal);
+
+    // Print the whitened signal
+    for (double val : whitenedSignal) {
+        std::cout << val << " ";
+    }
+    std::cout << std::endl;
+
+    return 0;
+}
+
+
+# in python
+import numpy as np
+from scipy import signal
+
+def whiten_signal(signal_data):
+    """
+    This function whitens a one-dimensional numpy array using the Wiener filter.
+
+    Parameters:
+    signal_data (numpy.array): The input one-dimensional numpy array.
+
+    Returns:
+    numpy.array: The whitened numpy array.
+    """
+    # Apply the Wiener filter to the signal data
+    whitened_data = signal.wiener(signal_data)
+
+    return whitened_data
