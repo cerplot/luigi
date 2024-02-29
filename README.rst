@@ -10,43 +10,159 @@ previous step, processes it and provides it to the next step in a pipeline
 fashion:
 
 Step1 -> (save output) -> Step2 -> (save output) ->Step3 -> ... -> StepN
+               |                        |                      |
+               v                        v                      v
 
-As you can see, C++ optionally saves intermediate data after each layer,
+As you can see, C++ optionally saves intermediate data after each step,
  and the next layer can read that data and do its work just by using that data.
-In the future, we can use python to read and write those saved c++ data as well.
+(i.e. no need to run previous step provided data was saved after it.)
+Researcher should be able to use python to read/modify/write that saved c++ data as well.
 This will be important for researching different ideas in the future.
-So research will be done in python, and then the best ideas will be implemented in C++.
-This is an optimal combination of performance and flexibility. It is not required to
-know C++ to do research, but it is required to know C++ to implement the best ideas in the production code.
+
+Question arises how to save data so that the process is fast, efficient and
+easily readable by python? Let's for now use binary format to write/read data by
+C++ code and numpy. Later we might change it to some other format if we find
+out that there are better ways.
+
+Demo 1: Saving data in binary format::
+
+    #include <fstream>
+    #include <vector>
+
+    int main() {
+        std::vector<float> vec = {1, 2, 3, 4, 5};
+
+        std::ofstream out_file("arr1.bin", std::ios::binary);
+        if (out_file.is_open()) {
+            out_file.write(reinterpret_cast<const char*>(&vec[0]), vec.size() * sizeof(float));
+            out_file.close();
+        }
+
+        return 0;
+    }
+
+This code creates a binary file named arr1.bin and writes the contents of the vector vec to it.
+To read this binary file as a numpy array in Python, you can use the numpy.fromfile function::
+
+    import numpy as np
+    arr = np.fromfile('arr1.bin', dtype=np.float32)
+    print(arr)
 
 
-For configuration, we will use toml file. https://toml.io/en/
-This is a simple format that python can read natively and C++ has a good library for it as well.
-(e.g. https://marzer.github.io/tomlplusplus/). There is no need to create our own configuration file format. We will talk about the content of the configuration file later. For now let's just say that it will contain the paths to the data, the list of stocks, the list of indicators, and some other parameters that we will need in the future.
+To write a numpy array to a binary file in Python, you can use the numpy.ndarray.tofile function. Here's an example::
 
-A Build system is CMake that is standard nowadays.
-And if in the future you want to compile the code on windows, it will be easy to make that transition. And possibly some might want to use Windows for development, and CMake will make that transition smooth.
-
-
-In the future, we might need python access to the C++ internals (calling C++ functions from python, for example).
-As a first step, we don't need to worry about this, but later we will need to think about how to do this. Keep in mind that this will be needed at some point.
-pybind11 - can be used for these purposes (open for other suggestions, but it seems like the best choice these days).
+    import numpy as np
+    arr = np.array([1, 2, 3, 4, 5], dtype=np.float32)
+    arr.tofile('arr1.bin')
 
 
-Also, MLK (https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) will be used at some point. We should be able to compile it.
 
+This code creates a binary file named arr1.bin and writes the contents of the numpy array arr to it.  To read this binary file in C++, you can use the std::ifstream class from the <fstream> library. Here's how you can do it::
+
+        #include <fstream>
+        #include <vector>
+
+        int main() {
+            std::vector<float> vec(5);
+
+            std::ifstream in_file("arr1.bin", std::ios::binary);
+            if (in_file.is_open()) {
+                in_file.read(reinterpret_cast<char*>(&vec[0]), vec.size() * sizeof(float));
+                in_file.close();
+            }
+
+            for (auto v : vec) {
+                std::cout << v << std::endl;
+            }
+
+            return 0;
+        }
+
+If you prefer more flexibility, you can look at implementation of very small use the cnpy library:
+https://github.com/rogersce/cnpy/blob/master/cnpy.cpp
+
+Here how to write c++ vector into a file using that code:
+
+    #include <cnpy.h>
+    #include <vector>
+    #include <iostream>
+
+    int main()
+    {
+        std::vector<float> vec = {1, 2, 3, 4, 5};
+        cnpy::npy_save("arr1.npy", &vec[0], {5}, "w");
+        return 0;
+    }
+
+Here is how to read it in python:
+
+    import numpy as np
+    arr = np.load('arr1.npy')
+    print(arr)
+
+
+If you prefer using a library that is more widely used, you can use the HDF5 format.
+But I am not sure if it is worth the effort to use it for our purposes.
+
+So research will be done in python, and then best ideas will be implemented in C++.
+This is an optimal combination of performance and flexibility. It should not be required to
+know C++ to do research, but it is required to know C++ to implement the best ideas
+in the production code. This is a good separation of concerns.
+
+
+Configuration
+=============
+There is no need to create our own configuration file format. For configuration,
+we will use toml file. https://toml.io/en/ This is a simple format that python
+can read natively and C++ has a good library for it as well.
+(e.g. https://marzer.github.io/tomlplusplus/).  We will talk about the content
+of the configuration file later. For now let's just say that it will contain the
+paths to the data, the list of stocks, the list of indicators, and some other
+parameters that we will need in the future.
+
+
+Build System
+============
+The build system will be CMake which is standard nowadays. And if in the future you want
+to compile the code on windows, it will be easy to make that transition. And
+possibly some might want to use Windows for development, and CMake will make that transition smooth
+as well.
+
+
+Binding C++ to Python
+=====================
+We will need python access to the C++ internals (calling C++ functions from python, for example).
+There are many ways of doing it and for our purposes pybind11 - can be used
+(open for other suggestions, but it seems like the best choice these days).
+
+
+MKL
+===
+MLK (https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) will be used at some point.
+We should be able to compile it. It is a standard library for numerical computations and it is used by many other libraries as well. For now this is the only numerical library we will use, but we might add others in the future.
+
+
+sqlite
+=======
 Another library we will need is sqlite. Stats and other outputs will be saved in a sqlite database.
+Again very standard and easy to use.
 
+
+Unit tests are done with google test (C++) (if there is no objection) and pytest (python).
+compiler is gcc (open for other suggestions, but it seems to be the standard choice).
+Anyways, multiple compilers can be used, but we will use gcc for now. Switching to another compiler
+should be easy and usefully exercise for the future.
+clang-format is used for code formatting.
+
+GIT
+===
 Version control is git. Later we can decide to choose another branching strategy.
 But, for now, we will keep things simple:
 - master branch is always stable and can be deployed to production.
 - development branch is used for development.
 - feature branches are used for developing new features. and are merged into the development branch when the feature is ready.
 
-
-Unit tests are done with google test (C++) (if there is no objection) and pytest (python).
-compiler is gcc (open for other suggestions, but it seems to be the standard choice).
-clang-format is used for code formatting.
+It would be nice to have a CI/CD pipeline, using jenkins.
 
 Later we will add other information, but for now this is enough to setup the development environment.
 
@@ -87,6 +203,7 @@ if (tick.type == BT){
     uint tradeSize = tick.tradeSize;
     float tradePrice = tick.tradePrice;
 }
+
 We need to have a method to get the next tick only for a given stock as well:
 
     DataSource *source = get_stock_data_source(stock_id, PATH_TO_DATA_SOURCE)
@@ -295,6 +412,14 @@ Example::
 
 
 
+Parallelism
+===========
+We need to know how to do parallelism in C++. We need to be able to calculate indicators in parallel for every stock.
+How to accomplish it depends on what is available and what is architecture of the system. So please learn about it and try to implement.
+
+
+
+
 Trun is a Python (3.10, 3.11 3.12) package that helps you build complex
 pipelines of batch jobs. It handles dependency resolution, workflow management,
 visualization, handling failures, command line integration, and much more.
@@ -390,6 +515,7 @@ strictly abiding semantic versioning. Whenever possible, bump major version when
 
 
 
+# how
 ==========
 To read binary data saved from a C++ program in Python, you can use the struct module which provides pack and unpack functions for working with variable-length binary record formats. The struct module performs conversions between Python values and C structs represented as Python bytes objects.  Here is a basic example::
 
@@ -1110,58 +1236,167 @@ To read the TOML file back in C++, you can use the toml::parse function from the
 
 # Sqlite
 To create and write to an SQLite database in C++, you can use the SQLite C/C++ interface. Here's a step-by-step plan:  
-Include the SQLite library in your project.
-Open a connection to the SQLite database using sqlite3_open.
-Create a table in the database using sqlite3_exec.
-Insert data into the table using sqlite3_exec.
-Close the connection to the database using sqlite3_close.
-Here's the code:
+* Include the SQLite library in your project.
+* Open a connection to the SQLite database using sqlite3_open.
+* Create a table in the database using sqlite3_exec.
+* Insert data into the table using sqlite3_exec.
+* Close the connection to the database using sqlite3_close.
 
 
-#include <sqlite3.h>
-#include <stdio.h>
+    #include <sqlite3.h>
+    #include <stdio.h>
 
-int main(void) {
-    
-    sqlite3 *db;
-    char *err_msg = 0;
-    
-    int rc = sqlite3_open("test.db", &db);
-    
+    void createTableAndInsertData() {
+    sqlite3* db;
+    char* errMsg = 0;
+    int rc;
+
+    // Open database
+    rc = sqlite3_open("test.db", &db);
     if (rc != SQLITE_OK) {
-        
-        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        
-        return 1;
+        std::cerr << "Cannot open database: " << sqlite3_errmsg(db) << std::endl;
+        return;
     }
-    
-    char *sql = "DROP TABLE IF EXISTS Cars;" 
-                "CREATE TABLE Cars(Id INT, Name TEXT, Price INT);" 
-                "INSERT INTO Cars VALUES(1, 'Audi', 52642);" 
-                "INSERT INTO Cars VALUES(2, 'Mercedes', 57127);" 
-                "INSERT INTO Cars VALUES(3, 'Skoda', 9000);" 
-                "INSERT INTO Cars VALUES(4, 'Volvo', 29000);";
-                
-    rc = sqlite3_exec(db, sql, 0, 0, &err_msg);
-    
+
+    // SQL to create table and insert data
+    const char* sql =
+        "CREATE TABLE IF NOT EXISTS Cars(Id INT, Name TEXT, Price INT);"
+        "INSERT INTO Cars VALUES(1, 'Audi', 52642);"
+        "INSERT INTO Cars VALUES(2, 'Mercedes', 57127);"
+        "INSERT INTO Cars VALUES(3, 'Skoda', 9000);"
+        "INSERT INTO Cars VALUES(4, 'Volvo', 29000);";
+
+    // Execute SQL
+    rc = sqlite3_exec(db, sql, 0, 0, &errMsg);
     if (rc != SQLITE_OK ) {
-        
-        fprintf(stderr, "SQL error: %s\n", err_msg);
-        
-        sqlite3_free(err_msg);        
-        sqlite3_close(db);
-        
-        return 1;
-    } 
-    
+        std::cerr << "SQL error: " << errMsg << std::endl;
+        sqlite3_free(errMsg);
+    } else {
+        std::cout << "Table created and data inserted successfully" << std::endl;
+    }
+
+    // Close database
     sqlite3_close(db);
-    
-    return 0;
 }
+
+
+    void readDataFromDatabase() {
+    /*
+    This function opens a connection to a SQLite database named test.db, selects all rows from a table named Cars, and then prints the data to the console. If there's an error during any of these operations, it prints an error message to the console. The database connection is always closed at the end of the function using sqlite3_close.
+    */
+        sqlite3* db;
+        char* errMsg = 0;
+        int rc;
+
+        // Open database
+        rc = sqlite3_open("test.db", &db);
+        if (rc != SQLITE_OK) {
+            std::cerr << "Cannot open database: " << sqlite3_errmsg(db) << std::endl;
+            return;
+        }
+
+        // SQL to select data
+        const char* sql = "SELECT * FROM Cars;";
+
+        // Callback function to print the data
+        auto callback = [](void*, int count, char** data, char** columns) -> int {
+            for (int i = 0; i < count; i++) {
+                std::cout << columns[i] << " = " << (data[i] ? data[i] : "NULL") << std::endl;
+            }
+            std::cout << std::endl;
+            return 0;
+        };
+
+        // Execute SQL
+        rc = sqlite3_exec(db, sql, callback, 0, &errMsg);
+        if (rc != SQLITE_OK ) {
+            std::cerr << "SQL error: " << errMsg << std::endl;
+            sqlite3_free(errMsg);
+        }
+
+        // Close database
+        sqlite3_close(db);
+    }
 
 This code creates a new SQLite database file named test.db, creates a table named Cars with columns Id, Name, and Price, and inserts four rows of data into the table. If the database file already exists, it opens the existing file. If the Cars table already exists, it drops the table before creating a new one.
 
 Please make sure to have the SQLite library installed and linked to your project.
 
 
+
+## pybind11
+
+    #include <pybind11/pybind11.h>
+    #include <pybind11/numpy.h>
+
+    namespace py = pybind11;
+
+    py::array_t<double> create_numpy_array() {
+        // Create a C++ array
+        std::vector<double> c_array = {1.0, 2.0, 3.0, 4.0, 5.0};
+
+        // Convert the C++ array to a NumPy array
+        py::array_t<double> numpy_array(c_array.size(), c_array.data());
+
+        return numpy_array;
+    }
+
+    PYBIND11_MODULE(example, m) {
+    m.def("create_numpy_array", &create_numpy_array, "A function that creates a NumPy array");
+    }
+
+# C-API
+To pass a NumPy array between C++ and Python using the C-API, you can use the PyArray_SimpleNewFromData function from the NumPy C-API. This function creates a NumPy array object from a pointer to the data, the dimensions of the array, and the data type.  Here is an example of how you can do this:  First, you need to include the necessary headers::
+
+    #include <Python.h>
+    #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+    #include <numpy/arrayobject.h>
+
+
+
+Then, you can create a function that creates a NumPy array from a C++ array:
+
+    PyObject* create_numpy_array() {
+        // Create a C++ array
+        double c_array[] = {1.0, 2.0, 3.0, 4.0, 5.0};
+
+        // Convert the C++ array to a NumPy array
+        npy_intp dimensions[] = {5};
+        PyObject* numpy_array = PyArray_SimpleNewFromData(1, dimensions, NPY_DOUBLE, c_array);
+
+        return numpy_array;
+    }
+
+In this example, PyArray_SimpleNewFromData is used to create a NumPy array from the C++ array c_array. The 1 is the number of dimensions of the array, dimensions is an array of the size of each dimension, NPY_DOUBLE is the data type of the array, and c_array is the pointer to the data.  Please note that you need to initialize the NumPy C-API using import_array() before you can use PyArray_SimpleNewFromData. You can do this in the initialization function of your module::
+
+    PyMODINIT_FUNC PyInit_mymodule(void) {
+        PyObject* m;
+
+        static struct PyModuleDef moduledef = {
+            PyModuleDef_HEAD_INIT,
+            "mymodule",
+            NULL,
+            -1,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL
+        };
+
+        m = PyModule_Create(&moduledef);
+        if (m == NULL)
+            return NULL;
+
+        // Initialize the NumPy C-API
+        import_array();
+
+        // Add the create_numpy_array function to the module
+        PyModule_AddObject(m, "create_numpy_array", PyCFunction_New(&create_numpy_array, NULL));
+
+        return m;
+    }
+
+
+pybind11
+=========
