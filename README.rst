@@ -2259,3 +2259,135 @@ df['rolling_product'] = df['trade_price'].rolling(window=10).apply(lambda x: x.p
 
 
 
+
+I have 'ask_price_i', 'ask_size_i', 'bid_price_i', 'bid_size_i', 'trade_price', 'trade_size', where i indicates level in the book. What possible fetures I can construct tfrom them to predict future price?
+
+There are several features you can construct from the given variables to predict future prices. Here are some possibilities:  
+Spread: This is the difference between the best ask price and the best bid price. It can indicate the liquidity of the market. Lower spread usually means higher liquidity.  
+Mid-price: This is the average of the best bid and ask prices. It can be a good indicator of the current market price.  
+Book imbalance: This is the difference between the total bid size and the total ask size. It can indicate the market sentiment. A positive book imbalance might suggest a bullish market sentiment, while a negative book imbalance might suggest a bearish market sentiment.  
+Price volatility: This can be calculated as the standard deviation of trade prices over a certain period. It can indicate the stability of the market. Higher volatility usually means higher risk and uncertainty.  
+Trade volume: This is the total trade size over a certain period. It can indicate the activity level of the market.  
+Depth: This is the sum of bid size and ask size for a certain level in the book. It can indicate the market's ability to absorb large orders without impacting the price too much.  
+Price momentum: This can be calculated as the difference between the current trade price and the trade price a certain period ago. It can indicate the direction and strength of the market trend.  
+Weighted price: This can be calculated as the sum of (price * size) for all levels divided by the total size. It can be a more accurate indicator of the market price, especially in a multi-level market.  
+Remember, the effectiveness of these features can vary depending on the specific market and the prediction model you are using. It's always a good idea to experiment with different features and select the ones that work best for your specific use case.
+
+
+What other book specific indicatore I can construct ?
+
+
+In addition to the features already mentioned, you can also consider the following book-specific indicators:  
+Market Depth Ratio: This is the ratio of the volume of orders at a given price level to the total volume of orders. It can indicate the depth of liquidity at different price levels.  
+Order Imbalance: This is the difference between the number of buy orders and sell orders. It can indicate the market sentiment. A positive order imbalance might suggest a bullish market sentiment, while a negative order imbalance might suggest a bearish market sentiment.  
+Volume Weighted Average Price (VWAP): This is the average price a security has traded at throughout the day, based on both volume and price. It is important because it provides traders with insight into both the trend and value of a security.  
+Relative Volume: This is the ratio of the current volume of a security to its average volume. It can indicate the activity level of the market.  
+Price-Volume Trend (PVT): This is a momentum indicator that uses volume to confirm price trends or through divergences, warn of weak price moves.  
+Accumulation/Distribution Line (A/D Line): This is a volume-based indicator designed to measure the cumulative flow of money into and out of a security.  
+Remember, the effectiveness of these features can vary depending on the specific market and the prediction model you are using. It's always a good idea to experiment with different features and select the ones that work best for your specific use case.
+
+I want to use 3 levels in the book. So i = 0, 1, 2. Give me example of indicators
+
+Sure, you can extend the indicators to consider multiple levels in the order book. Here are some examples:  
+Spread at different levels: You can calculate the spread (difference between ask and bid prices) at each level. This can give you an idea of the liquidity at different levels in the order book.  
+Depth at different levels: You can calculate the depth (sum of bid size and ask size) at each level. This can give you an idea of the market's ability to absorb large orders at different price levels without impacting the price too much.  
+Imbalance at different levels: You can calculate the imbalance (difference between total bid size and total ask size) at each level. This can give you an idea of the market sentiment at different price levels.  
+Weighted price at different levels: You can calculate the weighted price (sum of price * size for all levels divided by the total size) at each level. This can give you a more accurate indicator of the market price at different levels.  
+Here is an example of how you can calculate these indicators for 3 levels in Python:
+
+
+# Assuming you have dataframes for ask and bid prices and sizes
+ask_prices = pd.DataFrame({'level_0': ask_price_0, 'level_1': ask_price_1, 'level_2': ask_price_2})
+ask_sizes = pd.DataFrame({'level_0': ask_size_0, 'level_1': ask_size_1, 'level_2': ask_size_2})
+bid_prices = pd.DataFrame({'level_0': bid_price_0, 'level_1': bid_price_1, 'level_2': bid_price_2})
+bid_sizes = pd.DataFrame({'level_0': bid_size_0, 'level_1': bid_size_1, 'level_2': bid_size_2})
+
+# Calculate spreads at each level
+spreads = ask_prices - bid_prices
+
+# Calculate depths at each level
+depths = ask_sizes + bid_sizes
+
+# Calculate imbalances at each level
+imbalances = bid_sizes - ask_sizes
+
+# Calculate weighted prices at each level
+weighted_prices = (ask_prices * ask_sizes + bid_prices * bid_sizes) / (ask_sizes + bid_sizes)
+
+
+Remember to replace ask_price_i, ask_size_i, bid_price_i, bid_size_i with your actual data.
+
+
+Give me other example
+
+Sure, here's an example of how you can calculate the Volume Weighted Average Price (VWAP) and the Order Imbalance for three levels:
+# Assuming you have dataframes for ask and bid prices and sizes
+ask_prices = pd.DataFrame({'level_0': ask_price_0, 'level_1': ask_price_1, 'level_2': ask_price_2})
+ask_sizes = pd.DataFrame({'level_0': ask_size_0, 'level_1': ask_size_1, 'level_2': ask_size_2})
+bid_prices = pd.DataFrame({'level_0': bid_price_0, 'level_1': bid_price_1, 'level_2': bid_price_2})
+bid_sizes = pd.DataFrame({'level_0': bid_size_0, 'level_1': bid_size_1, 'level_2': bid_size_2})
+
+# Calculate VWAP at each level
+vwap = (ask_prices * ask_sizes + bid_prices * bid_sizes) / (ask_sizes + bid_sizes)
+
+# Calculate Order Imbalance at each level
+order_imbalance = bid_sizes - ask_sizes
+
+print("VWAP at each level:\n", vwap)
+print("Order Imbalance at each level:\n", order_imbalance)
+
+In this example, the Volume Weighted Average Price (VWAP) is calculated as the sum of the product of the price and size for both ask and bid, divided by the total size at each level. The Order Imbalance is calculated as the difference between the bid size and the ask size at each level. These indicators can provide insights into the market dynamics at different levels of the order book.
+
+Give me other example
+
+Sure, here's an example of how you can calculate the Market Depth Ratio and the Price-Volume Trend (PVT) for three levels:
+
+
+# Assuming you have dataframes for ask and bid prices and sizes
+ask_prices = pd.DataFrame({'level_0': ask_price_0, 'level_1': ask_price_1, 'level_2': ask_price_2})
+ask_sizes = pd.DataFrame({'level_0': ask_size_0, 'level_1': ask_size_1, 'level_2': ask_size_2})
+bid_prices = pd.DataFrame({'level_0': bid_price_0, 'level_1': bid_price_1, 'level_2': bid_price_2})
+bid_sizes = pd.DataFrame({'level_0': bid_size_0, 'level_1': bid_size_1, 'level_2': bid_size_2})
+
+# Calculate Market Depth Ratio at each level
+total_volume = ask_sizes + bid_sizes
+market_depth_ratio = ask_sizes / total_volume
+
+# Calculate Price-Volume Trend (PVT) at each level
+# Assuming you have a dataframe 'trade_prices' for trade prices at each level
+trade_prices = pd.DataFrame({'level_0': trade_price_0, 'level_1': trade_price_1, 'level_2': trade_price_2})
+price_change = trade_prices.pct_change()
+volume_change = total_volume.pct_change()
+pvt = price_change * volume_change
+
+print("Market Depth Ratio at each level:\n", market_depth_ratio)
+print("Price-Volume Trend at each level:\n", pvt)
+
+In this example, the Market Depth Ratio is calculated as the ask size divided by the total volume (ask size + bid size) at each level. The Price-Volume Trend (PVT) is calculated as the percentage change in trade price multiplied by the percentage change in total volume at each level. These indicators can provide insights into the liquidity and price-volume dynamics at different levels of the order book.
+
+Sure, here's an example of how you can calculate the Accumulation/Distribution Line (A/D Line) and Relative Volume for three levels:
+
+# Assuming you have dataframes for ask and bid prices and sizes
+ask_prices = pd.DataFrame({'level_0': ask_price_0, 'level_1': ask_price_1, 'level_2': ask_price_2})
+ask_sizes = pd.DataFrame({'level_0': ask_size_0, 'level_1': ask_size_1, 'level_2': ask_size_2})
+bid_prices = pd.DataFrame({'level_0': bid_price_0, 'level_1': bid_price_1, 'level_2': bid_price_2})
+bid_sizes = pd.DataFrame({'level_0': bid_size_0, 'level_1': bid_size_1, 'level_2': bid_size_2})
+
+# Calculate Accumulation/Distribution Line (A/D Line) at each level
+# Assuming you have a dataframe 'trade_prices' for trade prices at each level
+trade_prices = pd.DataFrame({'level_0': trade_price_0, 'level_1': trade_price_1, 'level_2': trade_price_2})
+clv = ((trade_prices - bid_prices) - (ask_prices - trade_prices)) / (ask_prices - bid_prices)
+ad_line = (clv * (ask_sizes + bid_sizes)).cumsum()
+
+# Calculate Relative Volume at each level
+# Assuming you have a dataframe 'average_volume' for average volume at each level
+average_volume = pd.DataFrame({'level_0': avg_volume_0, 'level_1': avg_volume_1, 'level_2': avg_volume_2})
+relative_volume = (ask_sizes + bid_sizes) / average_volume
+
+print("Accumulation/Distribution Line at each level:\n", ad_line)
+print("Relative Volume at each level:\n", relative_volume)
+
+In this example, the Accumulation/Distribution Line (A/D Line) is calculated as the cumulative sum of the product of the Close Location Value (CLV) and the total volume (ask size + bid size) at each level. The CLV is calculated as the difference between the trade price and the bid price, minus the difference between the ask price and the trade price, all divided by the difference between the ask price and the bid price. The Relative Volume is calculated as the total volume divided by the average volume at each level. These indicators can provide insights into the money flow and trading activity at different levels of the order book.
+
+
+
