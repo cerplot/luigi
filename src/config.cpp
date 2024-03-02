@@ -20,27 +20,44 @@ public:
 
 std::shared_ptr<toml::table> load_toml_file(const std::filesystem::path& file_path) {
     if (file_path.empty()) {
-        throw FileLoadException("Invalid file path provided.");
+        throw FileLoadException("Invalid file path provided: " + file_path.string());
     }
     if (!std::filesystem::exists(file_path)) {
-        throw FileLoadException("File does not exist: " + file_path.string());
+        throw FileLoadException("File does not exist at path: " + file_path.string());
     }
     if (!std::filesystem::is_regular_file(file_path)) {
         throw FileLoadException("File path does not point to a regular file: " + file_path.string());
     }
     std::ifstream file(file_path);
     if (!file.is_open()) {
-        throw FileLoadException("Failed to open file: " + file_path.string());
+        throw FileLoadException("Failed to open file at path: " + file_path.string());
     }
     try {
         return std::make_shared<toml::table>(toml::parse(file));
     } catch (const toml::parse_error& e) {
-        throw FileLoadException("Failed to parse TOML file: " + file_path.string() + ". Error: " + e.what());
+        throw FileLoadException("Failed to parse TOML file at path: " + file_path.string() + ". Error: " + e.what());
+    }
+}
+std::shared_ptr<toml::table> load_config_file(
+        const std::filesystem::path& config_file_path, std::set<std::filesystem::path>& included_files, const std::string& include_chain = "");
+
+void process_included_files(std::shared_ptr<toml::table>& config, toml::table& merged_data, std::unordered_map<std::string, std::filesystem::path>& file_paths_dict, std::set<std::filesystem::path>& included_files, const std::string& include_chain) {
+    for (const auto& [name, file_path] : file_paths_dict) {
+
+        auto data = load_config_file(file_path, included_files, include_chain + " -> " + file_path.string());
+        if (name == "_") {
+            for (const auto& [key, value] : *data->as_table()) {
+                merged_data.insert_or_assign(key, value);
+            }
+        } else {
+            merged_data.insert_or_assign(name, *data);
+        }
     }
 }
 
+
 std::shared_ptr<toml::table> load_config_file(
-        const std::filesystem::path& config_file_path, std::set<std::filesystem::path>& included_files, const std::string& include_chain = "") {
+        const std::filesystem::path& config_file_path, std::set<std::filesystem::path>& included_files, const std::string& include_chain) {
     toml::table merged_data;
     try {
         if (included_files.find(config_file_path) != included_files.end()) {
@@ -62,21 +79,12 @@ std::shared_ptr<toml::table> load_config_file(
                     std::filesystem::path full_path = base_path / relative_path;
                     file_paths_dict[key.data()] = full_path;
                 }
-                for (const auto& [name, file_path] : file_paths_dict) {
-                    auto data = load_config_file(file_path, included_files, include_chain + " -> " + file_path.string());
-                    if (name == "_") {
-                        for (const auto& [key, value] : *data->as_table()) {
-                            merged_data.insert_or_assign(key, value);
-                        }
-                    } else {
-                        merged_data.insert_or_assign(name, *data);
-                    }
-                }
-
+                process_included_files(config, merged_data, file_paths_dict, included_files, include_chain);
                 config->erase("include");
             } else {
                 throw ConfigProcessingException("'include' does not exist or is not a table in file: " + config_file_path.string());
             }
+
         } else {
             throw ConfigProcessingException("Config is null or empty for file: " + config_file_path.string());
         }
@@ -91,6 +99,7 @@ std::shared_ptr<toml::table> load_config_file(
 
     return std::make_shared<toml::table>(merged_data);
 }
+
 void validate_table(const toml::table& default_config, const toml::table& config, const std::string& location = "");
 std::shared_ptr<toml::table> validate_config_file(const std::filesystem::path& default_config_file_path, const std::filesystem::path& config_file_path) {
     std::set<std::filesystem::path> included_files;
