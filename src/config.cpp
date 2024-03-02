@@ -75,10 +75,10 @@ std::shared_ptr<toml::table> load_config_file(
 
                 config->erase("include");
             } else {
-                // Handle the issue: either "include" does not exist or it is not a table
+                throw ConfigProcessingException("'include' does not exist or is not a table in file: " + config_file_path.string());
             }
         } else {
-            // Handle the issue: config is null or empty
+            throw ConfigProcessingException("Config is null or empty for file: " + config_file_path.string());
         }
 
     }
