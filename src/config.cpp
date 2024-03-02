@@ -22,28 +22,28 @@ public:
 
 std::shared_ptr<toml::table> load_toml_file(const std::filesystem::path& file_path) {
     if (!std::filesystem::exists(file_path)) {
-        throw FileLoadException("File does not exist: " + file_path.string());
+        throw FileLoadException("File does not exist: " + file_path.generic_string());
     }
     std::ifstream file(file_path);
     if (!file.is_open()) {
-        throw FileLoadException("Failed to open file: " + file_path.string());
+        throw FileLoadException("Failed to open file: " + file_path.generic_string());
     }
     try {
         return std::make_shared<toml::table>(toml::parse(file));
     } catch (const toml::parse_error& e) {
-        throw FileLoadException("Failed to parse TOML file: " + file_path.string() + ". Error: " + e.what());
+        throw FileLoadException("Failed to parse TOML file: " + file_path.generic_string() + ". Error: " + e.what());
     }
 }
 
 std::unordered_map<std::string, std::shared_ptr<toml::table>> load_config_file(const std::filesystem::path& config_file_path, std::set<std::string>& included_files) {
     std::unordered_map<std::string, std::shared_ptr<toml::table>> merged_data;
     try {
-        if (included_files.find(config_file_path) != included_files.end()) {
-            throw std::runtime_error("Circular include detected: " + config_file_path);
+        if (included_files.find(config_file_path.generic_string()) != included_files.end()) {
+            throw std::runtime_error("Circular include detected: " + config_file_path.generic_string());
         }
-        included_files.insert(config_file_path);
+        included_files.insert(config_file_path.generic_string());
 
-         auto config = load_toml_file(config_file_path);
+        auto config = load_toml_file(config_file_path);
 
         auto include = *config->get("include").as_table();
         std::unordered_map<std::string, std::string> file_paths_dict;
@@ -52,7 +52,7 @@ std::unordered_map<std::string, std::shared_ptr<toml::table>> load_config_file(c
             std::filesystem::path base_path = config_file_path;
             base_path.remove_filename();
             std::filesystem::path full_path = base_path / relative_path;
-            file_paths_dict[key] = full_path.string();
+            file_paths_dict[key] = full_path.generic_string();
         }
 
         for (const auto& [name, file_path] : file_paths_dict) {
@@ -69,25 +69,10 @@ std::unordered_map<std::string, std::shared_ptr<toml::table>> load_config_file(c
         config->erase("include");
     }
     catch (const toml::parse_error& e) {
-        throw ConfigProcessingException(config_file_path);
+        throw ConfigProcessingException(config_file_path.generic_string());
     }
 
     return merged_data;
-}
-
-void validate_table(const toml::table& default_table, const toml::table& table, const std::string& path = "") {
-    for (const auto& [key, value] : table) {
-        std::string full_key = path.empty() ? key : path + "." + key;
-        if (!default_table.contains(key)) {
-            throw std::runtime_error("Invalid key '" + full_key + "'");
-        }
-        if (value.type() != default_table.get(key)->type()) {
-            throw std::runtime_error("Invalid type for key '" + full_key + "'");
-        }
-        if (value.is_table()) {
-            validate_table(*default_table.get(key)->as_table(), *value.as_table(), full_key);
-        }
-    }
 }
 
 std::shared_ptr<toml::table> validate_config_file(const std::filesystem::path& default_config_file_path, const std::filesystem::path& config_file_path) {
