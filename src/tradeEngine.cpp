@@ -1,3 +1,8 @@
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <csignal>
+#include <random>
 #include <thread>
 #include <vector>
 #include <queue>
@@ -349,3 +354,153 @@ void processTick(const Tick& tick) {
         tasksCondVar.notify_one();
     }
 };
+
+#include <iostream>
+
+// Function to initialize indicators
+void initializeIndicators(MarketDataProcessor& processor) {
+    std::vector<uint16_t> contracts = {1, 2, 3}; // Replace with your actual contract IDs
+    std::vector<std::string> indicator_list = {"IndicatorType1", "IndicatorType2"};
+    try {
+        processor.initializeIndicators(contracts, indicator_list);
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Failed to initialize indicators: " << e.what() << std::endl;
+        exit(1);
+    }
+}
+
+// Function to add stocks to index
+void addStocksToIndex(MarketDataProcessor& processor) {
+    try {
+        processor.addStockToIndex(1, "Index1");
+        processor.addStockToIndex(2, "Index2");
+        processor.addStockToIndex(3, "Index3");
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Failed to add stocks to index: " << e.what() << std::endl;
+        exit(1);
+    }
+}
+
+// Function to feed processor with ticks
+void feedProcessorWithTicks(MarketDataProcessor& processor) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(50, 150);
+
+    for (uint16_t i = 0; i < 100; ++i) {
+        Tick tick;
+        tick.sid = i % 3 + 1; // Cycle through the contract IDs
+        tick.exch = Exchange::Exchange1;
+        tick.timestamp = i;
+        tick.bidPrice = i * 1.0f;
+        tick.askPrice = i * 1.0f + 0.5f;
+        tick.tradePrice = i * 1.0f + 0.25f;
+        tick.bidSize = i;
+        tick.askSize = i + 1;
+        tick.tradeSize = i + 2;
+        tick.update.BidPrice = 1;
+        tick.update.AskPrice = 1;
+        tick.update.TradePrice = 1;
+
+        try {
+            processor.addTick(tick);
+        } catch (const std::runtime_error& e) {
+            std::cerr << "Failed to add tick: " << e.what() << std::endl;
+            exit(1);
+        }
+
+        // Sleep for a random time to simulate real-time data feed
+        std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
+    }
+}
+
+// Global variable to handle termination signal
+std::atomic<bool> terminate(false);
+
+// Signal handler
+void signalHandler(int signum) {
+    std::cout << "Interrupt signal (" << signum << ") received.\n";
+    terminate = true;
+}
+
+// Function to read configuration file
+void readConfigFile(MarketDataProcessor& processor) {
+    // Parse the TOML file
+    auto config = toml::parse_file("config.toml");
+
+    // Read the contracts and indicator list from the configuration file
+    std::vector<uint16_t> contracts = toml::find<std::vector<uint16_t>>(config, "contracts");
+    std::vector<std::string> indicator_list = toml::find<std::vector<std::string>>(config, "indicator_list");
+
+    // Initialize the indicators
+    try {
+        processor.initializeIndicators(contracts, indicator_list);
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Failed to initialize indicators: " << e.what() << std::endl;
+        exit(1);
+    }
+
+    // Read the stocks and indices from the configuration file
+    auto stocks_to_indices = toml::find<std::unordered_map<uint16_t, std::vector<std::string>>>(config, "stocks_to_indices");
+
+    // Add the stocks to the indices
+    for (const auto& [stock, indices] : stocks_to_indices) {
+        for (const auto& index : indices) {
+            try {
+                processor.addStockToIndex(stock, index);
+            } catch (const std::runtime_error& e) {
+                std::cerr << "Failed to add stock to index: " << e.what() << std::endl;
+                exit(1);
+            }
+        }
+    }
+}
+
+
+#define BENCHMARK_ENABLED // Comment this line to disable benchmarking
+
+int main(int argc, char* argv[]) {
+    // Register signal handler
+    signal(SIGINT, signalHandler);
+
+    MarketDataProcessor processor;
+
+    // Read configuration file
+    readConfigFile(processor);
+
+    // Start the event loop in a separate thread
+    std::thread eventLoopThread([&processor] { processor.startEventLoop(); });
+
+    // Process ticks based on command line argument
+    int numTicks = argc > 1 ? std::stoi(argv[1]) : 100;
+
+#ifdef BENCHMARK_ENABLED
+    // Start benchmark
+    auto start = std::chrono::high_resolution_clock::now();
+#endif
+
+    feedProcessorWithTicks(processor, numTicks);
+
+#ifdef BENCHMARK_ENABLED
+    // End benchmark
+    auto end = std::chrono::high_resolution_clock::now();
+
+    // Calculate duration
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    // Log the benchmark result
+    std::ofstream logFile("benchmark.log", std::ios_base::app);
+    logFile << "Execution time: " << duration << " ms\n";
+#endif
+
+    // Wait for termination signal
+    while (!terminate) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    // Stop the event loop
+    processor.stop = true;
+    eventLoopThread.join();
+
+    return 0;
+}
