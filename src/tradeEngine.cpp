@@ -49,26 +49,39 @@ struct Tick {
     uint16_t tradeSize;
 };
 
+
+struct StockData {
+    double weight;
+    double lastTradePrice;
+};
+
 class Index {
-public:
-    std::unordered_map<uint16_t, double> stockWeights;
+private:
+    std::vector<StockData> stocks;
     double indexValue = 0.0;
 
+public:
     void addStock(uint16_t stock, double weight) {
-        stockWeights[stock] = weight;
+        if (stock >= stocks.size()) {
+            stocks.resize(stock + 1);
+        }
+        stocks[stock].weight = weight;
     }
 
-    void calculateValue(const std::unordered_map<uint16_t, Tick>& latestTicks) {
-        indexValue = 0.0;
-        for (const auto& [stock, weight] : stockWeights) {
-            if (latestTicks.count(stock) > 0 && latestTicks.at(stock).update.TradePrice) {
-                indexValue += weight * latestTicks.at(stock).tradePrice;
-            }
+    void update(const Tick& tick) {
+        if (tick.sid < stocks.size() && tick.update.TradePrice) {
+            indexValue -= stocks[tick.sid].weight * stocks[tick.sid].lastTradePrice;
+            indexValue += stocks[tick.sid].weight * tick.tradePrice;
+            stocks[tick.sid].lastTradePrice = tick.tradePrice;
         }
     }
 
     double getValue() const {
         return indexValue;
+    }
+
+    const std::vector<StockData>& getStocks() const {
+        return stocks;
     }
 };
 
