@@ -4,7 +4,7 @@
 #include <optional>
 #include <iostream>
 
-std::vector<std::vector<std::optional<double>>> combineIndicatorsMap(
+std::vector<std::vector<std::optional<double>>> combineIndicators(
         const std::vector<std::pair<std::vector<uint32_t>, std::vector<double>>>& indicators) {
     int numIndicators = indicators.size();
     std::map<uint32_t, std::vector<std::optional<double>>> combinedIndicators;
@@ -47,9 +47,89 @@ std::vector<std::vector<std::optional<double>>> combineIndicatorsMap(
 
     return result;
 }
+/* THis is how we can use sampling rate
+std::vector<std::vector<std::optional<double>>> combinedIndicators = combineIndicators(indicators);
+uint32_t samplingRate = 5; // Define your sampling rate here
+std::vector<std::vector<std::optional<double>>> sampledIndicators = sampleIndicators(combinedIndicators, samplingRate);
+*/
+std::vector<std::vector<std::optional<double>>> sampleIndicators(
+        const std::vector<std::vector<std::optional<double>>>& combinedIndicators, uint32_t samplingRate) {
+    std::vector<std::vector<std::optional<double>>> result;
+    std::vector<std::optional<double>> lastSeen(combinedIndicators[0].size(), 0.0); // Initialize with 0.0
 
+    uint32_t sampledTimestamp = 0;
 
-std::vector<std::vector<std::optional<double>>> combineIndicators(
+    for (const auto& values : combinedIndicators) {
+        if (sampledTimestamp % samplingRate == 0) {
+            std::vector<std::optional<double>> row(values.size());
+
+            for (int i = 0; i < values.size(); ++i) {
+                if (i < values.size() && values[i].has_value()) {
+                    row[i] = values[i];
+                    lastSeen[i] = values[i];
+                } else if (lastSeen[i].has_value()) {
+                    row[i] = lastSeen[i];
+                }
+            }
+            result.push_back(row);
+        }
+        sampledTimestamp++;
+    }
+
+    return result;
+}
+
+std::vector<std::vector<std::optional<double>>> combineIndicatorsSample(
+        const std::vector<std::pair<std::vector<uint32_t>, std::vector<double>>>& indicators) {
+    int numIndicators = indicators.size();
+    std::map<uint32_t, std::vector<std::optional<double>>> combinedIndicators;
+
+    for (int indicatorIndex = 0; indicatorIndex < numIndicators; ++indicatorIndex) {
+        const auto& timestamps = indicators[indicatorIndex].first;
+        const auto& values = indicators[indicatorIndex].second;
+
+        if (timestamps.size() != values.size()) {
+            throw std::invalid_argument("Timestamps and values vectors must have the same size.");
+        }
+
+        for (size_t i = 0; i < timestamps.size(); ++i) {
+            uint32_t timestamp = timestamps[i];
+            double value = values[i];
+            // Ensure the vector is large enough
+            if (combinedIndicators[timestamp].size() <= indicatorIndex) {
+                combinedIndicators[timestamp].resize(indicatorIndex + 1);
+            }
+            combinedIndicators[timestamp][indicatorIndex] = value;
+        }
+    }
+
+    std::vector<std::vector<std::optional<double>>> result;
+    std::vector<std::optional<double>> lastSeen(numIndicators, 0.0); // Initialize with 0.0
+
+    uint32_t samplingRate = 5; // Define your sampling rate here
+    uint32_t sampledTimestamp = combinedIndicators.begin()->first;
+
+    for (const auto& [timestamp, values] : combinedIndicators) {
+        if (timestamp >= sampledTimestamp) {
+            std::vector<std::optional<double>> row(numIndicators);
+
+            for (int i = 0; i < numIndicators; ++i) {
+                if (i < values.size() && values[i].has_value()) {
+                    row[i] = values[i];
+                    lastSeen[i] = values[i];
+                } else if (lastSeen[i].has_value()) {
+                    row[i] = lastSeen[i];
+                }
+            }
+            result.push_back(row);
+            sampledTimestamp += samplingRate;
+        }
+    }
+
+    return result;
+}
+
+std::vector<std::vector<std::optional<double>>> combineIndicatorsVector(
         const std::vector<std::pair<std::vector<uint32_t>, std::vector<double>>>& indicators) {
     int numIndicators = indicators.size();
     std::vector<uint32_t> allTimestamps;
