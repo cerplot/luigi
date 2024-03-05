@@ -29,7 +29,7 @@ std::vector<std::vector<std::optional<double>>> combineIndicatorsMap(
     }
 
     std::vector<std::vector<std::optional<double>>> result;
-    std::vector<std::optional<double>> lastSeen(numIndicators);
+    std::vector<std::optional<double>> lastSeen(numIndicators, 0.0); // Initialize with 0.0
 
     for (const auto& [timestamp, values] : combinedIndicators) {
         std::vector<std::optional<double>> row(numIndicators);
