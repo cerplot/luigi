@@ -1,3 +1,10 @@
+#include <sstream>
+#include <iostream>
+#include <fstream>
+#include <mutex>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 #include <atomic>
 #include <csignal>
 #include <stdexcept>
@@ -138,6 +145,47 @@ public:
     }
 };
 
+std::vector<std::vector<double>> combine_indicators_for_all_stocks(const std::string& indicator1_name) {
+    // Create a map to store the combined indicators
+    std::map<uint32_t, std::vector<std::optional<double>>> combinedIndicators;
+
+    // Iterate over each stock
+    for (const auto& [stock, indicators] : contractIndicatorsObjects) {
+        // Get the UpdateTimeIndicator and Indicator1 for the stock
+        const auto& updateTimeIndicator = indicators.at("UpdateTimeIndicator");
+        const auto& indicator1 = indicators.at(indicator1_name);
+
+        // Iterate over the UpdateTimeIndicator and Indicator1
+        for (size_t i = 0; i < updateTimeIndicator->getLatestValue().size(); ++i) {
+            // Get the update time and the value of Indicator1
+            uint32_t updateTime = static_cast<uint32_t>(updateTimeIndicator->getLatestValue()[i]);
+            double indicator1Value = indicator1->getLatestValue()[i];
+
+            // Add the value of Indicator1 to the combinedIndicators map
+            combinedIndicators[updateTime].push_back(indicator1Value);
+        }
+    }
+
+    // Forward fill missing values
+    std::optional<double> lastValue;
+    for (auto& [updateTime, indicatorValues] : combinedIndicators) {
+        for (auto& value : indicatorValues) {
+            if (value.has_value()) {
+                lastValue = value.value();
+            } else if (lastValue.has_value()) {
+                value = lastValue;
+            }
+        }
+    }
+
+    // Convert the map to a 2D array
+    std::vector<std::vector<double>> combinedIndicatorsArray;
+    for (const auto& [updateTime, indicatorValues] : combinedIndicators) {
+        combinedIndicatorsArray.push_back(std::vector<double>(indicatorValues.begin(), indicatorValues.end()));
+    }
+
+    return combinedIndicatorsArray;
+}
 
 class IndicatorType2 : public Indicator {
 public:
@@ -569,48 +617,172 @@ void readConfigFile(MarketDataProcessor& processor) {
 
 #define BENCHMARK_ENABLED // Comment this line to disable benchmarking
 
-int main(int argc, char* argv[]) {
-    // Register signal handler
-    signal(SIGINT, signalHandler);
-
-    MarketDataProcessor processor;
-
-    // Read configuration file
-    readConfigFile(processor);
-
-    // Start the event loop in a separate thread
-    std::thread eventLoopThread([&processor] { processor.startEventLoop(); });
-
-    // Process ticks based on command line argument
-    int numTicks = argc > 1 ? std::stoi(argv[1]) : 100;
-
-#ifdef BENCHMARK_ENABLED
-    // Start benchmark
-    auto start = std::chrono::high_resolution_clock::now();
-#endif
-
-    feedProcessorWithTicks(processor, numTicks);
-
-#ifdef BENCHMARK_ENABLED
-    // End benchmark
-    auto end = std::chrono::high_resolution_clock::now();
-
-    // Calculate duration
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    // Log the benchmark result
-    std::ofstream logFile("benchmark.log", std::ios_base::app);
-    logFile << "Execution time: " << duration << " ms\n";
-#endif
-
-    // Wait for termination signal
-    while (!terminate_te) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+class SignalHandler {
+public:
+    static void registerSignalHandler() {
+        signal(SIGINT, handle);
     }
 
-    // Stop the event loop
-    processor.stop = true;
-    eventLoopThread.join();
+private:
+    static void handle(int signum) {
+        std::cout << "Interrupt signal (" << signum << ") received.\n";
+        terminate_te = true;
+    }
+};
 
+class Benchmark {
+public:
+    void start() {
+        start_time = std::chrono::high_resolution_clock::now();
+    }
+
+    void stopAndLog(const std::string& logFilePath) {
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        std::ofstream logFile(logFilePath, std::ios_base::app);
+        logFile << "Execution time: " << duration << " ms\n";
+    }
+
+private:
+    std::chrono::high_resolution_clock::time_point start_time;
+};
+
+enum class LogLevel {
+    INFO,
+    DEBUG,
+    ERROR
+};
+
+class Logger {
+public:
+    static Logger& getInstance() {
+        static Logger instance;
+        return instance;
+    }
+    void setLogLevel(LogLevel level) {
+        std::lock_guard<std::mutex> lock(logLevelMutex);
+        logLevel = level;
+    }
+    void setLogToConsole(bool logToConsole) {
+        std::lock_guard<std::mutex> lock(mtx);
+        this->logToConsole = logToConsole;
+    }
+    void info(const std::string& message) {
+        if (logLevel <= LogLevel::INFO)
+            log("INFO", message);
+    }
+    void debug(const std::string& message) {
+        if (logLevel <= LogLevel::DEBUG)
+            log("DEBUG", message);
+    }
+
+    void error(const std::string& message) {
+        if (logLevel <= LogLevel::ERROR)
+            log("ERROR", message);
+    }
+
+private:
+    std::mutex mtx;
+    std::mutex logLevelMutex;
+    std::ofstream logFile;
+    LogLevel logLevel = LogLevel::INFO;
+    bool logToConsole = true;
+
+    Logger() : logFile("app.log", std::ios_base::app) {
+        if (!logFile.is_open()) {
+            throw std::runtime_error("Logger: Unable to open log file");
+        }
+    }
+
+    ~Logger() {
+        if (logFile.is_open()) {
+            logFile.close();
+        }
+    }
+
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
+
+    void log(const std::string& level, const std::string& message) {
+        std::lock_guard<std::mutex> lock(mtx);
+        auto now = std::chrono::system_clock::now();
+        auto now_c = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&now_c), "%F %T") << " " << level << ": " << message;
+        std::string logMessage = ss.str();
+        if (logToConsole) {
+            std::cout << logMessage << std::endl;
+        }
+        logFile << logMessage << std::endl;
+    }
+};
+
+class Application {
+public:
+    Application(int argc, char* argv[]) {
+        parseArguments(argc, argv);
+        ConfigurationManager configManager;
+        configManager.loadConfiguration();
+        readConfigFile(processor);
+    }
+
+    ~Application() {
+        if (eventLoopThread.joinable()) {
+            eventLoopThread.join();
+        }
+    }
+
+    void run() {
+        try {
+            startEventLoop();
+            processTicks();
+            waitForTermination();
+        } catch (const ApplicationException& e) {
+            Logger::logError(e.what());
+        }
+    }
+
+private:
+    MarketDataProcessor processor;
+    int numTicks;
+    std::thread eventLoopThread;
+
+    void parseArguments(int argc, char* argv[]) {
+        // Parse command line arguments here
+        numTicks = argc > 1 ? std::stoi(argv[1]) : 100;
+    }
+
+    void startEventLoop() {
+        eventLoopThread = std::thread([&] { processor.startEventLoop(); });
+    }
+
+    void processTicks() {
+        // Start benchmark
+        Benchmark benchmark;
+        benchmark.start();
+
+        try {
+            feedProcessorWithTicks(processor, numTicks);
+        } catch (const std::exception& e) {
+            Logger::logError("Error: " + std::string(e.what()));
+            exit(1);
+        }
+
+        // Stop benchmark and log result
+        benchmark.stopAndLog("benchmark.log");
+    }
+
+    void waitForTermination() {
+        while (!terminate_te) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        processor.stop = true;
+    }
+};
+
+int main(int argc, char* argv[]) {
+    Application app(argc, argv);
+    app.run();
     return 0;
 }
