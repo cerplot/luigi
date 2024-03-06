@@ -1,0 +1,10 @@
+# config_with_table.toml
+title = "TOML Example"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00
+
+[table_key]
+nested_key1 = "expected_value1"
+nested_key2 = 123

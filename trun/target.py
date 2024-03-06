@@ -250,7 +250,7 @@ class FileSystemTarget(Target):
         """
         A context manager that enables a reasonably short, general and
         magic-less way to solve the :ref:`AtomicWrites`.
-
+z
          * On *entering*, it will create the parent directories so the
            temporary_path is writeable right away.
            This step uses :py:meth:`FileSystem.mkdir`.

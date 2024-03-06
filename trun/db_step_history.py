@@ -167,7 +167,7 @@ class DbStepHistory(step_history.StepHistory):
             return session.query(StepRecord).get(id)
 
 
-class StepParameter(Base):
+class v(Base):
     """
     Table to track trun.Parameter()s of a Step.
     """

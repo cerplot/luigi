@@ -187,8 +187,7 @@ class StepProcess(multiprocessing.Process):
                     status = DONE
                 else:
                     status = FAILED
-                    expl = 'Step is an external data dependency ' \
-                        'and data does not exist (yet?).'
+                    expl = 'Step is an external data dependency and data does not exist (yet?).'
             else:
                 with self._forward_attributes():
                     new_deps = self._run_get_new_deps()

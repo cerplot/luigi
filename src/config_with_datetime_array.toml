@@ -1,0 +1,8 @@
+# config_with_datetime_array.toml
+title = "TOML Example"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00
+
+datetime_array_key = ["1979-05-27T07:32:00-08:00", "1987-07-05T17:45:00-08:00"]

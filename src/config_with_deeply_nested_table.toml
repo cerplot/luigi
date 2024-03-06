@@ -1,0 +1,16 @@
+# config_with_more_deeply_nested_table.toml
+title = "TOML Example"
+
+[owner]
+name = "Tom Preston-Werner"
+dob = 1979-05-27T07:32:00-08:00
+
+[more_deeply_nested_table_key]
+key1 = "value1"
+key2 = "value2"
+[more_deeply_nested_table_key.sub_table]
+sub_key1 = "sub_value1"
+sub_key2 = "sub_value2"
+[more_deeply_nested_table_key.sub_table.sub_sub_table]
+sub_sub_key1 = "sub_sub_value1"
+sub_sub_key2 = "sub_sub_value2"

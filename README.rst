@@ -22,13 +22,19 @@ know C++ to do research, but it is required to know C++ to implement the best id
 
 For configuration, we will use toml file. https://toml.io/en/
 This is a simple format that python can read natively and C++ has a good library for it as well.
-(e.g. https://marzer.github.io/tomlplusplus/). There is no need to create our own configuration file format. We will talk about the content of the configuration file later. For now let's just say that it will contain the paths to the data, the list of stocks, the list of indicators, and some other parameters that we will need in the future.
+(e.g. https://marzer.github.io/tomlplusplus/). There is no need to create our own configuration file format.
+We will talk about the content of the configuration file later. For now let's just say that it
+will contain the paths to the data, the list of stocks, the list of indicators, and some other
+parameters that we will need in the future.
+
 
 A Build system is CMake that is standard nowadays.
-And if in the future you want to compile the code on windows, it will be easy to make that transition. And possibly some might want to use Windows for development, and CMake will make that transition smooth.
+And if in the future you want to compile the code on windows, it will be easy to make that
+transition. And possibly some might want to use Windows for development, and CMake will make that transition smooth.
 
 
-In the future, we might need python access to the C++ internals (calling C++ functions from python, for example).
+In the future, we might need python access to the C++ internals
+(calling C++ functions from python, for example).
 As a first step, we don't need to worry about this, but later we will need to think about how to do this. Keep in mind that this will be needed at some point.
 pybind11 - can be used for these purposes (open for other suggestions, but it seems like the best choice these days).
 
@@ -44,7 +50,6 @@ But, for now, we will keep things simple:
 - feature branches are used for developing new features. and are merged into the development branch when the feature is ready.
 
 
-Unit tests are done with google test (C++) (if there is no objection) and pytest (python).
 compiler is gcc (open for other suggestions, but it seems to be the standard choice).
 clang-format is used for code formatting.
 
@@ -371,22 +376,6 @@ completed whereas yellow steps are yet to be run. Most of these steps
 are C++ jobs, but there are also some things that implemented in python
 and build up data files.
 
-
-Philosophy
-----------
-
-where you have certain steps and these steps in turn may have dependencies on other steps.
-
-Everything in Trun is in Python. Instead of XML configuration or
-similar external data files, the dependency graph is specified *within
-Python*. This makes it easy to build up complex dependency graphs of
-steps, where the dependencies can involve date algebra or recursive
-references to other versions of the same step.
-
-
-
-Currently, Trun is not released on any particular schedule and it is not
-strictly abiding semantic versioning. Whenever possible, bump major version when you make incompatible API changes, minor version when you add functionality in a backwards compatible manner, and patch version when you make backwards compatible bug fixes.
 
 
 
@@ -2043,7 +2032,6 @@ signal_line = macd_line.ewm(span=9, adjust=False).mean()
 df['macd'] = macd_line - signal_line
 
 
-
 In addition to the features I've already mentioned, you could also consider the following:  
 Bid-Ask Volume Ratio: This is the ratio of the bid size to the ask size. It can indicate the balance of supply and demand in the market.  
 Cumulative Bid-Ask Volume Ratio: This is the cumulative ratio of the bid size to the ask size over a certain period. It can indicate the overall balance of supply and demand in the market.  
@@ -2390,4 +2378,273 @@ print("Relative Volume at each level:\n", relative_volume)
 In this example, the Accumulation/Distribution Line (A/D Line) is calculated as the cumulative sum of the product of the Close Location Value (CLV) and the total volume (ask size + bid size) at each level. The CLV is calculated as the difference between the trade price and the bid price, minus the difference between the ask price and the trade price, all divided by the difference between the ask price and the bid price. The Relative Volume is calculated as the total volume divided by the average volume at each level. These indicators can provide insights into the money flow and trading activity at different levels of the order book.
 
 
+
+Book indicators
+have 'ask_price_i', 'ask_size_i', 'bid_price_i', 'bid_size_i', 'trade_price', 'trade_size', where i indicates level in the book. What possible book related indicators I can construct tfrom them to predict future price? The i takes values 0, 1, 2, 3 and corresponds to the level in the book. Give me examples of indicators that describe state of the book with code demo. Indicators should have single value for whole book. So it does not depend on i. Also they should give importance to top of the book becasue importance of lvel decrease with values of i. So smaller values of i is more important. i = 0 is most important level
+
+
+You can construct several book related indicators from the given variables to predict future prices. Here are a few examples with code demonstrations:
+* Weighted Spread: This is the weighted difference between the ask price and the bid price at each level. The weight decreases as the level increases.
+
+    double weighted_spread = 0.0;
+    double total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_spread += weight * (ask_price_i[i] - bid_price_i[i]);
+        total_weight += weight;
+    }
+    weighted_spread /= total_weight;
+
+* Weighted Mid-price: This is the weighted average of the bid and ask prices at each level. The weight decreases as the level increases.
+
+    double weighted_mid_price = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_mid_price += weight * (ask_price_i[i] + bid_price_i[i]) / 2;
+        total_weight += weight;
+    }
+    weighted_mid_price /= total_weight;
+
+
+* Weighted Book Pressure: This is the weighted difference between the total size at the bid and the total size at the ask at each level. The weight decreases as the level increases.
+
+    double weighted_book_pressure = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_book_pressure += weight * (bid_size_i[i] - ask_size_i[i]);
+        total_weight += weight;
+    }
+    weighted_book_pressure /= total_weight;
+
+* Weighted Price Volume: This is the weighted multiplication of the price and its corresponding size at each level. The weight decreases as the level increases.
+
+    double weighted_price_volume_ask = 0.0, weighted_price_volume_bid = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_price_volume_ask += weight * ask_price_i[i] * ask_size_i[i];
+        weighted_price_volume_bid += weight * bid_price_i[i] * bid_size_i[i];
+        total_weight += weight;
+    }
+    weighted_price_volume_ask /= total_weight;
+    weighted_price_volume_bid /= total_weight;
+
+* Weighted Imbalance: This is the weighted ratio of the difference and sum of bid and ask sizes at each level. The weight decreases as the level increases.
+    double weighted_imbalance = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_imbalance += weight * (bid_size_i[i] - ask_size_i[i]) / (bid_size_i[i] + ask_size_i[i]);
+        total_weight += weight;
+    }
+    weighted_imbalance /= total_weight;
+
+
+* Weighted Depth: This is the weighted sum of sizes at each level up to level i. The weight decreases as the level increases.
+
+    double weighted_depth_ask = 0.0, weighted_depth_bid = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        for(int j = 0; j <= i; j++) {
+            weighted_depth_ask += weight * ask_size_i[j];
+            weighted_depth_bid += weight * bid_size_i[j];
+        }
+        total_weight += weight;
+    }
+    weighted_depth_ask /= total_weight;
+    weighted_depth_bid /= total_weight;
+
+* Weighted Trade Volume: This is the weighted multiplication of the trade price and trade size. The weight decreases as the level increases.
+
+    double weighted_trade_volume = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_trade_volume += weight * trade_price * trade_size;
+        total_weight += weight;
+    }
+    weighted_trade_volume /= total_weight;
+
+* Weighted Price Difference: This is the weighted difference between the trade price and mid-price at each level. The weight decreases as the level increases.
+
+    double weighted_price_difference = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double mid_price = (ask_price_i[i] + bid_price_i[i]) / 2;
+        weighted_price_difference += weight * (trade_price - mid_price);
+        total_weight += weight;
+    }
+    weighted_price_difference /= total_weight;
+
+* Weighted Price Change: This is the weighted difference between the current trade price and the previous trade price. The weight decreases as the level increases.
+
+    double weighted_price_change = 0.0;
+    double total_weight = 0.0;
+    double previous_trade_price = 0.0; // This should be set to the previous trade price
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_price_change += weight * (trade_price - previous_trade_price);
+        total_weight += weight;
+    }
+    weighted_price_change /= total_weight;
+
+Weighted Size Change: This is the weighted difference between the current trade size and the previous trade size. The weight decreases as the level increases.
+
+    double weighted_size_change = 0.0;
+    total_weight = 0.0;
+    double previous_trade_size = 0.0; // This should be set to the previous trade size
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_size_change += weight * (trade_size - previous_trade_size);
+        total_weight += weight;
+    }
+    weighted_size_change /= total_weight;
+
+Weighted Price Level: This is the weighted average of the price level. The weight decreases as the level increases.
+
+    double weighted_price_level = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_price_level += weight * i;
+        total_weight += weight;
+    }
+    weighted_price_level /= total_weight;
+
+
+Weighted Bid-Ask Volume Ratio: This is the weighted ratio of the total size at the bid and the total size at the ask at each level. The weight decreases as the level increases.
+
+    double weighted_bid_ask_volume_ratio = 0.0;
+    double total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_bid_ask_volume_ratio += weight * (bid_size_i[i] / ask_size_i[i]);
+        total_weight += weight;
+    }
+    weighted_bid_ask_volume_ratio /= total_weight;
+
+Weighted Trade Size to Volume Ratio: This is the weighted ratio of the trade size to the total volume at each level. The weight decreases as the level increases.
+
+
+    double weighted_trade_size_to_volume_ratio = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double total_volume = ask_size_i[i] + bid_size_i[i];
+        weighted_trade_size_to_volume_ratio += weight * (trade_size / total_volume);
+        total_weight += weight;
+    }
+    weighted_trade_size_to_volume_ratio /= total_weight;
+
+
+
+Weighted Trade Price to Mid-Price Ratio: This is the weighted ratio of the trade price to the mid-price at each level. The weight decreases as the level increases.
+
+    double weighted_trade_price_to_mid_price_ratio = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double mid_price = (ask_price_i[i] + bid_price_i[i]) / 2;
+        weighted_trade_price_to_mid_price_ratio += weight * (trade_price / mid_price);
+        total_weight += weight;
+    }
+    weighted_trade_price_to_mid_price_ratio /= total_weight;
+
+
+Weighted Price Distance: This is the weighted distance between the trade price and the mid-price at each level. The weight decreases as the level increases.
+double weighted_price_distance = 0.0;
+double total_weight = 0.0;
+for(int i = 0; i < 4; i++) {
+    double weight = 1.0 / (i + 1);
+    double mid_price = (ask_price_i[i] + bid_price_i[i]) / 2;
+    weighted_price_distance += weight * abs(trade_price - mid_price);
+    total_weight += weight;
+}
+weighted_price_distance /= total_weight;
+
+
+Weighted Size Distance: This is the weighted distance between the trade size and the total volume at each level. The weight decreases as the level increases.
+    double weighted_size_distance = 0.0;
+    total_weight = 0.0;
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double total_volume = ask_size_i[i] + bid_size_i[i];
+        weighted_size_distance += weight * abs(trade_size - total_volume);
+        total_weight += weight;
+    }
+    weighted_size_distance /= total_weight;
+
+Weighted Price Velocity: This is the weighted change in trade price over change in time. The weight decreases as the level increases.
+
+    double weighted_price_velocity = 0.0;
+    total_weight = 0.0;
+    double previous_trade_price = 0.0; // This should be set to the previous trade price
+    double time_difference = 1.0; // This should be set to the time difference between the current and previous trade
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_price_velocity += weight * ((trade_price - previous_trade_price) / time_difference);
+        total_weight += weight;
+    }
+    weighted_price_velocity /= total_weight;
+
+
+
+Weighted Trade Size Velocity: This is the weighted change in trade size over change in time. The weight decreases as the level increases.
+    double weighted_trade_size_velocity = 0.0;
+    double total_weight = 0.0;
+    double previous_trade_size = 0.0; // This should be set to the previous trade size
+    double time_difference = 1.0; // This should be set to the time difference between the current and previous trade
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        weighted_trade_size_velocity += weight * ((trade_size - previous_trade_size) / time_difference);
+        total_weight += weight;
+    }
+    weighted_trade_size_velocity /= total_weight;
+
+
+Weighted Price Acceleration: This is the weighted change in price velocity over change in time. The weight decreases as the level increases.
+
+    double weighted_price_acceleration = 0.0;
+    total_weight = 0.0;
+    double previous_trade_price = 0.0; // This should be set to the previous trade price
+    double previous_price_velocity = 0.0; // This should be set to the previous price velocity
+    time_difference = 1.0; // This should be set to the time difference between the current and previous trade
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double current_price_velocity = (trade_price - previous_trade_price) / time_difference;
+        weighted_price_acceleration += weight * ((current_price_velocity - previous_price_velocity) / time_difference);
+        total_weight += weight;
+    }
+    weighted_price_acceleration /= total_weight;
+
+
+Weighted Size Acceleration: This is the weighted change in size velocity over change in time. The weight decreases as the level increases.
+
+    double weighted_size_acceleration = 0.0;
+    total_weight = 0.0;
+    double previous_trade_size = 0.0; // This should be set to the previous trade size
+    double previous_size_velocity = 0.0; // This should be set to the previous size velocity
+    time_difference = 1.0; // This should be set to the time difference between the current and previous trade
+    for(int i = 0; i < 4; i++) {
+        double weight = 1.0 / (i + 1);
+        double current_size_velocity = (trade_size - previous_trade_size) / time_difference;
+        weighted_size_acceleration += weight * ((current_size_velocity - previous_size_velocity) / time_difference);
+        total_weight += weight;
+    }
+    weighted_size_acceleration /= total_weight;
+
+
+
+
+
+#############
+The code you've provided is well-structured and follows good practices. However, there are a few areas where it could potentially be improved:
+Concurrency in MarketDataProcessor: The MarketDataProcessor class uses a single mutex to protect access to the tickQueue. If the addTick and processTick methods are called frequently from multiple threads, this could become a bottleneck. Consider using a lock-free queue or a multiple-producer, multiple-consumer queue to improve performance.
+Hardcoded Indicator Names: The indicator names are hardcoded in the initializeIndicators method. You could consider making this more flexible, for example by reading the indicator names from a configuration file.
+Error Handling: There are several places in the code where a std::runtime_error is thrown. It might be beneficial to create custom exception classes for different types of errors. This can make error handling more precise and easier to understand.
+Code Comments: While your code is quite self-explanatory, adding more comments explaining the logic and the role of each component could be beneficial for other developers reading your code.
 

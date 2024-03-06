@@ -57,7 +57,7 @@ void process_included_files(std::shared_ptr<toml::table>& config, toml::table& m
 
 
 std::shared_ptr<toml::table> load_config_file(
-        const std::filesystem::path& config_file_path, std::set<std::filesystem::path>& included_files, const std::string& include_chain) {
+        const std::filesystem::path& config_file_path, std::set<std::filesystem::path>& included_files, const std::string& include_chain = "") {
     toml::table merged_data;
     try {
         if (included_files.find(config_file_path) != included_files.end()) {
@@ -88,6 +88,9 @@ std::shared_ptr<toml::table> load_config_file(
         } else {
             throw ConfigProcessingException("Config is null or empty for file: " + config_file_path.string());
         }
+
+        // Remove the file from the included_files set after it has been processed
+        included_files.erase(config_file_path);
 
     }
     catch (const toml::parse_error& e) {

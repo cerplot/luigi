@@ -1,10 +1,25 @@
-cmake_minimum_required(VERSION  3.22)
+cmake_minimum_required(VERSION 3.24)
+project(
+        untitled7
+        VERSION 0.1
+        DESCRIPTION "A simple C++ project with CMake"
+        LANGUAGES CXX
+)
+set(CMAKE_CXX_STANDARD 20)
 
-project(trunc
-    VERSION 0.0
-    DESCRIPTION "A simple C++ project"
-    HOMEPAGE_URL https://github.com/PacktPublishing/CMake-Best-Practices
-    LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 17)
-add_executable(hello_world)
-target_sources(hello_world PRIVATE src/main.cpp)
+# Add the executable
+add_executable(${PROJECT_NAME} main.cpp)
+
+# Specify the include directories for the target
+target_include_directories(${PROJECT_NAME} PRIVATE "tomlplusplus-3.4.0/include/toml++")
+target_include_directories(${PROJECT_NAME} PRIVATE "src")
+
+# Enable testing
+enable_testing()
+
+# Add the subdirectories
+add_subdirectory(src)
+add_subdirectory(test)
+
+# Link the libraries
+target_link_libraries(${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_lib)
