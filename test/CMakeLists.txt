@@ -5,7 +5,7 @@ project(Google_tests)
 add_subdirectory(lib)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 # Add the test executable
-add_executable(Google_Tests_run trade_engin_test.cpp config_test.cpp)
+add_executable(Google_Tests_run "testconfig/trade_engin_test.cpp" "testconfig/config_test.cpp")
 
 # Include the tomlplusplus library
 target_include_directories(Google_Tests_run PRIVATE "../tomlplusplus-3.4.0/include/toml++")
