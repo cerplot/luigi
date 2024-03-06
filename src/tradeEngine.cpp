@@ -34,58 +34,6 @@
 #include <map>
 #include <unistd.h>
 
-class CommandLineProcessor {
-public:
-    CommandLineProcessor(int argc, char* argv[]) {
-        parseArguments(argc, argv);
-    }
-
-    std::string getArgument(const std::string& name) const {
-        auto it = arguments.find(name);
-        if (it == arguments.end()) {
-            if (name == "S" || name == "B") {
-                char buffer[FILENAME_MAX];
-                getcwd(buffer, FILENAME_MAX);
-                std::string currentDirectory(buffer);
-                return currentDirectory;
-            }
-            throw std::runtime_error("Argument not found: " + name + "\n" + usage());
-        }
-        return it->second;
-    }
-
-    bool getFlag(const std::string& name) const {
-        return flags.count(name) > 0;
-    }
-
-private:
-    std::map<std::string, std::string> arguments;
-    std::set<std::string> flags;
-
-    void parseArguments(int argc, char* argv[]) {
-        for (int i = 1; i < argc; ++i) {
-            std::string arg = argv[i];
-            if (arg[0] == '-') {
-                arg = arg.substr(1);  // Remove the leading '-'
-                if (i + 1 < argc && argv[i + 1][0] != '-') {  // Make sure we have a value for this argument
-                    std::string value = argv[i + 1];
-                    arguments[arg] = value;
-                    ++i;  // Skip the value
-                } else {
-                    // If the argument does not have a value, treat it as a flag
-                    flags.insert(arg);
-                }
-            } else {
-                throw std::runtime_error("Invalid argument: " + arg + "\n" + usage());
-            }
-        }
-    }
-
-    std::string usage() const {
-        return "Usage: program [-flag] [-argument [value]] ...";
-    }
-};
-
 
 enum class Exchange : uint8_t {
     Exchange1 = 0,
@@ -773,6 +721,58 @@ private:
     }
 };
 
+class CommandLineProcessor {
+public:
+    CommandLineProcessor(int argc, char* argv[]) {
+        parseArguments(argc, argv);
+    }
+
+    std::string getArgument(const std::string& name) const {
+        auto it = arguments.find(name);
+        if (it == arguments.end()) {
+            if (name == "S" || name == "B") {
+                char buffer[FILENAME_MAX];
+                getcwd(buffer, FILENAME_MAX);
+                std::string currentDirectory(buffer);
+                return currentDirectory;
+            }
+            throw std::runtime_error("Argument not found: " + name + "\n" + usage());
+        }
+        return it->second;
+    }
+
+    bool getFlag(const std::string& name) const {
+        return flags.count(name) > 0;
+    }
+
+private:
+    std::map<std::string, std::string> arguments;
+    std::set<std::string> flags;
+
+    void parseArguments(int argc, char* argv[]) {
+        for (int i = 1; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg[0] == '-') {
+                arg = arg.substr(1);  // Remove the leading '-'
+                if (i + 1 < argc && argv[i + 1][0] != '-') {  // Make sure we have a value for this argument
+                    std::string value = argv[i + 1];
+                    arguments[arg] = value;
+                    ++i;  // Skip the value
+                } else {
+                    // If the argument does not have a value, treat it as a flag
+                    flags.insert(arg);
+                }
+            } else {
+                throw std::runtime_error("Invalid argument: " + arg + "\n" + usage());
+            }
+        }
+    }
+
+    std::string usage() const {
+        return "Usage: program [-flag] [-argument [value]] ...";
+    }
+};
+
 
 class Application {
 
@@ -784,6 +784,11 @@ public:
         ConfigurationManager configManager;
         configManager.loadConfiguration();
         readConfigFile(processor);
+
+        if (cmd.getFlag("version")) {
+            std::cout << "Application version: 1.0.0" << std::endl;
+            exit(0);
+        }
     }
 
     ~Application() {
