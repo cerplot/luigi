@@ -749,15 +749,41 @@ private:
     std::map<std::string, std::string> arguments;
     std::set<std::string> flags;
 
+    void buildProject() const {
+        if (getFlag("--build")) {
+            std::string buildCommand = "cmake --build " + getArgument("B");
+            if (isRegistered("--target")) {
+                buildCommand += " --target " + getArgument("--target");
+            }
+            std::system(buildCommand.c_str());
+        }
+    }
+
     void parseArguments(int argc, char* argv[]) {
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
             if (arg[0] == '-') {
                 arg = arg.substr(1);  // Remove the leading '-'
-                if (i + 1 < argc && argv[i + 1][0] != '-') {  // Make sure we have a value for this argument
-                    std::string value = argv[i + 1];
-                    arguments[arg] = value;
-                    ++i;  // Skip the value
+                if (arg == "D" && i + 1 < argc) {  // Check for '-D' flag
+                    std::string var = argv[i + 1];
+                    size_t pos = var.find('=');
+                    if (pos != std::string::npos) {
+                        std::string name = var.substr(0, pos);
+                        std::string value = var.substr(pos + 1);
+                        arguments[name] = value;
+                        ++i;  // Skip the value
+                    } else {
+                        throw std::runtime_error("Invalid argument: " + arg + "\n" + usage());
+                    }
+                } else if (arg == "G" || arg == "T" || arg == "C" || arg == "E" || arg == "L" || arg == "P" || arg == "N" || arg == "--build") {
+                    if (i + 1 < argc && argv[i + 1][0] != '-') {
+                        std::string value = argv[i + 1];
+                        arguments[arg] = value;
+                        ++i;  // Skip the value
+                    } else {
+                        // If the argument does not have a value, treat it as a flag
+                        flags.insert(arg);
+                    }
                 } else {
                     // If the argument does not have a value, treat it as a flag
                     flags.insert(arg);
@@ -781,6 +807,9 @@ public:
         CommandLineProcessor cmd(argc, argv);
         sourcePath = cmd.getArgument("S");
         buildPath = cmd.getArgument("B");
+        generator = cmd.getArgument("G");
+        toolset = cmd.getArgument("T");
+        initialCache = cmd.getArgument("C");
         ConfigurationManager configManager;
         configManager.loadConfiguration();
         readConfigFile(processor);
@@ -789,6 +818,7 @@ public:
             std::cout << "Application version: 1.0.0" << std::endl;
             exit(0);
         }
+        cmd.buildProject();
     }
 
     ~Application() {
