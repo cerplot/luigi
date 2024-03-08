@@ -3,8 +3,6 @@
 #include <string>
 #include <chrono>
 #include <iostream>
-
-
 class DataSource {
 protected:
     std::string selectedStock;
@@ -16,40 +14,63 @@ public:
 
 class MockDataSource : public DataSource {
     std::mt19937 generator;
-    std::uniform_int_distribution<uint16_t> sidDistribution;
     std::uniform_real_distribution<float> priceChangeDistribution;
     std::uniform_int_distribution<uint16_t> volumeDistribution;
-    std::uniform_int_distribution<int> updateTypeDistribution;
+    std::discrete_distribution<int> updateTypeDistribution;
     std::map<std::string, Tick> lastTicks;
-    int numStocks;
+    std::discrete_distribution<int> stockDistribution;
 
 public:
-    using DataSource::DataSource;  // Inherit constructor
-
     MockDataSource(int numStocks)
             : generator(std::random_device{}()),
-              sidDistribution(1, numStocks),
               priceChangeDistribution(-0.01f, 0.01f),
               volumeDistribution(1, 1000),
-              updateTypeDistribution(0, 4),  // 0: bid size, 1: bid price, 2: ask size, 3: ask price
-              numStocks(numStocks) {
+              updateTypeDistribution({20, 20, 20, 20, 10}) {  // 0: bid size, 1: bid price, 2: ask size, 3: ask price
         if (numStocks <= 0) {
             throw std::invalid_argument("numStocks must be a positive number");
         }
         if (numStocks > 65535) {
             throw std::invalid_argument("numStocks must not exceed 65535");
         }
+        std::string distributionType = "expnonetial";
+        // Initialize weights according to an exponential distribution
+        std::vector<double> weights(numStocks);
+        if (distributionType == "expnonetial") {
+            double lambda = 0.05;  // Exponential distribution parameter
+            for (int i = 0; i < numStocks; ++i) {
+                weights[i] = std::exp(-lambda * i);
+            }
+        } else if (distributionType == "uniform"){
+            for (int i = 0; i < numStocks; ++i) {
+                weights[i] = 1.0;
+            }
+        } else if (distributionType == "normal"){
+            double mean = numStocks / 2.0;
+            double stddev = numStocks / 6.0;
+            for (int i = 0; i < numStocks; ++i) {
+                weights[i] = std::exp(-std::pow(i - mean, 2) / (2 * std::pow(stddev, 2)));
+            }
+        } else if (distributionType == "lognormal"){
+            double mean = numStocks / 2.0;
+            double stddev = numStocks / 6.0;
+            for (int i = 0; i < numStocks; ++i) {
+                weights[i] = std::exp(-std::pow(std::log(i + 1) - mean, 2) / (2 * std::pow(stddev, 2)));
+            }
+        }
+        // Initialize the stock distribution with the weights
+        stockDistribution = std::discrete_distribution<int>(weights.begin(), weights.end());
     }
 
     Tick next() override {
-        // Generate a tick for a random stock
-        return generateTick();
+        // Generate a tick for a random stock according to the stock distribution
+        int stockIndex = stockDistribution(generator);
+        return generateTick(stockIndex + 1);  // Stock IDs start from 1
     }
 
 private:
-    Tick generateTick() {
+    Tick generateTick(int sid) {
         Tick tick;
-        tick.sid = sidDistribution(generator);  // Generate a random sid
+        tick.sid = sid;
         std::string stock = "stock_" + std::to_string(tick.sid);  // Create the stock name
         tick.exch = Exchange::XNSE;  // You can also randomize this if you want
         tick.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -155,8 +176,8 @@ void printTickInfo(const Tick& tick) {
     std::cout << "------------------------\n";
 }
 
-int _main() {
-    // Create a MockDataSource for 100 stocks
+int main() {
+    // Create a MockDataSource for 10 stocks
     MockDataSource dataSource(100);
 
     // Generate and print 5 ticks
