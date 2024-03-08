@@ -8,7 +8,10 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 
 # Add the executable
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp
+        src/app.cpp
+        src/app.cpp
+        src/command_line_processor.cpp)
 
 # Specify the include directories for the target
 target_include_directories(${PROJECT_NAME} PRIVATE "tomlplusplus-3.4.0/include/toml++")
