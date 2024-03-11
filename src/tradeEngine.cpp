@@ -743,9 +743,9 @@ public:
         generator = cmd.getArgument("G");
         toolset = cmd.getArgument("T");
         initialCache = cmd.getArgument("C");
-        ConfigurationManager configManager;
-        configManager.loadConfiguration();
-        readConfigFile(processor);
+        ConfigurationManager configManager(sourcePath);
+//        configManager.loadConfiguration();
+//        readConfigFile(processor);
 
         if (cmd.getFlag("version")) {
             std::cout << "Application version: 1.0.0" << std::endl;
