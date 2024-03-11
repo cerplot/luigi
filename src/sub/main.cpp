@@ -10,6 +10,11 @@
 #include <stdexcept>
 #include <tuple>
 #include <sstream>
+#include <string>
+#include <map>
+#include <regex>
+#include <algorithm>
+#include <openssl/md5.h>
 #include "command_line_processor.h"
 #include "step.h"
 
@@ -20,17 +25,6 @@ std::string join(const std::vector<std::string>& vec, const char* delim) {
     return os.str();
 }
 
-#include <string>
-#include <map>
-#include <regex>
-#include <algorithm>
-#include <openssl/md5.h>
-
-const int STEP_ID_INCLUDE_PARAMS = 3;
-const int STEP_ID_TRUNCATE_PARAMS = 16;
-const int STEP_ID_TRUNCATE_HASH = 10;
-const std::regex STEP_ID_INVALID_CHAR_REGEX("[^A-Za-z0-9_]");
-const std::string SAME_AS_CPP_MODULE = "_same_as_cpp_module";
 
 std::map<std::string, std::string> default_namespace_dict;
 
@@ -70,56 +64,43 @@ std::string step_id_str(std::string step_family, std::map<std::string, std::stri
     return step_family + "_" + param_summary + "_" + param_hash;
 }
 
-class BulkCompleteNotImplementedError : public std::logic_error {
-public:
-    BulkCompleteNotImplementedError(const std::string& what_arg) : std::logic_error(what_arg) {}
-};
-
 #include <string>
 #include <map>
 #include <vector>
 #include <functional>
-
 
 bool Step::batchable() {
     // Implement logic to check if the step is batchable
     // For example, return true if there are any batched parameters
     return !batch_param_names().empty();
 }
-int Step::retry_count() {
+int Step::getRetryCount() {
     // Implement logic to get retry count
     // For example, return a member variable that stores the retry count
-    return this->retry_count;
+    return retry_count;
 }
-int Step::disable_hard_timeout() {
+int Step::getDisableHardTimeout() {
     // Implement logic to get disable_hard_timeout
     // For example, return a member variable that stores the disable_hard_timeout
-    return this->disable_hard_timeout;
+    return disable_hard_timeout;
 }
-int Step::disable_window() {
+int Step::getDisableWindow() {
     // Implement logic to get disable_window
     // For example, return a member variable that stores the disable_window
-    return this->disable_window;
+    return disable_window;
 }
-int Step::disable_window_seconds() {
-    // Implement logic to get disable_window
-    // For example, return a member variable that stores the disable_window
-    std::cout << "Use of `disable_window_seconds` has been deprecated, use `disable_window` instead" << std::endl;
-    return this->disable_window;
-}
-std::vector<std::string> Step::owner_email() {
+std::vector<std::string> Step::getOwnerEmail() {
     // Implement logic to get owner_email
     // For example, return a member variable that stores the owner_email
-    return this->owner_email;
+    return owner_email;
 }
 std::vector<std::string> Step::_owner_list() {
-    // Implement logic to get owner_email
-    // For example, return a member variable that stores the owner_email
+    // Turns the owner_email property into a list. This should not be overridden.
     std::vector<std::string> owner_list;
-    if (this->owner_email.empty()) {
+    if (owner_email.empty()) {
         return owner_list;
     } else {
-        std::stringstream ss(this->owner_email);
+        std::stringstream ss(owner_email);
         std::string token;
         while (std::getline(ss, token, ',')) {
             owner_list.push_back(token);
@@ -127,19 +108,18 @@ std::vector<std::string> Step::_owner_list() {
         return owner_list;
     }
 }
-bool Step::use_cmdline_section() {
+bool Step::getUseCmdlineSection() {
     // Implement logic to get use_cmdline_section
     // For example, return a member variable that stores the use_cmdline_section
-    return this->use_cmdline_section;
+    return use_cmdline_section;
 }
-static std::map<std::string, std::set<std::function<void()>>> Step::_event_callbacks;
 
 static std::function<void()> Step::event_handler(std::string event, std::function<void()> callback) {
     _event_callbacks[event].insert(callback);
     return callback;
 }
 
-std::map<std::string, std::set<std::function<void()>>> Step::_event_callbacks;
+std::map<std::string, std::set<std::function<void()>>> Step::event_callbacks;
 void Step::trigger_event(std::string event) {
     // Check if there are any callbacks for the given event
     if (_event_callbacks.find(event) != _event_callbacks.end()) {
@@ -157,18 +137,20 @@ void Step::trigger_event(std::string event) {
         }
     }
 }
-bool Step::accepts_messages() {
+
+bool Step::getAcceptsMessages() {
     // Implement logic to get accepts_messages
     // For example, return a member variable that stores the accepts_messages
-    return this->accepts_messages;
+    return accepts_messages;
 }
 
-std::string Step::step_module() {
+std::string Step::getStepModule() {
     // Implement logic to get step_module
     // For example, return a member variable that stores the step_module
-    return this->step_module;
+    return step_module;
 }
-static std::string Step::get_step_namespace() {
+
+static std::string Step::getStepNamespace() {
     if (step_namespace != not_user_specified) {
         return step_namespace;
     } else if (namespace_at_class_time == SAME_AS_CPP_NAMESPACE) {
@@ -183,12 +165,13 @@ const std::string Step::not_user_specified = "";
 const std::string Step::namespace_at_class_time = "";
 const std::string Step::SAME_AS_CPP_NAMESPACE = "";
 
-std::string Step::step_family() {
+std::string Step::getStepFamily() {
     // Implement logic to get step_family
     // For example, return a member variable that stores the step_family
-    return this->step_family;
+    return step_family;
 }
 
+// this should go inside Registerer
 static std::string Step::get_step_family() {
     if (step_namespace.empty()) {
         return class_name;
@@ -201,53 +184,45 @@ static std::string Step::get_step_family() {
 // Initialize static members
 std::string Step::step_namespace = "";
 std::string Step::class_name = "Step"; // Replace "Step" with the actual class name
+static std::vector<std::pair<std::string, Parameter>> Step::get_params() {
+    std::vector<std::pair<std::string, Parameter>> params;
 
+    // Get all member variables of the Step class
+    // This is just a placeholder implementation, you need to replace it with the actual logic
+    std::vector<std::string> member_variables = {"param1", "param2", "param3"};
 
-
-class Step {
-public:
-    static std::vector<std::pair<std::string, Parameter>> get_params() {
-        std::vector<std::pair<std::string, Parameter>> params;
-
-        // Get all member variables of the Step class
+    for (const auto& param_name : member_variables) {
+        // Get the Parameter object corresponding to param_name
         // This is just a placeholder implementation, you need to replace it with the actual logic
-        std::vector<std::string> member_variables = {"param1", "param2", "param3"};
+        Parameter param_obj;
 
-        for (const auto& param_name : member_variables) {
-            // Get the Parameter object corresponding to param_name
-            // This is just a placeholder implementation, you need to replace it with the actual logic
-            Parameter param_obj;
-
-            params.push_back(std::make_pair(param_name, param_obj));
-        }
-
-        // Sort the parameters based on the _counter member of the Parameter class
-        std::sort(params.begin(), params.end(), [](const std::pair<std::string, Parameter>& a, const std::pair<std::string, Parameter>& b) {
-            return a.second._counter < b.second._counter;
-        });
-
-        return params;
+        params.push_back(std::make_pair(param_name, param_obj));
     }
 
-    bool initialized();
+    // Sort the parameters based on the _counter member of the Parameter class
+    std::sort(params.begin(), params.end(), [](const std::pair<std::string, Parameter>& a, const std::pair<std::string, Parameter>& b) {
+        return a.second._counter < b.second._counter;
+    });
 
-    void _warn_on_wrong_param_types();
+    return params;
+}
 
-    std::map<std::string, std::string> to_str_params(bool only_significant, bool only_public);
-};
+bool initialized();
 
-    static std::vector<std::string> Step::batch_param_names() {
-        std::vector<std::string> batchable_param_names;
-        std::vector<std::pair<std::string, Parameter>> params = get_params();
+void _warn_on_wrong_param_types();
 
-        for (const auto& param : params) {
-            if (param.second.is_batchable()) { // Assuming Parameter class has a method is_batchable()
-                batchable_param_names.push_back(param.first);
-            }
+std::map<std::string, std::string> to_str_params(bool only_significant, bool only_public);
+
+static std::vector<std::string> Step::batch_param_names() {
+    std::vector<std::string> batchable_param_names;
+    std::vector<std::pair<std::string, Parameter>> params = get_params();
+    for (const auto& param : params) {
+        if (param.second.is_batchable()) { // Assuming Parameter class has a method is_batchable()
+            batchable_param_names.push_back(param.first);
         }
-
-        return batchable_param_names;
     }
+    return batchable_param_names;
+}
 
 
 static std::vector<std::string> Step::get_param_names(bool include_significant = false) {
@@ -263,65 +238,65 @@ static std::vector<std::string> Step::get_param_names(bool include_significant =
     return param_names;
 }
 
-    std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vector<std::pair<std::string, Parameter>> params, std::vector<std::string> args, std::map<std::string, std::string> kwargs) {
-        std::map<std::string, std::string> result;
-        std::map<std::string, Parameter> params_dict;
+std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vector<std::pair<std::string, Parameter>> params, std::vector<std::string> args, std::map<std::string, std::string> kwargs) {
+    std::map<std::string, std::string> result;
+    std::map<std::string, Parameter> params_dict;
 
-        for (const auto& param : params) {
-            params_dict[param.first] = param.second;
-        }
-
-        std::string step_family = get_step_family();
-
-        // Fill in the positional arguments
-        std::vector<std::pair<std::string, Parameter>> positional_params;
-        for (const auto& param : params) {
-            if (param.second.is_positional()) { // Assuming Parameter class has a method is_positional()
-                positional_params.push_back(param);
-            }
-        }
-
-        for (size_t i = 0; i < args.size(); ++i) {
-            if (i >= positional_params.size()) {
-                throw std::invalid_argument("Too many parameters given");
-            }
-            std::string param_name = positional_params[i].first;
-            Parameter param_obj = positional_params[i].second;
-            result[param_name] = param_obj.normalize(args[i]); // Assuming Parameter class has a method normalize()
-        }
-
-        // Then the keyword arguments
-        for (const auto& kwarg : kwargs) {
-            std::string param_name = kwarg.first;
-            if (result.find(param_name) != result.end()) {
-                throw std::invalid_argument("Duplicate parameter " + param_name);
-            }
-            if (params_dict.find(param_name) == params_dict.end()) {
-                throw std::invalid_argument("Unknown parameter " + param_name);
-            }
-            result[param_name] = params_dict[param_name].normalize(kwarg.second); // Assuming Parameter class has a method normalize()
-        }
-
-        // Then use the defaults for anything not filled in
-        for (const auto& param : params) {
-            std::string param_name = param.first;
-            Parameter param_obj = param.second;
-            if (result.find(param_name) == result.end()) {
-                if (!param_obj.has_step_value(step_family, param_name)) { // Assuming Parameter class has a method has_step_value()
-                    throw std::invalid_argument("Missing parameter " + param_name);
-                }
-                result[param_name] = param_obj.step_value(step_family, param_name); // Assuming Parameter class has a method step_value()
-            }
-        }
-
-        // Sort it by the correct order and make a list
-        std::vector<std::pair<std::string, std::string>> sorted_result;
-        for (const auto& param : params) {
-            sorted_result.push_back(std::make_pair(param.first, result[param.first]));
-        }
-
-        return sorted_result;
+    for (const auto& param : params) {
+        params_dict[param.first] = param.second;
     }
+
+    std::string step_family = get_step_family();
+
+    // Fill in the positional arguments
+    std::vector<std::pair<std::string, Parameter>> positional_params;
+    for (const auto& param : params) {
+        if (param.second.is_positional()) { // Assuming Parameter class has a method is_positional()
+            positional_params.push_back(param);
+        }
+    }
+
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (i >= positional_params.size()) {
+            throw std::invalid_argument("Too many parameters given");
+        }
+        std::string param_name = positional_params[i].first;
+        Parameter param_obj = positional_params[i].second;
+        result[param_name] = param_obj.normalize(args[i]); // Assuming Parameter class has a method normalize()
+    }
+
+    // Then the keyword arguments
+    for (const auto& kwarg : kwargs) {
+        std::string param_name = kwarg.first;
+        if (result.find(param_name) != result.end()) {
+            throw std::invalid_argument("Duplicate parameter " + param_name);
+        }
+        if (params_dict.find(param_name) == params_dict.end()) {
+            throw std::invalid_argument("Unknown parameter " + param_name);
+        }
+        result[param_name] = params_dict[param_name].normalize(kwarg.second); // Assuming Parameter class has a method normalize()
+    }
+
+    // Then use the defaults for anything not filled in
+    for (const auto& param : params) {
+        std::string param_name = param.first;
+        Parameter param_obj = param.second;
+        if (result.find(param_name) == result.end()) {
+            if (!param_obj.has_step_value(step_family, param_name)) { // Assuming Parameter class has a method has_step_value()
+                throw std::invalid_argument("Missing parameter " + param_name);
+            }
+            result[param_name] = param_obj.step_value(step_family, param_name); // Assuming Parameter class has a method step_value()
+        }
+    }
+
+    // Sort it by the correct order and make a list
+    std::vector<std::pair<std::string, std::string>> sorted_result;
+    for (const auto& param : params) {
+        sorted_result.push_back(std::make_pair(param.first, result[param.first]));
+    }
+
+    return sorted_result;
+}
 
 
     std::map<std::string, std::string> param_kwargs;
@@ -392,7 +367,6 @@ static std::vector<std::string> Step::get_param_names(bool include_significant =
         }
     }
 
-
     Step Step::from_str_params(std::map<std::string, std::string> params_str) {
         std::map<std::string, std::string> kwargs;
         std::vector<std::pair<std::string, Parameter>> params = get_params();
@@ -412,7 +386,6 @@ static std::vector<std::string> Step::get_param_names(bool include_significant =
 
         return Step(kwargs); // Assuming Step class has a constructor that takes a std::map<std::string, std::string>
     }
-
 
     std::map<std::string, std::string> param_kwargs;
     std::map<std::string, Parameter> params;
@@ -547,7 +520,6 @@ static std::vector<std::string> Step::get_param_names(bool include_significant =
         return completed_steps;
     }
 
-
     std::vector<Target> Step::output() const {
         // The output of the Step determines if the Step needs to be run--the step
         // is considered finished iff the outputs all exist. Subclasses should
@@ -601,7 +573,6 @@ static std::vector<std::string> Step::get_param_names(bool include_significant =
         return this->resources;
     }
 
-
 std::vector<Target> Step::input() const {
     // Returns the outputs of the Steps returned by requires()
 
@@ -651,21 +622,17 @@ virtual std::string Step::on_success() {
     return "";
 }
 
-
-
-    class MyStep : public Step {
+class MyStep : public Step {
 public:
     void run() override {
         // Provide an implementation for the run method
         std::cout << "Running MyStep" << std::endl;
     }
-
     std::map<std::string, std::string> getParams() override {
         // Provide an implementation for the getParams method
         return std::map<std::string, std::string>();
     }
 };
-
 
 class StepRegister {
 public:
@@ -771,7 +738,6 @@ public:
     static void disableInstanceCache() {
         instanceCacheEnabled = false;
     }
-
 
     static std::shared_ptr<Step> getStepCls(const std::string& name) {
         auto it = creators.find(name);

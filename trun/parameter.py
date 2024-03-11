@@ -212,7 +212,7 @@ class Parameter:
         if cp_parser:
             dest = self._parser_global_dest(param_name, step_name)
             found = getattr(cp_parser.known_args, dest, None)
-            yield (self._parse_or_no_value(found), None)
+            yield self._parse_or_no_value(found), None
         yield (self._get_value_from_config(step_name, param_name), None)
         if self._config_path:
             yield (self._get_value_from_config(self._config_path['section'], self._config_path['name']),
