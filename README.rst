@@ -1,8 +1,8 @@
 General Architecture
 ====================
 The core of the system will be implemented in c++ for scalability and speed.
-However, we will use python for the high-level logic and for the command 
-line interface. We will discuss that logic in a later stages. Let's first 
+However we should make data and C++ code itself accessible from python for
+research purposes. We will discuss python part in a  later stages. Let's first
 talk about the c++ core which needs to be implemented first.
 
 C++ core is divided into several steps, each of which reads data from the 
@@ -11,13 +11,20 @@ fashion:
 
 Step1 -> (save output) -> Step2 -> (save output) ->Step3 -> ... -> StepN
 
-As you can see, C++ optionally saves intermediate data after each layer,
- and the next layer can read that data and do its work just by using that data.
+This will be represented by `Step` class. This is base class for different
+type of steps. Steps will have Parameters which will be represented by Parameter
+class. Parameters will be used to configure the steps. Steps will have
+`run` method which will be used to run the step. Steps will have `save` method
+which will be used to save the output of the step. Steps will have `load` method
+which will be used to load the output of previous step. Step will have `requires`
+method which will list other steps that are required to run this step.
+
 In the future, we can use python to read and write those saved c++ data as well.
 This will be important for researching different ideas in the future.
 So research will be done in python, and then the best ideas will be implemented in C++.
 This is an optimal combination of performance and flexibility. It is not required to
-know C++ to do research, but it is required to know C++ to implement the best ideas in the production code.
+know C++ to do research, but it is required to know C++ to implement the best ideas
+in the production code.
 
 
 For configuration, we will use toml file. https://toml.io/en/

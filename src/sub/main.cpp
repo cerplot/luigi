@@ -1,3 +1,7 @@
+#include <string>
+#include <map>
+#include <vector>
+#include <functional>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -63,11 +67,6 @@ std::string step_id_str(std::string step_family, std::map<std::string, std::stri
 
     return step_family + "_" + param_summary + "_" + param_hash;
 }
-
-#include <string>
-#include <map>
-#include <vector>
-#include <functional>
 
 bool Step::batchable() {
     // Implement logic to check if the step is batchable
@@ -282,10 +281,12 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
         std::string param_name = param.first;
         Parameter param_obj = param.second;
         if (result.find(param_name) == result.end()) {
-            if (!param_obj.has_step_value(step_family, param_name)) { // Assuming Parameter class has a method has_step_value()
+            if (!param_obj.has_step_value(step_family, param_name)) {
+                // Assuming Parameter class has a method has_step_value()
                 throw std::invalid_argument("Missing parameter " + param_name);
             }
-            result[param_name] = param_obj.step_value(step_family, param_name); // Assuming Parameter class has a method step_value()
+            result[param_name] = param_obj.step_value(step_family, param_name);
+            // Assuming Parameter class has a method step_value()
         }
     }
 
@@ -303,31 +304,29 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
     std::string step_id;
     size_t __hash;
 
-    Step::Step(std::vector<std::string> args, std::map<std::string, std::string> kwargs) {
-        std::vector<std::pair<std::string, Parameter>> params = get_params();
-        std::vector<std::pair<std::string, std::string>> param_values = get_param_values(params, args, kwargs);
+Step::Step(std::vector<std::string> args, std::map<std::string, std::string> kwargs) {
+    std::vector<std::pair<std::string, Parameter>> params = get_params();
+    std::vector<std::pair<std::string, std::string>> param_values = get_param_values(params, args, kwargs);
 
-        // Set all values on class instance
-        for (const auto& param_value : param_values) {
-            std::string key = param_value.first;
-            std::string value = param_value.second;
-            // Assuming you have a method set_attribute to set the attribute
-            this->set_attribute(key, value);
-        }
-
-        // Register kwargs as an attribute on the class. Might be useful
-        this->param_kwargs = std::map<std::string, std::string>(param_values.begin(), param_values.end());
-
-        this->_warn_on_wrong_param_types(); // Assuming you have a method _warn_on_wrong_param_types to warn on wrong parameter types
-        this->step_id = step_id_str(this->get_step_family(), this->to_str_params(true, true)); // Assuming you have methods step_id_str and to_str_params to get the step id and to convert parameters to string
-        this->__hash = std::hash<std::string>{}(this->step_id);
-
-        this->set_tracking_url = nullptr;
-        this->set_status_message = nullptr;
-        this->set_progress_percentage = nullptr;
+    // Set all values on class instance
+    for (const auto& param_value : param_values) {
+        std::string key = param_value.first;
+        std::string value = param_value.second;
+        // Assuming you have a method set_attribute to set the attribute
+        this->set_attribute(key, value);
     }
 
-    // ... other methods ...
+    // Register kwargs as an attribute on the class. Might be useful
+    this->param_kwargs = std::map<std::string, std::string>(param_values.begin(), param_values.end());
+
+    this->_warn_on_wrong_param_types(); // Assuming you have a method _warn_on_wrong_param_types to warn on wrong parameter types
+    this->step_id = step_id_str(this->get_step_family(), this->to_str_params(true, true)); // Assuming you have methods step_id_str and to_str_params to get the step id and to convert parameters to string
+    this->__hash = std::hash<std::string>{}(this->step_id);
+
+    this->set_tracking_url = nullptr;
+    this->set_status_message = nullptr;
+    this->set_progress_percentage = nullptr;
+}
 
     std::map<std::string, std::string> param_kwargs;
 
@@ -346,16 +345,12 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
 
     std::string step_id;
 
-    // ... other methods ...
-
     bool Step::initialized() {
         return !step_id.empty();
     }
 
     std::map<std::string, std::string> param_kwargs;
     std::map<std::string, Parameter> params;
-
-    // ... other methods ...
 
     void Step::_warn_on_wrong_param_types() {
         for (const auto& param : param_kwargs) {
@@ -390,8 +385,6 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
     std::map<std::string, std::string> param_kwargs;
     std::map<std::string, Parameter> params;
 
-    // ... other methods ...
-
     std::map<std::string, std::string> Step::to_str_params(bool only_significant = false, bool only_public = false) {
         std::map<std::string, std::string> params_str;
         std::map<std::string, Parameter> params_map = get_params();
@@ -412,12 +405,8 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
         return params_str;
     }
 
-
-
     std::map<std::string, std::string> param_kwargs;
     std::map<std::string, Parameter> params;
-
-    // ... other methods ...
 
     std::map<std::string, std::string> Step::_get_param_visibilities() {
         std::map<std::string, std::string> param_visibilities;
@@ -466,8 +455,6 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
 
     std::map<std::string, std::string> param_kwargs;
     std::map<std::string, Parameter> params;
-
-    // ... other methods ...
 
     friend std::ostream& operator<<(std::ostream& os, const Step& step) {
         std::vector<std::pair<std::string, Parameter>> params = step.get_params();
@@ -538,11 +525,10 @@ std::vector<std::pair<std::string, std::string>> Step::get_param_values(std::vec
 
     std::vector<Step> Step::requires() const {
         // The Steps that this Step depends on.
-        // A Step will only run if all of the Steps that it requires are completed.
+        // A Step will only run if all the Steps that it requires are completed.
         // If your Step does not require any other Steps, then you don't need to
         // override this method. Otherwise, a subclass can override this method
-        // to return a single Step, a list of Step instances, or a dict whose
-        // values are Step instances.
+        // to return vector of Step instances
 
         // This is a default implementation that returns an empty vector.
         // Replace it with your actual implementation.
@@ -594,15 +580,11 @@ virtual void Step::run() {
     // The step run method, to be overridden in a subclass.
 
     // This is a default implementation that does nothing.
-    // Replace it with your actual implementation.
 }
 
 virtual std::string Step::on_failure(const std::exception& e) {
     // Override for custom error handling.
     // This method gets called if an exception is raised in run().
-    // The returned value of this method is json encoded and sent to the scheduler
-    // as the `expl` argument. Its string representation will be used as the
-    // body of the error email sent out if any.
 
     // Default behavior is to return a string representation of the stack trace.
 
@@ -612,13 +594,8 @@ virtual std::string Step::on_failure(const std::exception& e) {
 }
 
 virtual std::string Step::on_success() {
-    // Override for doing custom completion handling for a larger class of steps
     // This method gets called when run() completes without raising any exceptions.
-    // The returned value is json encoded and sent to the scheduler as the `expl` argument.
-    // Default behavior is to send an None value
-
     // This is a default implementation that does nothing.
-    // Replace it with your actual implementation.
     return "";
 }
 

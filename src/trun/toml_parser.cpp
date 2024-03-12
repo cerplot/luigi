@@ -5,41 +5,30 @@
 #include <fstream>
 #include <vector>
 
-class BaseParser {
+
+class StepConfig{
 private:
-    static BaseParser* _instance;
+    static StepConfig* _instance;
     static std::vector<std::string> _config_paths;
+    std::map<std::string, std::map<std::string, toml::value>> data;
 
 public:
-    static BaseParser* instance() {
+    static StepConfig* instance() {
         if (_instance == nullptr) {
-            _instance = new BaseParser();
-            _instance->reload();
+            _instance = new StepConfig();
+            _instance->read(_config_paths);
         }
         return _instance;
     }
 
     static void add_config_path(const std::string& path) {
         _config_paths.push_back(path);
-        reload();
+        instance()->read(_config_paths);
     }
 
     static void reload() {
         instance()->read(_config_paths);
     }
-
-    virtual void read(const std::vector<std::string>& config_paths) = 0;
-};
-
-BaseParser* BaseParser::_instance = nullptr;
-std::vector<std::string> BaseParser::_config_paths = {
-        "/etc/trun/trun.toml", "trun.toml"};
-
-class TrunTomlParser : public BaseParser {
-private:
-    std::map<std::string, std::map<std::string, toml::value>> data;
-
-public:
     void read(const std::vector<std::string>& config_paths) override {
         for (const auto& path : config_paths) {
             std::ifstream file(path);
@@ -102,3 +91,7 @@ public:
         return data[name];
     }
 };
+
+StepConfig* StepConfig::_instance = nullptr;
+std::vector<std::string> StepConfig::_config_paths = {
+        "/etc/trun/trun.toml", "trun.toml"};

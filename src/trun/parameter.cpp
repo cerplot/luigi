@@ -26,7 +26,8 @@ enum class ParameterVisibility {
     PRIVATE = 2
 };
 
-bool has_value(ParameterVisibility value) {
+
+bool hasValue(ParameterVisibility value) {
     return value == ParameterVisibility::PUBLIC || value == ParameterVisibility::HIDDEN || value == ParameterVisibility::PRIVATE;
 }
 
@@ -62,12 +63,6 @@ public:
     }
 };
 
-class OptionalParameterTypeWarning : public std::exception {
-public:
-    const char* what() const throw() {
-        return "Warning class for OptionalParameterMixin with wrong type.";
-    }
-};
 
 class UnconsumedParameterWarning : public std::exception {
 public:
@@ -79,26 +74,23 @@ public:
 
 class Parameter {
 private:
-    std::string name;
     static int counter;
     std::string defaultValue;
-    std::function<std::string(std::vector<std::string>)> batchMethod;
     bool significant;
     bool positional;
     ParameterVisibility visibility;
     std::string description;
     bool alwaysInHelp;
     int order;
+    std::string  _no_value = "";
 
 public:
     Parameter(
-            std::string name,
             std::string defaultValue = "",
             bool significant = true,
             std::string description = "",
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
             : defaultValue(defaultValue), significant(significant), positional(positional), visibility(visibility),
               description(description), alwaysInHelp(alwaysInHelp), batchMethod(batchMethod) {
@@ -118,10 +110,13 @@ public:
     }
 
     std::string getValueFromConfig(std::string section, std::string name) {
-        if (_config.find(section) != _config.end() && _config[section].find(name) != _config[section].end()) {
-            return _config[section][name];
+        conf = StepConfig::instance();
+        try {
+            value = conf.get(section, name);
+        } catch (std::exception& e) {
+            return _no_value;
         }
-        return _no_value;  // probably should be nullptr
+        return parse(value);
     }
 
     std::string getValue(std::string step_name, std::string param_name) {
@@ -167,6 +162,13 @@ public:
     }
     std::string getName() {
         return name;
+    }
+    std::string _parse_or_no_value(const std::string& x) {
+        if (x.empty()) {
+            return _no_value;
+        } else {
+            return parse(x);
+        }
     }
 };
 
@@ -443,17 +445,13 @@ public:
 class IntParameter : public Parameter {
 public:
     IntParameter(
-            std::string name,
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : Parameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility) {}
+            : Parameter(defaultValue, significant, description, configPath, positional, alwaysInHelp, visibility) {}
 
     int parse(const std::string& s) override {
         return std::stoi(s);
@@ -467,17 +465,13 @@ public:
 class FloatParameter : public Parameter {
 public:
     FloatParameter(
-            std::string name,
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : Parameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility) {}
+            : Parameter(defaultValue, significant, description, positional, alwaysInHelp, visibility) {}
 
     float parse(const std::string& s) override {
         return std::stof(s);
@@ -801,17 +795,13 @@ public:
 class TupleParameter : public ListParameter {
 public:
     TupleParameter(
-            std::string name,
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : ListParameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility) {}
+            : ListParameter(defaultValue, significant, description, positional, alwaysInHelp, visibility) {}
 
     std::vector<std::tuple<int, int>> parse(const std::string& s) override {
         nlohmann::json j = nlohmann::json::parse(s);
@@ -836,21 +826,17 @@ private:
 
 public:
     NumericalParameter(
-            std::string name,
             T minValue,
             T maxValue,
             std::function<bool(T, T)> leftOp = std::less_equal<T>(),
             std::function<bool(T, T)> rightOp = std::less<T>(),
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : Parameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility),
+            : Parameter(defaultValue, significant, description, positional, alwaysInHelp, batchMethod, visibility),
               minValue(minValue), maxValue(maxValue), leftOp(leftOp), rightOp(rightOp) {
         if (!description.empty()) {
             description += " ";
@@ -876,18 +862,14 @@ private:
 
 public:
     ChoiceParameter(
-            std::string name,
             std::set<T> choices,
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : Parameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility), choices(choices) {
+            : Parameter(defaultValue, significant, description, positional, alwaysInHelp, visibility), choices(choices) {
         if (!description.empty()) {
             description += " ";
         }
@@ -920,19 +902,15 @@ private:
 
 public:
     PathParameter(
-            std::string name,
             bool absolute = false,
             bool exists = false,
             std::string defaultValue = "",
-            bool isGlobal = false,
             bool significant = true,
             std::string description = "",
-            std::map<std::string, std::string> configPath = {},
             bool positional = true,
             bool alwaysInHelp = false,
-            std::function<std::string(std::vector<std::string>)> batchMethod = nullptr,
             ParameterVisibility visibility = ParameterVisibility::PUBLIC)
-            : Parameter(name, defaultValue, isGlobal, significant, description, configPath, positional, alwaysInHelp, batchMethod, visibility),
+            : Parameter(defaultValue, significant, description, positional, alwaysInHelp, visibility),
               absolute(absolute), exists(exists) {}
 
     std::filesystem::path parse(const std::string& s) override {
