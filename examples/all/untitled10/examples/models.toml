@@ -1,0 +1,7 @@
+[weighted_least_squares]
+lambda = 0.1
+num_days = 100
+
+[lasso]
+alpha = 1e-4
+num_days = 100

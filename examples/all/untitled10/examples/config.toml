@@ -1,0 +1,20 @@
+start_date = 2020-01-01
+end_date = 2020-12-31
+open_time = 09:29:00
+close_time = 16:01:00
+exclude_days = [2020-01-01, 2020-12-25]  # Bad data so we exclude these days
+exchanges = ["XNSE"] # National Stock Exchange of India
+
+[database]
+host = "database.example.com"
+port = 5432
+username = "user"
+password = "password"
+tables = [
+    "table1",
+    "table2"
+]
+
+[include]
+step = "step/config.toml
+models = "models.toml"

@@ -1,0 +1,6 @@
+database.host = "localhost"
+database.port = 5432
+database.username = "default_user"
+database.password = "default_password"
+server.host = "localhost"
+server.port = 8080

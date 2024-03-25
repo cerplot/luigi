@@ -1,0 +1,7 @@
+[include]
+indicator = "indicator.toml"
+index = "index.toml"
+_ = [
+    "lists/stock_list.toml",
+    "lists/exclude_list.toml"
+]

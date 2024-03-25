@@ -1,0 +1,9 @@
+[isize]
+num_days = 150
+alpha = 0.1e-6
+on = false
+
+[ivtcount]
+num_days = 150
+alpha = 0.1e-6
+on = true
