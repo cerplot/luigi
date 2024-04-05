@@ -53,4 +53,5 @@ private:
     static std::unordered_map<std::string, CreateIndicatorFunc> indicatorMap;
 };
 
-std::vector<std::vector<double>> combine_indicators_for_all_stocks(const std::string& indicator1_name);
+std::vector<std::vector<double>> combine_indicators_for_all_stocks(
+        const std::string& indicator1_name);

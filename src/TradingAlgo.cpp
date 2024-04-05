@@ -13,12 +13,9 @@ std::vector<Domain> BUILT_IN_DOMAINS = {...};
 std::map<std::string, Domain> _DEFAULT_DOMAINS;
 std::map<std::string, std::string> _DEFAULT_FETCH_CSV_COUNTRY_CODES;
 
-for (
-const auto &domain
-: BUILT_IN_DOMAINS) {
-_DEFAULT_DOMAINS[domain.calendar_name] =
-domain;
-_DEFAULT_FETCH_CSV_COUNTRY_CODES[domain.calendar_name] = domain.
+for (const auto &domain: BUILT_IN_DOMAINS) {
+    _DEFAULT_DOMAINS[domain.calendar_name] = domain;
+    _DEFAULT_FETCH_CSV_COUNTRY_CODES[domain.calendar_name] = domain.
 country_code;
 }
 
@@ -191,13 +188,13 @@ void TradingAlgorithm::analyze(Performance perf) {
 std::string TradingAlgorithm::repr() {
     std::ostringstream repr;
     repr << "TradingAlgorithm("
-         << "capital_base=" << this->sim_params.capital_base << ", "
-         << "sim_params=" << this->sim_params.repr() << ", "
-         << "initialized=" << this->initialized << ", "
-         << "slippage_models=" << this->blotter.slippage_models.repr() << ", "
-         << "commission_models=" << this->blotter.commission_models.repr() << ", "
-         << "blotter=" << this->blotter.repr() << ", "
-         << "recorded_vars=" << this->recorded_vars.repr() << ")";
+         << "capital_base=" << sim_params.capital_base << ", "
+         << "sim_params=" << sim_params.repr() << ", "
+         << "initialized=" << initialized << ", "
+         << "slippage_models=" << blotter.slippage_models.repr() << ", "
+         << "commission_models=" << blotter.commission_models.repr() << ", "
+         << "blotter=" << blotter.repr() << ", "
+         << "recorded_vars=" << recorded_vars.repr() << ")";
     return repr.str();
 }
 
@@ -263,10 +260,10 @@ BenchmarkSource TradingAlgorithm::_create_benchmark_source() {
     return BenchmarkSource(
             benchmark_asset,
             benchmark_returns,
-            this->trading_calendar,
-            this->sim_params.sessions,
-            this->data_portal,
-            this->sim_params.emission_rate
+            trading_calendar,
+            sim_params.sessions,
+            data_portal,
+            sim_params.emission_rate
     );
 }
 
