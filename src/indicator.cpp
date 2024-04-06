@@ -1,5 +1,4 @@
 #include "indicator.h"
-#include <stdexcept>
 
 Indicator::Indicator() : latestValue(0.0) {}
 

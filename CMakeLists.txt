@@ -11,7 +11,12 @@ set(CMAKE_CXX_STANDARD 20)
 add_executable(${PROJECT_NAME} main.cpp
         src/app.cpp
         src/app.cpp
-        src/command_line_processor.cpp)
+        src/command_line_processor.cpp
+        src/finance/blotter.cpp
+        src/finance/blotter.h
+        src/finance/metrics.cpp
+        src/top/protocol.h
+        src/finance/ledger.cpp)
 
 # Specify the include directories for the target
 target_include_directories(${PROJECT_NAME} PRIVATE "tomlplusplus-3.4.0/include/toml++")

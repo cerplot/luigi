@@ -6,3 +6,9 @@ name = "Tom Preston-Werner"
 dob = 1979-05-27T07:32:00-08:00
 
 array_integer_key = [1, 2, 3]
+
+new="old"
+bad=3
+[key0.key1]
+new=[4, 3, 3]
+old=3
