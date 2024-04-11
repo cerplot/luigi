@@ -65,9 +65,6 @@ public:
     int priority = 0;
     bool disabled = false;
     std::map<std::string, int> resources;
-    int worker_timeout = 0;
-    float max_batch_size = std::numeric_limits<float>::infinity();
-    std::string owner_email = "";
 
     // Member functions
     Step() {}
@@ -76,16 +73,6 @@ public:
     virtual bool batchable() {
         // Implement logic to check if instance can be run as part of a batch
         return false;
-    }
-
-    virtual int retry_count() {
-        // Implement logic to override retry_count at step level
-        return 0;
-    }
-
-    virtual int disable_hard_timeout() {
-        // Implement logic to override disable_hard_timeout at step level
-        return 0;
     }
 
     virtual int disable_window() {
@@ -105,37 +92,5 @@ public:
 
     virtual bool accepts_messages() {
         return false;
-    }
-
-    virtual std::string step_module() {
-        // Implement logic to return what module to import to get access to this class
-        return "";
-    }
-
-    virtual std::string step_namespace() {
-        // Implement logic to return the step namespace for the given class
-        return "";
-    }
-
-    virtual std::string step_family() {
-        // Implement logic to return the step family for the given class
-        return "";
-    }
-
-    virtual bool complete() {
-        // Implement logic to check if the step is complete
-        return false;
-    }
-
-    virtual void run() {
-        // Implement the computation done by this step
-    }
-
-    virtual void on_failure(std::exception& e) {
-        // Implement custom error handling
-    }
-
-    virtual void on_success() {
-        // Implement custom completion handling
     }
 };
