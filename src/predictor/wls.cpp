@@ -2,31 +2,45 @@
 #include <vector>
 #include <mkl.h>
 #include <unordered_map>
-#include <vector>
-#include <mkl.h>
-#include <vector>
 #include <cmath>
-
-std::vector<double> calculateObjective(const std::vector<double>& prices, double smoothingFactor) {
+std::pair<std::vector<double>, std::vector<double>> calculateTarget(const std::vector<double>& prices, double smoothingFactor, double delta) {
+    std::vector<double> shortTermObjectiveSeries(prices.size(), 0.0);
+    std::vector<double> longTermObjectiveSeries(prices.size(), 0.0);
     double smoothedChange = 0.0;
     double objective = 0.0;
-    std::vector<double> objective_series(prices.size() - 1, 0.0);
+    for (size_t i = prices.size() - 1; i < prices.size(); --i) {
+        size_t j = std::min(i + static_cast<size_t>(delta), prices.size() - 1);
+        shortTermObjectiveSeries[i] = prices[j] - prices[i];
+        if (i + delta + 1 < prices.size()) {
+            double priceChange = prices[i + static_cast<size_t>(delta) + 1] - prices[i + static_cast<size_t>(delta)];
+            smoothedChange = smoothingFactor * priceChange + (1 - smoothingFactor) * smoothedChange;
+            objective += smoothedChange;
+            longTermObjectiveSeries[i] = objective;
+        }
+    }
+    return {shortTermObjectiveSeries, longTermObjectiveSeries};
+}
+
+
+std::vector<double> calculateTarget(const std::vector<double>& prices, double smoothingFactor) {
+    double smoothedChange = 0.0;
+    double target = 0.0;
+    std::vector<double> target_series(prices.size() - 1, 0.0);
 
     for (int i = prices.size() - 1; i > 0; --i) {
         double priceChange = prices[i] - prices[i - 1];
         smoothedChange = smoothingFactor * priceChange + (1 - smoothingFactor) * smoothedChange;
-        objective += smoothedChange;
-        objective_series[i - 1] = objective;
+        target += smoothedChange;
+        target_series[i - 1] = target;
     }
-
-    return objective_series;
+    return target_series;
 }
 
 std::unordered_map<std::string, double> calculateObjectives(const std::unordered_map<std::string, std::vector<double>>& stockPrices, double smoothingFactor) {
     std::unordered_map<std::string, double> objectives;
 
     for (const auto& [stock, prices] : stockPrices) {
-        objectives[stock] = calculateObjective(prices, smoothingFactor);
+        objectives[stock] = calculateTarget(prices, smoothingFactor);
     }
 
     return objectives;
@@ -117,26 +131,6 @@ public:
         return result;
     }
 };
-
-#include <vector>
-
-std::pair<std::vector<double>, std::vector<double>> calculateObjective(const std::vector<double>& prices, double smoothingFactor, double delta) {
-    std::vector<double> shortTermObjectiveSeries(prices.size(), 0.0);
-    std::vector<double> longTermObjectiveSeries(prices.size(), 0.0);
-    double smoothedChange = 0.0;
-    double objective = 0.0;
-    for (size_t i = prices.size() - 1; i < prices.size(); --i) {
-        size_t j = std::min(i + static_cast<size_t>(delta), prices.size() - 1);
-        shortTermObjectiveSeries[i] = prices[j] - prices[i];
-        if (i + delta + 1 < prices.size()) {
-            double priceChange = prices[i + static_cast<size_t>(delta) + 1] - prices[i + static_cast<size_t>(delta)];
-            smoothedChange = smoothingFactor * priceChange + (1 - smoothingFactor) * smoothedChange;
-            objective += smoothedChange;
-            longTermObjectiveSeries[i] = objective;
-        }
-    }
-    return {shortTermObjectiveSeries, longTermObjectiveSeries};
-}
 
 class KalmanFilter {
 private:
