@@ -11,8 +11,8 @@ public:
         return "ExchangeInfo(" + name + ", " + canonical_name + ", " + country_code + ")";
     }
 
-    // Assuming get_calendar() is a function that returns a TradingCalendar object
-    TradingCalendar calendar() const {
+    // Assuming get_calendar() is a function that returns a Calendar object
+    Calendar calendar() const {
         return get_calendar(canonical_name);
     }
 

@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <chrono>
 
+const long long _nanos_in_minute = 60000000000LL;
+const long long NANOS_IN_MINUTE = _nanos_in_minute;
+
 enum EventType {
     BAR = 0,
     SESSION_START = 1,

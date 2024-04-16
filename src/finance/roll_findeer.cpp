@@ -43,7 +43,7 @@ public:
         }
         Contract first_contract = oc.sid_to_contract[first];
         std::vector<std::pair<int, std::chrono::system_clock::time_point>> rolls = {{first_contract.contract.sid >> offset, std::chrono::system_clock::time_point()}}; // Assuming std::chrono::system_clock::time_point() indicates None
-        TradingCalendar tc = trading_calendar;
+        Calendar tc = trading_calendar;
         std::vector<std::chrono::system_clock::time_point> sessions = tc.sessions_in_range(tc.minute_to_session(start), tc.minute_to_session(end));
         std::chrono::system_clock::time_point freq = sessions[1] - sessions[0]; // Assuming sessions are sorted in ascending order
         Contract curr;
@@ -84,7 +84,7 @@ public:
 
 class CalendarRollFinder : public RollFinder {
 public:
-    CalendarRollFinder(TradingCalendar trading_calendar, AssetFinder asset_finder)
+    CalendarRollFinder(Calendar trading_calendar, AssetFinder asset_finder)
             : trading_calendar(trading_calendar), asset_finder(asset_finder) {}
 
     int _active_contract(int oc, int front, int back, std::chrono::system_clock::time_point dt) override {
@@ -95,7 +95,7 @@ public:
     }
 
 private:
-    TradingCalendar trading_calendar;
+    Calendar trading_calendar;
     AssetFinder asset_finder;
 };
 
@@ -104,7 +104,7 @@ class VolumeRollFinder : public RollFinder {
 public:
     static const int GRACE_DAYS = 7;
 
-    VolumeRollFinder(TradingCalendar trading_calendar, AssetFinder asset_finder, SessionReader session_reader)
+    VolumeRollFinder(Calendar trading_calendar, AssetFinder asset_finder, SessionReader session_reader)
             : trading_calendar(trading_calendar), asset_finder(asset_finder), session_reader(session_reader) {}
 
     int _active_contract(int oc, int front, int back, std::chrono::system_clock::time_point dt) {
@@ -157,7 +157,7 @@ public:
     }
 
 private:
-    TradingCalendar trading_calendar;
+    Calendar trading_calendar;
     AssetFinder asset_finder;
     SessionReader session_reader;
 };

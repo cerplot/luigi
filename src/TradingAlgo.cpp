@@ -1,11 +1,5 @@
-
 #include "TradingAlgo.h"
 
-struct AttachedPipeline {
-    Pipeline* pipe;
-    int chunks;
-    bool eager;
-};
 
 // Assuming BUILT_IN_DOMAINS is a vector of Domain objects
 std::vector<Domain> BUILT_IN_DOMAINS = {...};
@@ -27,104 +21,44 @@ class NoBenchmark : public std::runtime_error {
 public:
     NoBenchmark() : std::runtime_error("Must specify either benchmark_sid or benchmark_returns.") {}
 };
+
 TradingAlgorithm::TradingAlgorithm(
         SimParams sim_params,
-        DataPortal* data_portal = nullptr,
         AssetFinder* asset_finder = nullptr,
         std::map<std::string, std::function<void()>> namespace_ = {},
-        std::string script = "",
-        std::string algo_filename = "",
-        std::function<void()> initialize = nullptr,
-        std::function<void()> handle_data = nullptr,
-        std::function<void()> before_trading_start = nullptr,
-        std::function<void()> analyze = nullptr,
-        TradingCalendar* trading_calendar = nullptr,
+        Calendar* trading_calendar = nullptr,
         MetricsSet* metrics_set = nullptr,
         Blotter* blotter = nullptr,
         BlotterClass* blotter_class = nullptr,
         CancelPolicy* cancel_policy = nullptr,
-        std::string benchmark_sid = "",
-        BenchmarkReturns* benchmark_returns = nullptr,
-        std::string platform = "tengine",
         CapitalChanges* capital_changes = nullptr,
-        std::function<PipelineLoader(BoundColumn)> get_pipeline_loader = nullptr,
         std::function<ContextManager(BarData)> create_event_context = nullptr,
         std::map<std::string, std::any> initialize_kwargs = {}
 ) {
-    trading_controls = {};  // used to validate orders
+    // List of trading controls to be used to validate orders.
+    trading_controls = {};
+    // List of account controls to be checked on each tick.
     account_controls = {};
     recorded_vars = {};
-    namespace_ = namespace_;
-    platform = platform;
     logger = getLogger();
-    data_portal = data_portal;
 
-    if (data_portal == nullptr) {
-        if (asset_finder == nullptr) {
-            throw std::invalid_argument("Must pass either data_portal or asset_finder to TradingAlgorithm()");
-        }
-        asset_finder = asset_finder;
-    } else {
-        if (asset_finder != nullptr && asset_finder != data_portal->asset_finder) {
-            throw std::invalid_argument("Inconsistent asset_finders in TradingAlgorithm()");
-        }
-        asset_finder = data_portal->asset_finder;
-    }
-
-    benchmark_returns = benchmark_returns;
     sim_params = sim_params;
-
-    if (trading_calendar == nullptr) {
-        trading_calendar = sim_params->trading_calendar;
-    } else if (trading_calendar->name != sim_params->trading_calendar->name) {
-        throw std::invalid_argument("Conflicting calendars: trading_calendar=" + trading_calendar->name + ", but sim_params.trading_calendar=" + sim_params->trading_calendar->name);
-    }
+    trading_calendar = sim_params->trading_calendar;
 
     metrics_tracker = nullptr;
     _last_sync_time = nullptr;
-    _metrics_set = metrics_set;
-    if (_metrics_set == nullptr) {
-        _metrics_set = load_metrics_set("default");
-    }
+    _metrics_set = load_metrics_set("default");
 
-    init_engine(get_pipeline_loader);
-    _pipelines = {};
-    _pipeline_cache = nullptr;
+    cancel_policy = cancel_policy != nullptr ? cancel_policy : new NeverCancel();
+    blotter_class = blotter_class != nullptr ? blotter_class : new SimulationBlotter();
+    blotter = new blotter_class(cancel_policy);
 
-    if (blotter != nullptr) {
-        blotter = blotter;
-    } else {
-        cancel_policy = cancel_policy != nullptr ? cancel_policy : new NeverCancel();
-        blotter_class = blotter_class != nullptr ? blotter_class : new SimulationBlotter();
-        blotter = new blotter_class(cancel_policy);
-    }
-
-    _symbol_lookup_date = nullptr;
-    algoscript = script;
-    _initialize = nullptr;
-    _before_trading_start = nullptr;
-    _analyze = nullptr;
-    _in_before_trading_start = false;
     event_manager = new EventManager(create_event_context);
-    _handle_data = nullptr;
-
-    if (!algoscript.empty()) {
-        // Compile and execute script here
-        // This part is omitted because it's not straightforward to execute Python script in C++
-    } else {
-        _initialize = initialize != nullptr ? initialize : [](){};
-        _handle_data = handle_data;
-        _before_trading_start = before_trading_start;
-        _analyze = analyze;
-    }
-
-    event_manager->add_event(
-            new Event(
-                    new Always(),
-                    // We pass handle_data to get the unbound method.
-                    // We will explicitly pass the algorithm to bind it again.
-                    this->handle_data
-            ),
+    event_manager->add_event(new Event(
+            new Always(),
+            // We pass handle_data to get the unbound method.
+            // We will explicitly pass the algorithm to bind it again.
+            this->handle_data),
             true
     );
 
@@ -134,62 +68,49 @@ TradingAlgorithm::TradingAlgorithm(
 
     initialized = false;
     initialize_kwargs = initialize_kwargs;
-    benchmark_sid = benchmark_sid;
-    capital_changes = capital_changes != nullptr ? capital_changes : new CapitalChanges();
+    // A dictionary of capital changes, keyed by timestamp, indicating the
+    //target/delta of the capital changes, along with values
+    capital_changes = new CapitalChanges();
+    // A dictionary of the actual capital change deltas, keyed by timestamp
     capital_change_deltas = {};
     restrictions = new NoRestrictions();
 }
 
 void TradingAlgorithm::init_engine(std::function<SimplePipelineEngine * ()> get_loader) {
-    if (get_loader != nullptr) {
-        this->engine = get_loader()(this->asset_finder, this->default_pipeline_domain(this->trading_calendar));
-    } else {
-        this->engine = new ExplodingPipelineEngine();
-    }
+
 }
 
 void TradingAlgorithm::initialize() {
-    // Call _initialize with `this` made available to Tengine API functions
-    TengineAPI api(this);
-    this->_initialize(this);
+    // initialize the algorithm
+    // called once before the start of the simulation
 }
 
 void TradingAlgorithm::before_trading_start(Data data) {
-    compute_eager_pipelines();
-
-    if (_before_trading_start.empty()) {
-        return;
-    }
-
-    _in_before_trading_start = true;
-
-    if (data_frequency == "minute") {
-        handle_non_market_minutes(data);
-    }
-    _before_trading_start(this, data);
-    _in_before_trading_start = false;
+    // called once before each trading day
+    handle_non_market_minutes(data);
+    _in_before_trading_start = False
 }
 
 void TradingAlgorithm::handle_data(Data data) {
-    if (!this->_handle_data.empty()) {
-        this->_handle_data(this, data);
-    }
+    // called once for each event
 }
 
 void TradingAlgorithm::analyze(Performance perf) {
-    if (this->_analyze.empty()) {
-        return;
-    }
-
-    TengineAPI api(this);
-    this->_analyze(this, perf);
+    // This function is called once at the end of the backtest
+    // and is passed the context and the performance data.
 }
 
 std::string TradingAlgorithm::repr() {
+    /* this does not yet represent a string that can be used
+    to instantiate an exact copy of an algorithm.
+
+    However, it is getting close, and provides some value as something
+    that can be inspected interactively.
+     */
     std::ostringstream repr;
     repr << "TradingAlgorithm("
-         << "capital_base=" << sim_params.capital_base << ", "
-         << "sim_params=" << sim_params.repr() << ", "
+         << "capital_base=" << capital_base << ", "
+         << "sim_params=" << "" << ", "
          << "initialized=" << initialized << ", "
          << "slippage_models=" << blotter.slippage_models.repr() << ", "
          << "commission_models=" << blotter.commission_models.repr() << ", "
@@ -199,71 +120,32 @@ std::string TradingAlgorithm::repr() {
 }
 
 void TradingAlgorithm::_create_clock() {
-    // If the clock property is not set, then create one based on frequency
-    std::map<std::string, std::string> market_closes = this->trading_calendar.schedule[this->sim_params.sessions]["close"];
-    std::map<std::string, std::string> market_opens = this->trading_calendar.first_minutes[this->sim_params.sessions];
+    std::map<std::string, std::string> market_closes = trading_calendar.schedule[sim_params.sessions]["close"];
+    std::map<std::string, std::string> market_opens = trading_calendar.first_minutes[sim_params.sessions];
     bool minutely_emission = false;
 
-    if (this->sim_params.data_frequency == "minute") {
-        minutely_emission = this->sim_params.emission_rate == "minute";
+    minutely_emission = this->sim_params.emission_rate == "minute";
 
-        std::map<std::string, std::string> execution_opens;
-        std::map<std::string, std::string> execution_closes;
+    std::map<std::string, std::string> execution_opens;
+    std::map<std::string, std::string> execution_closes;
 
-        if (this->trading_calendar.name == "us_futures") {
-            execution_opens = this->trading_calendar.execution_time_from_open(market_opens);
-            execution_closes = this->trading_calendar.execution_time_from_close(market_closes);
-        } else {
-            execution_opens = market_opens;
-            execution_closes = market_closes;
-        }
+    if (this->trading_calendar.name == "us_futures") {
+        execution_opens = trading_calendar.execution_time_from_open(market_opens);
+        execution_closes = trading_calendar.execution_time_from_close(market_closes);
     } else {
-        std::map<std::string, std::string> execution_closes;
-        std::map<std::string, std::string> execution_opens;
-
-        if (this->trading_calendar.name == "us_futures") {
-            execution_closes = this->trading_calendar.execution_time_from_close(market_closes);
-            execution_opens = execution_closes;
-        } else {
-            execution_closes = market_closes;
-            execution_opens = market_closes;
-        }
+        execution_opens = market_opens;
+        execution_closes = market_closes;
     }
-
     // FIXME generalize these values
     std::map<std::string, std::string> before_trading_start_minutes = days_at_time(
-            this->sim_params.sessions,
-            time(8, 45),
-            "US/Eastern",
-            0
-    );
+            sim_params.sessions, time(8, 45), "US/Eastern", 0);
 
-    this->clock = new MinuteSimulationClock(
-            this->sim_params.sessions,
+    clock = new MinuteSimulationClock(
+            sim_params.sessions,
             execution_opens,
             execution_closes,
             before_trading_start_minutes,
             minutely_emission
-    );
-}
-
-BenchmarkSource TradingAlgorithm::_create_benchmark_source() {
-    Asset *benchmark_asset = nullptr;
-    std::string benchmark_returns;
-
-    if (!this->benchmark_sid.empty()) {
-        benchmark_asset = this->asset_finder.retrieve_asset(this->benchmark_sid);
-    } else {
-        benchmark_returns = this->benchmark_returns;
-    }
-
-    return BenchmarkSource(
-            benchmark_asset,
-            benchmark_returns,
-            trading_calendar,
-            sim_params.sessions,
-            data_portal,
-            sim_params.emission_rate
     );
 }
 
@@ -288,38 +170,21 @@ void TradingAlgorithm::_create_generator(SimParams sim_params) {
     metrics_tracker = this->_create_metrics_tracker();
 
     // Set the dt initially to the period start by forcing it to change.
-    this->on_dt_changed(this->sim_params.start_session);
+    on_dt_changed(this->sim_params.start_session);
 
     if (!initialized) {
         initialize(initialize_kwargs);
         initialized = true;
     }
 
-    BenchmarkSource benchmark_source = _create_benchmark_source();
-
     trading_client = new AlgorithmSimulator(
-            this,
-            >sim_params,
-            data_portal,
+            this, sim_params, data_portal,
             _create_clock(),
-            benchmark_source,
-            restrictions
-    );
-
-    metrics_tracker.handle_start_of_simulation(benchmark_source);
+            restrictions);
+    metrics_tracker.handle_start_of_simulation();
     trading_client.transform();
 }
 
-void TradingAlgorithm::compute_eager_pipelines() {
-    // Compute any pipelines attached with eager=True
-    for (auto const &item: _pipelines) {
-        std::string name = item.first;
-        Pipeline pipe = item.second;
-        if (pipe.eager) {
-            pipeline_output(name);
-        }
-    }
-}
 
 Generator *TradingAlgorithm::get_generator() {
     // Override this method to add new logic to the construction
@@ -329,23 +194,6 @@ Generator *TradingAlgorithm::get_generator() {
 }
 
 std::vector<Performance> TradingAlgorithm::run(DataPortal *data_portal = nullptr) {
-    // Run the algorithm.
-    // HACK: I don't think we really want to support passing a data portal
-    // this late in the long term, but this is needed for now for backwards
-    // compat downstream.
-    if (data_portal != nullptr) {
-        this->data_portal = data_portal;
-        asset_finder = data_portal->asset_finder;
-    } else if (this->data_portal == nullptr) {
-        throw std::runtime_error(
-                "No data portal in TradingAlgorithm.run().\n"
-                "Either pass a DataPortal to TradingAlgorithm() or to run()."
-        );
-    } else {
-        assert(
-                asset_finder != nullptr
-        ); // "Have data portal without asset_finder."
-    }
 
     // Create tengine and loop through simulated_trading.
     // Each iteration returns a perf dictionary
@@ -355,14 +203,12 @@ std::vector<Performance> TradingAlgorithm::run(DataPortal *data_portal = nullptr
         while (generator->has_next()) {
             perfs.push_back(generator->next());
         }
-
         // convert perf dict to pandas dataframe
         std::vector<Performance> daily_stats = this->_create_daily_stats(perfs);
-
-        this->analyze(daily_stats);
+        analyze(daily_stats);
     } catch (...) {
-        this->data_portal = nullptr;
-        this->metrics_tracker = nullptr;
+        data_portal = nullptr;
+        metrics_tracker = nullptr;
         throw;
     }
 
@@ -387,7 +233,6 @@ std::vector<Performance> TradingAlgorithm::_create_daily_stats(std::vector<Perfo
             risk_report = perf;
         }
     }
-
     // In C++, we don't have a direct equivalent to pandas DataFrame.
     // You might want to use a different data structure to hold your daily stats,
     // such as a std::vector, std::map, or a custom class.
@@ -416,7 +261,7 @@ std::vector<std::map<std::string, double>> TradingAlgorithm::calculate_capital_c
         return std::vector<std::map<std::string, double>>();
     }
 
-    this->_sync_last_sale_prices();
+    _sync_last_sale_prices();
     double capital_change_amount;
     double target;
     if (capital_change["type"] == "target") {
@@ -437,8 +282,8 @@ std::vector<std::map<std::string, double>> TradingAlgorithm::calculate_capital_c
         return std::vector<std::map<std::string, double>>();
     }
 
-    this->capital_change_deltas[dt] = capital_change_amount;
-    this->metrics_tracker.capital_change(capital_change_amount);
+    capital_change_deltas[dt] = capital_change_amount;
+    metrics_tracker.capital_change(capital_change_amount);
 
     std::vector<std::map<std::string, double>> result;
     result.push_back({
@@ -476,70 +321,11 @@ TradingAlgorithm::get_environment(std::string field = "platform") {
     }
 }
 
-class PandasRequestsCSV {
-    // This class needs to be implemented
-};
-
-
-PandasRequestsCSV *TradingAlgorithm::fetch_csv(
-        std::string url,
-        std::function<void(std::map<std::string, std::string>)> pre_func = nullptr,
-        std::function<void(std::map<std::string, std::string>)> post_func = nullptr,
-        std::string date_column = "date",
-        std::string date_format = "",
-        std::string timezone = "UTC",
-        std::string symbol = "",
-        bool mask = true,
-        std::string symbol_column = "",
-        std::function<void(std::map<std::string, std::string>)> special_params_checker = nullptr,
-        std::string country_code = "",
-        std::map<std::string, std::string> kwargs = {}
-) {
-    // Fetch a csv from a remote url and register the data so that it is
-    // queryable from the ``data`` object.
-
-    if (country_code.empty()) {
-        country_code = this->default_fetch_csv_country_code(
-                this->trading_calendar
-        );
-    }
-
-    // Show all the logs every time fetcher is used.
-    PandasRequestsCSV *csv_data_source = new PandasRequestsCSV(
-            url,
-            pre_func,
-            post_func,
-            this->asset_finder,
-            this->trading_calendar.day,
-            this->sim_params.start_session,
-            this->sim_params.end_session,
-            date_column,
-            date_format,
-            timezone,
-            symbol,
-            mask,
-            symbol_column,
-            this->data_frequency,
-            country_code,
-            special_params_checker,
-            kwargs
-    );
-
-    // ingest this into dataportal
-    this->data_portal.handle_extra_source(csv_data_source->df, this->sim_params);
-
-    return csv_data_source;
-}
-
-class Event {
-    // This class needs to be implemented
-};
-
 
 void TradingAlgorithm::add_event(EventRule rule, std::function<void(Context, Data)> callback) {
     // Adds an event to the algorithm's EventManager.
 
-    this->event_manager.add_event(
+    event_manager.add_event(
             Event(rule, callback)
     );
 }
@@ -575,7 +361,7 @@ void TradingAlgorithm::schedule_function(
     // Check the type of the algorithm's schedule before pulling calendar
     // Note that the ExchangeTradingSchedule is currently the only
     // TradingSchedule class, so this is unlikely to be hit
-    TradingCalendar *cal;
+    Calendar *cal;
     if (calendar.empty()) {
         cal = this->trading_calendar;
     } else if (calendar == "US_EQUITIES") {
@@ -634,11 +420,7 @@ ContinuousFuture *TradingAlgorithm::continuous_future(
     std::transform(root_symbol_str.begin(), root_symbol_str.end(), root_symbol_str.begin(), ::toupper);
 
     return this->asset_finder.create_continuous_future(
-            root_symbol_str,
-            offset,
-            roll,
-            adjustment
-    );
+            root_symbol_str, offset, roll, adjustment);
 }
 
 Equity *TradingAlgorithm::symbol(std::string symbol_str, std::string country_code = "") {
@@ -650,16 +432,12 @@ Equity *TradingAlgorithm::symbol(std::string symbol_str, std::string country_cod
     // If the user has not set the symbol lookup date,
     // use the end_session as the date for symbol->sid resolution.
     std::string _lookup_date = (
-            !this->_symbol_lookup_date.empty()
-            ? this->_symbol_lookup_date
-            : this->sim_params.end_session
+            ! _symbol_lookup_date.empty()
+            ? _symbol_lookup_date
+            : sim_params.end_session
     );
 
-    return this->asset_finder.lookup_symbol(
-            symbol_str,
-            _lookup_date,
-            country_code
-    );
+    return asset_finder.lookup_symbol(symbol_str, _lookup_date, country_code);
 }
 
 std::vector<Equity *> symbols(std::vector<std::string> args, std::string country_code = "") {
@@ -676,7 +454,7 @@ std::vector<Equity *> symbols(std::vector<std::string> args, std::string country
 Asset *sid(int sid) {
     // Lookup an Asset by its unique asset identifier.
 
-    return this->asset_finder.retrieve_asset(sid);
+    return asset_finder.retrieve_asset(sid);
 }
 
 Future *future_symbol(std::string symbol) {
@@ -693,7 +471,7 @@ double _calculate_order_value_amount(Asset *asset, double value) {
     // asset being ordered.
 
     // Make sure the asset exists, and that there is a last price for it.
-    std::string normalized_date = this->trading_calendar.minute_to_session(this->datetime);
+    std::string normalized_date = trading_calendar.minute_to_session(this->datetime);
 
     if (normalized_date < asset->start_date) {
         throw std::runtime_error(
@@ -706,11 +484,11 @@ double _calculate_order_value_amount(Asset *asset, double value) {
                                                   " " + asset->end_date
         );
     } else {
-        double last_price = this->trading_client.current_data.current(asset, "price");
+        double last_price = trading_client.current_data.current(asset, "price");
 
         if (std::isnan(last_price)) {
             throw std::runtime_error(
-                    "Cannot order " + asset->symbol + " on " + this->datetime +
+                    "Cannot order " + asset->symbol + " on " + datetime +
                     " as there is no last price for the security."
             );
         }
@@ -743,11 +521,9 @@ bool TradingAlgorithm::_can_order_asset(Asset *asset) {
                       << "Any existing positions for this asset will be "
                       << "liquidated on "
                       << asset->auto_close_date << ".\n";
-
             return false;
         }
     }
-
     return true;
 }
 
@@ -756,11 +532,10 @@ std::string TradingAlgorithm::order(Asset *asset, int amount, double limit_price
     if (!_can_order_asset(asset)) {
         return "";
     }
-
     int amount;
     ExecutionStyle *style;
     std::tie(amount, style) = _calculate_order(asset, amount, limit_price, stop_price, style);
-    return this->blotter.order(asset, amount, style);
+    return blotter.order(asset, amount, style);
 }
 
 std::pair<int, ExecutionStyle *>
@@ -775,7 +550,8 @@ TradingAlgorithm::_calculate_order(Asset *asset, int amount, double limit_price 
     return std::make_pair(amount, style);
 }
 
-static int TradingAlgorithm::round_order(int amount) {
+// this is static
+int TradingAlgorithm::round_order(int amount) {
     return static_cast<int>(std::round(amount));
 }
 
@@ -793,27 +569,19 @@ void TradingAlgorithm::validate_order_params(Asset *asset, int amount, double li
                     "Passing both limit_price and style is not supported."
             );
         }
-
         if (stop_price > 0.0) {
             throw std::runtime_error(
                     "Passing both stop_price and style is not supported."
             );
         }
     }
-
-    for (auto const &control: this->trading_controls) {
+    for (auto const &control: trading_controls) {
         control.validate(
-                asset,
-                amount,
-                this->portfolio,
-                this->get_datetime(),
-                this->trading_client.current_data
-        );
+                asset, amount, portfolio, get_datetime(), trading_client.current_data);
     }
 }
 
-static ExecutionStyle *
-TradingAlgorithm::__convert_order_params_for_blotter(Asset *asset, double limit_price, double stop_price,
+ExecutionStyle * TradingAlgorithm::__convert_order_params_for_blotter(Asset *asset, double limit_price, double stop_price,
                                                      ExecutionStyle *style) {
     if (style) {
         assert(limit_price == 0.0 && stop_price == 0.0);
@@ -908,7 +676,6 @@ TradingAlgorithm::set_slippage(EquitySlippageModel *us_equities = nullptr, Futur
     }
 }
 
-
 void TradingAlgorithm::set_commission(EquityCommissionModel *us_equities = nullptr,
                                       FutureCommissionModel *us_futures = nullptr) {
     if (this->initialized) {
@@ -966,7 +733,7 @@ void TradingAlgorithm::order_target(Asset *asset, int target, double limit_price
         return;
     }
 
-    int amount = this->_calculate_order_target_amount(asset, target);
+    int amount = _calculate_order_target_amount(asset, target);
     this->order(asset, amount, limit_price, stop_price, style);
 }
 
@@ -978,7 +745,7 @@ TradingAlgorithm::order_target_value(Asset *asset, double target, double limit_p
     }
 
     double target_amount = this->_calculate_order_value_amount(asset, target);
-    int amount = this->_calculate_order_target_amount(asset, target_amount);
+    int amount = _calculate_order_target_amount(asset, target_amount);
     this->order(asset, amount, limit_price, stop_price, style);
 }
 
@@ -989,7 +756,7 @@ TradingAlgorithm::order_target_percent(Asset *asset, double target, double limit
         return;
     }
 
-    double amount = this->_calculate_order_target_percent_amount(asset, target);
+    double amount = _calculate_order_target_percent_amount(asset, target);
     this->order(asset, amount, limit_price, stop_price, style);
 }
 
@@ -1001,7 +768,7 @@ void TradingAlgorithm::batch_market_order(std::map<Asset *, int> share_counts) {
             order_args.push_back(std::make_tuple(asset, amount, style));
         }
     }
-    this->blotter.batch_order(order_args);
+    blotter.batch_order(order_args);
 }
 
 std::map<Asset *, std::vector<Order *>> TradingAlgorithm::get_open_orders(Asset *asset = nullptr) {
@@ -1035,7 +802,7 @@ void TradingAlgorithm::cancel_order(std::variant<std::string, Order *> order_par
     } else {
         order_id = std::get<std::string>(order_param);
     }
-    this->blotter.cancel(order_id);
+    blotter.cancel(order_id);
 }
 
 void TradingAlgorithm::register_account_control(AccountControl *control) {
@@ -1101,24 +868,6 @@ void TradingAlgorithm::set_long_only(std::string on_error = "fail") {
     this->register_trading_control(new LongOnly(on_error));
 }
 
-Pipeline *TradingAlgorithm::attach_pipeline(Pipeline *pipeline, std::string name, int chunks = 0, bool eager = true) {
-    if (this->_pipelines.find(name) != this->_pipelines.end()) {
-        throw DuplicatePipelineName(name);
-    }
-    this->_pipelines[name] = AttachedPipeline(pipeline, chunks, eager);
-    return pipeline;
-}
-
-std::map<std::string, std::vector<Asset *>> TradingAlgorithm::pipeline_output(std::string name) {
-    try {
-        Pipeline *pipe = this->_pipelines[name].pipeline;
-        int chunks = this->_pipelines[name].chunks;
-        return this->_pipeline_output(pipe, chunks, name);
-    } catch (std::out_of_range &e) {
-        throw NoSuchPipeline(name, this->_pipelines);
-    }
-}
-
 std::map<std::string, std::vector<Asset *>>
 TradingAlgorithm::_pipeline_output(Pipeline *pipeline, int chunks, std::string name) {
     std::tm *today = this->get_datetime();
@@ -1135,11 +884,11 @@ TradingAlgorithm::_pipeline_output(Pipeline *pipeline, int chunks, std::string n
 std::map<std::string, std::vector<Asset *>>
 TradingAlgorithm::run_pipeline(Pipeline *pipeline, std::tm *start_session, int chunksize) {
     std::vector<std::tm *> sessions = this->trading_calendar.sessions;
-    int start_date_loc = std::distance(sessions.begin(), std::find(sessions.begin(), sessions.end(), start_session));
+    int start_date_loc = std::distance(
+            sessions.begin(), std::find(sessions.begin(), sessions.end(), start_session));
     std::tm *sim_end_session = this->sim_params.end_session;
-    int end_loc = std::min(start_date_loc + chunksize, std::distance(sessions.begin(),
-                                                                     std::find(sessions.begin(), sessions.end(),
-                                                                               sim_end_session)));
+    int end_loc = std::min(start_date_loc + chunksize, std::distance(
+            sessions.begin(), std::find(sessions.begin(), sessions.end(), sim_end_session)));
     std::tm *end_session = sessions[end_loc];
     return this->engine.run_pipeline(pipeline, start_session, end_session);
 }

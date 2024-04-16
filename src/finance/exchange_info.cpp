@@ -1,5 +1,6 @@
 #include <string>
 #include <algorithm>
+#include <tuple>
 
 class ExchangeInfo {
 public:
@@ -7,27 +8,21 @@ public:
     std::string canonical_name;
     std::string country_code;
 
-    ExchangeInfo(std::string name, std::string canonical_name, std::string country_code) {
-        this->name = name;
-
-        if (canonical_name.empty()) {
-            canonical_name = name;
-        }
-
-        this->canonical_name = canonical_name;
+    ExchangeInfo(const std::string& name, const std::string& canonical_name, const std::string& country_code)
+            : name(name), canonical_name(canonical_name.empty() ? name : canonical_name), country_code(country_code) {
         std::transform(this->country_code.begin(), this->country_code.end(), this->country_code.begin(), ::toupper);
     }
 
-    std::string repr() {
-        return "ExchangeInfo(" + this->name + ", " + this->canonical_name + ", " + this->country_code + ")";
+    std::string repr() const {
+        return "ExchangeInfo(" + name + ", " + canonical_name + ", " + country_code + ")";
     }
 
-    TradingCalendar get_calendar() {
-        return get_calendar_by_name(this->canonical_name);
+    Calendar get_calendar() const {
+        return get_calendar_by_name(canonical_name);
     }
 
     bool operator==(const ExchangeInfo& other) const {
-        return this->name == other.name && this->canonical_name == other.canonical_name && this->country_code == other.country_code;
+        return std::tie(name, canonical_name, country_code) == std::tie(other.name, other.canonical_name, other.country_code);
     }
 
     bool operator!=(const ExchangeInfo& other) const {

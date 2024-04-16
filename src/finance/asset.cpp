@@ -1,8 +1,6 @@
 #include <string>
+#include <map>
 
-class ExchangeInfo {
-    // Define the attributes and methods of ExchangeInfo
-};
 
 class Asset {
 public:
@@ -123,13 +121,6 @@ public:
 
 class Equity : public Asset {
     // Define the attributes and methods of Equity
-};
-
-#include <string>
-#include <map>
-
-class Equity : public Asset {
-
 };
 
 class Future : public Asset {

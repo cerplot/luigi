@@ -1,3 +1,4 @@
+#include <unordered_map>
 #include <map>
 #include <string>
 #include <vector>
@@ -311,10 +312,6 @@ struct PeriodStats {
 const std::string not_overridden = "not_overridden";
 
 
-#include <map>
-#include <string>
-#include <vector>
-#include <unordered_map>
 
 class Portfolio; // Forward declaration, replace with actual class if available
 class Account; // Forward declaration, replace with actual class if available

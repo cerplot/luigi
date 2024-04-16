@@ -551,7 +551,7 @@ public:
 class InvalidCalendarName : public TengineError {
 public:
     InvalidCalendarName(std::map<std::string, std::string> kwargs) : TengineError(kwargs) {
-        this->set_msg("The requested TradingCalendar, {calendar_name}, does not exist.");
+        this->set_msg("The requested Calendar, {calendar_name}, does not exist.");
     }
 };
 

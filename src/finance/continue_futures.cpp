@@ -94,7 +94,7 @@ public:
 
 
     bool ContinuousFuture::is_exchange_open(std::chrono::system_clock::time_point dt_minute) const {
-        TradingCalendar calendar = get_calendar(exchange()); // Assuming get_calendar() is a function that returns a TradingCalendar object
+        Calendar calendar = get_calendar(exchange()); // Assuming get_calendar() is a function that returns a Calendar object
         return calendar.is_open_on_minute(dt_minute); // Assuming calendar.is_open_on_minute() returns a boolean
     }
 
