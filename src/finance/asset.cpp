@@ -16,8 +16,6 @@ public:
     std::chrono::system_clock::time_point end_date;
 
     // Replace these with appropriate date/time types
-    void* start_date;
-    void* end_date;
     void* first_traded;
     void* auto_close_date;
 
@@ -37,15 +35,15 @@ public:
     }
 
     std::string exchange() {
-        return this->exchange_info->canonical_name;
+        return exchange_info->canonical_name;
     }
 
     std::string exchange_full() {
-        return this->exchange_info->name;
+        return exchange_info->name;
     }
 
     std::string country_code() {
-        return this->exchange_info->country_code;
+        return exchange_info->country_code;
     }
     int64_t getSid() const {
         return sid;

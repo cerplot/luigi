@@ -51,12 +51,12 @@ TradingAlgorithm::TradingAlgorithm(
         std::function<ContextManager(BarData)> create_event_context = nullptr,
         std::map<std::string, std::any> initialize_kwargs = {}
 ) {
-    trading_controls = {};
+    trading_controls = {};  // used to validate orders
     account_controls = {};
     recorded_vars = {};
     namespace_ = namespace_;
     platform = platform;
-    logger = nullptr;
+    logger = getLogger();
     data_portal = data_portal;
 
     if (data_portal == nullptr) {

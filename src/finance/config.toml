@@ -1,0 +1,16 @@
+start =  # The start date of the backtest
+end =  # The end date of the backtest
+capital_base = 1000000 # The starting capital for the backtest. This is the amount in dollars that you start with.
+data_frequency = 'tick' # The data frequency for the backtest. This can be 'daily' or 'minute'.
+trading_calendar = 'India' # The trading calendar for the backtest. This can be '24/7' or 'week_ending_friday'.
+[metrics]
+# The set of metrics to compute in the simulation.
+benchmark_returns = 'production' # Series of returns to use as the benchmark.
+blotter = 'default' # The blotter to use in the simulation.
+[initialize]
+
+[handle_data]
+
+[before_trading_start]
+
+[analyze]
