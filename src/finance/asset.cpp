@@ -1,6 +1,7 @@
 #include <string>
 #include <map>
 
+class ExchangeInfo;
 
 class Asset {
 public:
@@ -98,22 +99,20 @@ public:
         dict["end_date"] = std::to_string(end_date.time_since_epoch().count());
         dict["first_traded"] = std::to_string(first_traded.time_since_epoch().count());
         dict["auto_close_date"] = std::to_string(auto_close_date.time_since_epoch().count());
-        dict["exchange"] = exchange;
-        dict["exchange_full"] = exchange_full;
+        dict["exchange"] = exchange_info->exchange;
+        dict["exchange_full"] = exchange_info->exchange_full;
         dict["tick_size"] = std::to_string(tick_size);
         dict["price_multiplier"] = std::to_string(price_multiplier);
-        // Assuming ExchangeInfo has a to_string method
-        dict["exchange_info"] = exchange_info.to_string();
+        dict["exchange_info"] = exchange_info.repr();
         return dict;
     }
-
 
     bool is_alive_for_session(std::chrono::system_clock::time_point session_label) {
         return start_date <= session_label && session_label <= end_date;
     }
 
     bool is_exchange_open(std::chrono::system_clock::time_point dt_minute) {
-        Calendar calendar = get_calendar(exchange());
+        Calendar calendar = get_calendar(exchange->exchange_full());
         return calendar.is_open_on_minute(dt_minute);
     }
 };
