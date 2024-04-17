@@ -18,7 +18,6 @@ std::vector<std::vector<std::optional<double>>> combineIndicators(
         if (timestamps.size() != values.size()) {
             throw std::invalid_argument("Timestamps and values vectors must have the same size.");
         }
-
         for (size_t i = 0; i < timestamps.size(); ++i) {
             uint32_t timestamp = timestamps[i];
             double value = values[i];
@@ -29,10 +28,8 @@ std::vector<std::vector<std::optional<double>>> combineIndicators(
             combinedIndicators[timestamp][indicatorIndex] = value;
         }
     }
-
     std::vector<std::vector<std::optional<double>>> result;
     std::vector<std::optional<double>> lastSeen(numIndicators, 0.0); // Initialize with 0.0
-
     for (const auto& [timestamp, values] : combinedIndicators) {
         std::vector<std::optional<double>> row(numIndicators);
 
@@ -46,7 +43,6 @@ std::vector<std::vector<std::optional<double>>> combineIndicators(
         }
         result.push_back(row);
     }
-
     return result; // should be sorted by timestamp
 }
 
@@ -76,18 +72,17 @@ std::vector<std::vector<double>> combineIndicatorsGrid(
             result[indicatorIndex][i] = lastValue;
         }
     });
-
     return result;
 }
 
 
-
 int main() {
     std::vector<std::pair<std::vector<uint32_t>, std::vector<double>>> indicators = {
-            {{1, 3}, {2.2, 3.3}}, // Indicator 1
-            {{2, 3, 4}, {2.2, 3.3, 4.4}}, // Indicator 2
-            {{1, 4, 5}, {3.3, 4.4, 5.5}}  // Indicator 3
+            {{1, 3}, {2.2, 3.3}}, // Indicator stock 1
+            {{2, 3, 4}, {2.2, 3.3, 4.4}}, // Indicator stock  2
+            {{1, 4, 5}, {3.3, 4.4, 5.5}}  // Indicator stock 3
     };
+    /// 1, 2, 3,  4,  5
 
     auto result = combineIndicators(indicators);
     for (const auto& row : result) {

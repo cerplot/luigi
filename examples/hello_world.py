@@ -10,7 +10,7 @@ If that does not work, see :ref:`CommandLine`.
 import trun
 
 
-class HelloWorldStep(trun.Step):
+class HelloWorldStep(Step):
     step_namespace = 'examples'
 
     def run(self):

@@ -15,10 +15,12 @@ struct Restriction {
     RestrictionStates state;
 };
 
+
 class Restrictions {
 public:
     virtual bool is_restricted(std::string asset, std::string dt) = 0;
 };
+
 
 class _UnionRestrictions : public Restrictions {
 public:

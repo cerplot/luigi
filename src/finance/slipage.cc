@@ -98,6 +98,7 @@ protected:
     int _volume_for_bar;
 };
 
+
 // Derived class
 class NoSlippage : public SlippageModel {
 public:

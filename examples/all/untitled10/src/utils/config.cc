@@ -56,6 +56,44 @@ namespace te {
             }
         }
     }
+    void Config::parseCommandLineArgs(int argc, char* argv[]) {
+        if (argc < 2) {
+            throw std::runtime_error("No configuration file provided");
+        }
+        auto config = load_config_file(argv[1]);
+        std::string tomlString;
+        std::string currentTopKey;
+        for (int i = 2; i < argc; ++i) {
+            std::string arg = argv[i];
+            if (arg.rfind("--", 0) == 0) {
+                currentTopKey = "[" + arg.substr(2) + "]";
+                tomlString += currentTopKey + "\n";
+            } else if (!currentTopKey.empty()) {
+                size_t pos = arg.find("=");
+                if (pos != std::string::npos) {
+                    std::string key = arg.substr(0, pos);
+                    std::string value = arg.substr(pos + 1);
+                    if (value.find(",") != std::string::npos) {
+                        // If there are multiple values, treat them as an array
+                        value = "[" + value + "]";
+                    }
+                    tomlString += key + " = " + value + "\n";
+                } else {
+                    throw std::runtime_error("Key-value pair provided before top-level key: " + arg);
+                }
+            } else {
+                throw std::runtime_error("Key-value pair provided before top-level key: " + arg);
+            }
+        }
+        try {
+            auto parsedToml = toml::parse(tomlString);
+            for (const auto& [key, value] : parsedToml) {
+                (*config)[key] = value;
+            }
+        } catch (const toml::parse_error& e) {
+            throw std::runtime_error("Failed to parse command line arguments as TOML: " + std::string(e.what()));
+        }
+    }
 
     std::shared_ptr<toml::table> Config::load_config_file(
             const std::filesystem::path &config_file_path, std::set<std::filesystem::path> &included_files,

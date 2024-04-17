@@ -1,0 +1,109 @@
+
+All timestamps are in nanoseconds. To convert a timestamp to date time format , one needs to add 315513000 seconds to the timestamp. In python one might also need to set the timezone to +5:30
+
+====================
+rawdata
+
+This file consists of the data in raw form received from the exchange.
+Market|Stream|LocalTimestamp|[LocalTimestampInMicroseconds] TypeOfTick|Token|OrderId|BuySell|ExchangeTimestamp|Price|Qty|SequeunceNumberStream|<L>|SequenceNumberGlobal|0|StockTokenName
+
+Market says if it was the Futures and Options market or Cash market (DR: what does 2 mean? or how in general markets are coded)
+Stream is an identifier for the channel through which data for this stock came (who many chanels are there and do they change)
+LocalTimestamp is the timestamp of our server when we received this tick (DR: is is micro or nano)
+LocalTimestampInMicroseconds is the LocalTimestamp converted in datetime format in microseconds (DR: is it micro or nano)
+TypeOfTick signifies N, M, X, T - New, Modify, Cancel, Trade (DR: can we get better clarification about new, and Modified, or/and cancel)
+Token is a unique numeric identifier for that stock in its segment (sid)
+OrderId is a unique identifier for each order
+BuySell - B/S Signifies at what side this order came
+ExchangeTimestamp is the timestamp of the exchange server when the tick was sent from their end
+Price - Price of the particular order
+Qty - qty/size of the particular order
+SequenceNumberStream - Sequence number of the tick as allocated by the exchange ( unique number for each tick being sent out in the stream)
+SequenceNumberGlobal - Sequence number of the tick stored from our end globally
+
+
+====================
+Order.log_ file
+
+This file has data of trading logs of any trading session
+
+Example Line:
+[00:10:27.806941678]  INR  BANKNIFTY23NOV43200CE 2 20073 61195 15 15 15 0 0 1  10002 582640002 22220000000002 1383383708161265121 11040582640000144642  842 34618580  0x1
+
+
+[00:10:27.806941678] ==> System time
+I ==> I:Incoming Response, O:Outgoing request
+N ==> Send type(P:prePacketSend, N:Not prePacketSend)
+R ==> verbose type(R:Response, T:Tick, F:Feed )
+BANKNIFTY23NOV43200CE ==> Symbol name
+2 ==> Side (1:Buyside, 2:Sellside)
+20073 ==> Transaction Code
+61195 ==> Price
+15 ==> Quantity
+15 ==> Disclosed Quantity
+15 ==> Remaining Quantity
+0 ==> Error code
+0 ==> Reason Code
+1 ==> Order type (1:Limit, 2:Ioc)
+10002 ==> UserId
+582640002 ==> Filler
+22220000000002 ==> OrderId
+1383383708161265121 ==> LastActivityTime
+11040582640000144642 ==> UniqueSequenceNumber
+842 ==> latency1 (DR: What a=is the latency1 and 2)
+34618580 ==> latency2
+0x1 ==> RetCode
+
+
+====================
+FEED
+
+This file has feed data or what we call as order book data
+Token - unique identifier (DR: for stock? )
+Name - name of the stock
+Timestamps - Local and Exchange
+Seuquence Numebrs - Unique tick identifiers
+Exchange Type - 1->NSE (DR: What other exchanges do we have and what are the codes)
+Instrument Type - 1->FO , 2->CM (DR: Instrument type codes)
+IsAnticipated - if this feed was anticipated by the anticipated logic (DR: Antysipation logic)
+UpdateType - N/M/X/T ()
+UpdateSide - Buy/Sell
+VTT - Total Volume traded today from market start (DR: Is this for a given instrument)
+LTPQ - Last traded price and qty (DR: Is this for a given instrument?)
+buyer_initiated_trades -  Total Buy Trades Count (DR: Is this for a given instrument for whole day?)
+seller_initiated_trades - Total Sell Trades Count
+buyer_initiated_volume - Total Buy Hits Qty
+seller_initiated_volume - Total Sell Hits Qty
+buyer_initiated_amount - Total Buy Hits Amount (Prc * Qty)
+seller_initiated_amount - Total Sell Hits Amount (Prc * Qty)
+buyer_hit_count - Total Buy Hits Count (Dr: What is the hit count)
+seller_hit_count - Total Sell Hits Count (DR: What is a hit count?)
+
+There is level information after this
+For both Bid and Ask we have
+
+[LevelNumber] OrdersAtBidLevel QtyAtBidLevel PriceAtBidLevel | PriceAtAskLevel QtyAtAskLevel OrdersAtAskLevel
+
+
+
+[18:13:19.050449574]  2024-02-06 09:16:00.016193158  FEED Token=2885 Name=RELIANCE INDUSTRIES LTD TimeStamps=L(1391678160016193158),E(1391678160016341220) Sequences=L(13494),E(1358197) ExchangeType=1 InstrumentType=2 IsPublished=1 IsAnticipated=0 FeedRollback=0 UpdateType=M UpdateSide=S VTT=177271 LTPQ=288370,7 BuyerInitiatedTrades=926 SellerInitiatedTrades=1154 BuyerInitiatedVolume=37475 SellerInitiatedVolume=34769 BuyerInitiatedAmount=10792726640 SellerInitiatedAmount=10012137625 BuyerHitCount=423 SellerHitCount=358 BuyerTotalVolume=80542 SellerTotalVolume=149909 BuyerTotalOrders=1429 SellerTotalOrders=2244
+ [1]	1	35	288365 | 288370	620	35
+ [2]	1	4	288315 | 288405	12	1
+ [3]	1	5	288255 | 288435	9	2
+ [4]	3	456	288250 | 288440	1	1
+ [5]	1	16	288245 | 288450	255	2
+ [6]	2	246	288235 | 288455	258	3
+ [7]	1	102	288220 | 288465	31	3
+ [8]	2	47	288215 | 288470	607	3
+ [9]	1	1	288205 | 288475	250	1
+ [10]	1	4	288200 | 288490	29	2
+ [11]	1	31	288195 | 288495	6	1
+ [12]	1	16	288190 | 288500	75	7
+ [13]	2	17	288170 | 288515	27	2
+ [14]	5	55	288165 | 288520	250	1
+ [15]	2	18	288160 | 288525	250	1
+ [16]	1	69	288155 | 288535	8	1
+ [17]	1	6	288150 | 288540	1	1
+ [18]	1	16	288135 | 288545	3	1
+ [19]	1	31	288125 | 288550	430	2
+ [20]	7	288	288120 | 288555	9	1

@@ -1,5 +1,5 @@
 # config_with_more_deeply_nested_table.toml
-title = "TOML Example"
+title = "Example Config"
 
 [owner]
 name = "Tom Preston-Werner"

@@ -704,11 +704,11 @@ void TradingAlgorithm::set_cancel_policy(CancelPolicy *cancel_policy) {
         throw std::runtime_error("UnsupportedCancelPolicy");
     }
 
-    if (this->initialized) {
+    if (initialized) {
         throw std::runtime_error("Cannot set cancel policy after initialize.");
     }
 
-    this->blotter.cancel_policy = cancel_policy;
+    blotter.cancel_policy = cancel_policy;
 }
 
 void TradingAlgorithm::set_symbol_lookup_date(std::tm *dt) {
@@ -719,17 +719,17 @@ void TradingAlgorithm::set_symbol_lookup_date(std::tm *dt) {
 
 void TradingAlgorithm::order_percent(Asset *asset, double target, double limit_price = 0.0, double stop_price = 0.0,
                                      ExecutionStyle *style = nullptr) {
-    if (!this->_can_order_asset(asset)) {
+    if (!_can_order_asset(asset)) {
         return;
     }
 
-    double amount = this->_calculate_order_target_percent_amount(asset, target);
-    this->order(asset, amount, limit_price, stop_price, style);
+    double amount = _calculate_order_target_percent_amount(asset, target);
+    order(asset, amount, limit_price, stop_price, style);
 }
 
 void TradingAlgorithm::order_target(Asset *asset, int target, double limit_price = 0.0, double stop_price = 0.0,
                                     ExecutionStyle *style = nullptr) {
-    if (!this->_can_order_asset(asset)) {
+    if (!_can_order_asset(asset)) {
         return;
     }
 
@@ -740,7 +740,7 @@ void TradingAlgorithm::order_target(Asset *asset, int target, double limit_price
 void
 TradingAlgorithm::order_target_value(Asset *asset, double target, double limit_price = 0.0, double stop_price = 0.0,
                                      ExecutionStyle *style = nullptr) {
-    if (!this->_can_order_asset(asset)) {
+    if (!_can_order_asset(asset)) {
         return;
     }
 
@@ -752,7 +752,7 @@ TradingAlgorithm::order_target_value(Asset *asset, double target, double limit_p
 void
 TradingAlgorithm::order_target_percent(Asset *asset, double target, double limit_price = 0.0, double stop_price = 0.0,
                                        ExecutionStyle *style = nullptr) {
-    if (!this->_can_order_asset(asset)) {
+    if (!_can_order_asset(asset)) {
         return;
     }
 
@@ -781,8 +781,8 @@ std::map<Asset *, std::vector<Order *>> TradingAlgorithm::get_open_orders(Asset 
         }
         return open_orders;
     } else {
-        if (this->blotter.open_orders.find(asset) != this->blotter.open_orders.end()) {
-            return {asset, this->blotter.open_orders[asset]};
+        if (blotter.open_orders.find(asset) != blotter.open_orders.end()) {
+            return {asset, blotter.open_orders[asset]};
         }
         return {};
     }
@@ -806,56 +806,56 @@ void TradingAlgorithm::cancel_order(std::variant<std::string, Order *> order_par
 }
 
 void TradingAlgorithm::register_account_control(AccountControl *control) {
-    if (this->initialized) {
+    if (initialized) {
         throw RegisterAccountControlPostInit();
     }
-    this->account_controls.push_back(control);
+    account_controls.push_back(control);
 }
 
 void TradingAlgorithm::validate_account_controls() {
-    for (AccountControl *control: this->account_controls) {
-        control->validate(this->portfolio, this->account, this->get_datetime(), this->trading_client.current_data);
+    for (AccountControl *control: account_controls) {
+        control->validate(portfolio, account, get_datetime(), trading_client.current_data);
     }
 }
 
 void TradingAlgorithm::set_max_leverage(double max_leverage) {
     AccountControl *control = new MaxLeverage(max_leverage);
-    this->register_account_control(control);
+    register_account_control(control);
 }
 
 void TradingAlgorithm::set_min_leverage(double min_leverage, std::tm *grace_period) {
     std::tm *deadline = this->sim_params.start_session + grace_period;
     AccountControl *control = new MinLeverage(min_leverage, deadline);
-    this->register_account_control(control);
+    register_account_control(control);
 }
 
 void TradingAlgorithm::register_trading_control(TradingControl *control) {
-    if (this->initialized) {
+    if (initialized) {
         throw RegisterTradingControlPostInit();
     }
-    this->trading_controls.push_back(control);
+    trading_controls.push_back(control);
 }
 
 void TradingAlgorithm::set_max_position_size(Asset *asset = nullptr, int max_shares = 0, double max_notional = 0.0,
                                              std::string on_error = "fail") {
     TradingControl *control = new MaxPositionSize(asset, max_shares, max_notional, on_error);
-    this->register_trading_control(control);
+    register_trading_control(control);
 }
 
 void TradingAlgorithm::set_max_order_size(Asset *asset = nullptr, int max_shares = 0, double max_notional = 0.0,
                                           std::string on_error = "fail") {
     TradingControl *control = new MaxOrderSize(asset, max_shares, max_notional, on_error);
-    this->register_trading_control(control);
+    register_trading_control(control);
 }
 
 void TradingAlgorithm::set_max_order_count(int max_count, std::string on_error = "fail") {
     TradingControl *control = new MaxOrderCount(on_error, max_count);
-    this->register_trading_control(control);
+    register_trading_control(control);
 }
 
 void TradingAlgorithm::set_do_not_order_list(std::vector<Asset *> restricted_list, std::string on_error = "fail") {
     Restrictions *restrictions = new StaticRestrictions(restricted_list);
-    this->set_asset_restrictions(restrictions, on_error);
+    set_asset_restrictions(restrictions, on_error);
 }
 
 void TradingAlgorithm::set_asset_restrictions(Restrictions *restrictions, std::string on_error = "fail") {

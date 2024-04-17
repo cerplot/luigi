@@ -3,16 +3,18 @@
 #include <mkl.h>
 #include <unordered_map>
 #include <cmath>
-std::pair<std::vector<double>, std::vector<double>> calculateTarget(const std::vector<double>& prices, double smoothingFactor, double delta) {
+
+std::pair<std::vector<double>, std::vector<double>> calculateTarget(
+        const std::vector<double>& prices, double smoothingFactor, double delta) {
     std::vector<double> shortTermObjectiveSeries(prices.size(), 0.0);
     std::vector<double> longTermObjectiveSeries(prices.size(), 0.0);
     double smoothedChange = 0.0;
     double objective = 0.0;
-    for (size_t i = prices.size() - 1; i < prices.size(); --i) {
-        size_t j = std::min(i + static_cast<size_t>(delta), prices.size() - 1);
+    for (int i = static_cast<int>(prices.size()) - 1; i >= 0; --i) {
+        int j = std::min(i + static_cast<int>(delta), static_cast<int>(prices.size()) - 1);
         shortTermObjectiveSeries[i] = prices[j] - prices[i];
         if (i + delta + 1 < prices.size()) {
-            double priceChange = prices[i + static_cast<size_t>(delta) + 1] - prices[i + static_cast<size_t>(delta)];
+            double priceChange = prices[i + static_cast<int>(delta) + 1] - prices[i + static_cast<int>(delta)];
             smoothedChange = smoothingFactor * priceChange + (1 - smoothingFactor) * smoothedChange;
             objective += smoothedChange;
             longTermObjectiveSeries[i] = objective;
@@ -21,35 +23,9 @@ std::pair<std::vector<double>, std::vector<double>> calculateTarget(const std::v
     return {shortTermObjectiveSeries, longTermObjectiveSeries};
 }
 
-
-std::vector<double> calculateTarget(const std::vector<double>& prices, double smoothingFactor) {
-    double smoothedChange = 0.0;
-    double target = 0.0;
-    std::vector<double> target_series(prices.size() - 1, 0.0);
-
-    for (int i = prices.size() - 1; i > 0; --i) {
-        double priceChange = prices[i] - prices[i - 1];
-        smoothedChange = smoothingFactor * priceChange + (1 - smoothingFactor) * smoothedChange;
-        target += smoothedChange;
-        target_series[i - 1] = target;
-    }
-    return target_series;
-}
-
-std::unordered_map<std::string, double> calculateObjectives(const std::unordered_map<std::string, std::vector<double>>& stockPrices, double smoothingFactor) {
-    std::unordered_map<std::string, double> objectives;
-
-    for (const auto& [stock, prices] : stockPrices) {
-        objectives[stock] = calculateTarget(prices, smoothingFactor);
-    }
-
-    return objectives;
-}
-
 class Solver {
+private:
     int Num;
-    int n;
-    int ns;
     double eps = 1e-10;
     std::vector<double> d;
     std::vector<int> m;
@@ -57,8 +33,7 @@ class Solver {
     std::vector<double> eig_value;
     std::vector<double> eig_vector;
 
-public:
-    void dsyev(std::vector<double>& A) {
+    void computeEigenvaluesAndVectors(std::vector<double>& A) {
         MKL_INT info;
         char jobz = 'V'; // Compute eigenvalues and eigenvectors.
         char uplo = 'U'; // Upper triangle of A is stored.
@@ -68,15 +43,19 @@ public:
         info = LAPACKE_dsyev(LAPACK_ROW_MAJOR, jobz, uplo, n, A.data(), lda, w.data());
 
         if (info != 0) {
-            eig_value = std::vector<double>(Num, 0.0);
-            eig_vector = std::vector<double>(Num * Num, 0.0);
+            throw std::runtime_error("Failed to compute eigenvalues and eigenvectors");
         } else {
             eig_value = w;
             eig_vector = A;
         }
     }
 
+public:
     void left_solver(std::vector<double>& A) {
+        if (A.size() == 0 || sqrt(A.size()) * sqrt(A.size()) != A.size()) {
+            throw std::invalid_argument("Input matrix A must be square");
+        }
+
         Num = sqrt(A.size());
         d.resize(Num);
         for (int i = 0; i < Num; i++) {
@@ -86,14 +65,14 @@ public:
             }
         }
 
-        n = m.size();
+        int n = m.size();
         U.resize(n * n);
         for (int i = 0; i < n; i++) {
             for (int j = i; j < n; j++) {
                 U[i * n + j] = d[m[i]] * A[m[i] * Num + m[j]] * d[m[j]];
             }
         }
-        dsyev(U);
+        computeEigenvaluesAndVectors(U);
         int small = 0;
         double tol = 0.01;
         while (small < n && eig_value[small] < tol) {
@@ -102,10 +81,14 @@ public:
 
         eig_value = std::vector<double>(eig_value.begin() + small, eig_value.end());
         eig_vector = std::vector<double>(eig_vector.begin() + small * n, eig_vector.end());
-        ns = eig_value.size();
     }
 
     std::vector<double> solve(std::vector<double>& b) {
+        if (b.size() != Num) {
+            throw std::invalid_argument("Size of vector b must be equal to the size of matrix A");
+        }
+
+        int ns = eig_value.size();
         if (ns == 0) {
             return std::vector<double>(Num, 0.0);
         }
@@ -113,14 +96,14 @@ public:
         std::vector<double> temp(ns);
         for (int i = 0; i < ns; i++) {
             double sum = 0.0;
-            for (int j = 0; j < n; j++) {
+            for (int j = 0; j < m.size(); j++) {
                 sum += eig_vector[j * ns + i] * d[m[j]] * b[m[j]];
             }
             temp[i] = sum / eig_value[i];
         }
 
         std::vector<double> result(Num);
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < m.size(); i++) {
             double sum = 0.0;
             for (int j = 0; j < ns; j++) {
                 sum += eig_vector[i * ns + j] * temp[j];
@@ -241,15 +224,12 @@ public:
     }
 };
 
+
 class WLS_Model{
     // Function to apply weights to a matrix and a vector
     void apply_weights(std::vector<double>& a, std::vector<double>& b, double weight) {
-        for (double& val : a) {
-            val *= weight;
-        }
-        for (double& val : b) {
-            val *= weight;
-        }
+        cblas_dscal(a.size(), weight, a.data(), 1);
+        cblas_dscal(b.size(), weight, b.data(), 1);
     }
 
     std::vector<double> generate_weights(int num_days, double lambda) {
@@ -337,66 +317,4 @@ class WLS_Model{
         return 0;
     }
 
-};
-
-#include <vector>
-#include <mkl.h>
-
-class WeightedLeastSquaresSolver {
-private:
-    void apply_weights(std::vector<double>& X, std::vector<double>& y, double weight) {
-        for (double& val : X) {
-            val *= weight;
-        }
-        for (double& val : y) {
-            val *= weight;
-        }
-    }
-
-    std::vector<double> generate_weights(int num_days, double lambda) {
-        std::vector<double> weights(num_days);
-        for (int day = 0; day < num_days; day++) {
-            weights[day] = std::exp(-lambda * day);
-        }
-        return weights;
-    }
-
-public:
-    std::vector<double> solve(const std::vector<std::vector<double>>& X_days, const std::vector<std::vector<double>>& y_days, double lambda) {
-        int num_days = X_days.size();
-        int num_indicators = X_days[0].size();
-        std::vector<double> weights = generate_weights(num_days, lambda);
-
-        std::vector<double> X_combined(num_days * num_indicators);
-        std::vector<double> y_combined(num_days);
-
-        for (int day = 0; day < num_days; day++) {
-            std::vector<double> X_d = X_days[day];
-            std::vector<double> y_d = y_days[day];
-            double weight = weights[day];
-
-            apply_weights(X_d, y_d, weight);
-
-            std::copy(X_d.begin(), X_d.end(), X_combined.begin() + day * num_indicators);
-            y_combined[day] = y_d[0];
-        }
-
-        MKL_INT m = num_days;
-        MKL_INT n = num_indicators;
-        MKL_INT nrhs = 1;
-        MKL_INT lda = n;
-        MKL_INT ldb = m;
-        MKL_INT info;
-
-        std::vector<double> singular_values(std::min(m, n));
-        double rcond = -1.0; // Use machine precision
-
-        info = LAPACKE_dgelsd(LAPACK_ROW_MAJOR, m, n, nrhs, X_combined.data(), lda, y_combined.data(), ldb, singular_values.data(), rcond, nullptr);
-
-        if (info > 0) {
-            std::cout << "The algorithm computing SVD failed to converge.\n";
-        }
-
-        return y_combined;
-    }
 };

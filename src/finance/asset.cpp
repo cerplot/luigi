@@ -1,27 +1,23 @@
 #include <string>
 #include <map>
-
-class ExchangeInfo;
+#include "exchange_info.h
 
 class Asset {
 public:
-    int64_t sid;  // Persistent unique identifier assigned to the asset.
-    ExchangeInfo* exchange_info;
-
+    unsigned int id;
+    std::shared_ptr<ExchangeInfo> exchange_info;
     std::string symbol;
-    std::string asset_name;
+    std::string name;
 
     std::chrono::system_clock::time_point start_date;
     std::chrono::system_clock::time_point end_date;
 
-    // Replace these with appropriate date/time types
-    void* first_traded;
-    void* auto_close_date;
-
+    std::optional<std::chrono::system_clock::time_point> first_traded;
+    std::optional<std::chrono::system_clock::time_point> auto_close_date;
     double tick_size;
     float price_multiplier;
-    Asset(int64_t sid, ExchangeInfo* exchange_info, std::string symbol = "", std::string asset_name = "", void* start_date = nullptr, void* end_date = nullptr, void* first_traded = nullptr, void* auto_close_date = nullptr, double tick_size = 0.01, float multiplier = 1.0) {
-        this->sid = sid;
+    Asset(unsigned int id, std::shared_ptr<ExchangeInfo> exchange_info, std::string_view symbol = "", std::string asset_name = "", void* start_date = nullptr, void* end_date = nullptr, void* first_traded = nullptr, void* auto_close_date = nullptr, double tick_size = 0.01, float multiplier = 1.0) {
+        this->id = id;
         this->exchange_info = exchange_info;
         this->symbol = symbol;
         this->asset_name = asset_name;
@@ -44,53 +40,53 @@ public:
     std::string country_code() {
         return exchange_info->country_code;
     }
-    int64_t getSid() const {
-        return sid;
+    int64_t getId() const {
+        return id;
     }
     int64_t getIndex() const {
-        return sid;
+        return id;
     }
     int64_t getHash() const {
-        return sid;
+        return id;
     }
 
     bool operator==(const Asset& other) const {
-        return this->sid == other.sid;
+        return id == other.id;
     }
 
     bool operator!=(const Asset& other) const {
-        return this->sid != other.sid;
+        return id != other.id;
     }
 
     bool operator<(const Asset& other) const {
-        return this->sid < other.sid;
+        return id < other.id;
     }
 
     bool operator<=(const Asset& other) const {
-        return this->sid <= other.sid;
+        return id <= other.id;
     }
 
     bool operator>(const Asset& other) const {
-        return this->sid > other.sid;
+        return id > other.id;
     }
 
     bool operator>=(const Asset& other) const {
-        return this->sid >= other.sid;
+        return id >= other.id;
     }
 
     std::string toString() const {
         std::ostringstream oss;
         if (!symbol.empty()) {
-            oss << typeid(*this).name() << "(" << sid << " [" << symbol << "])";
+            oss << typeid(*this).name() << "(" << id << " [" << symbol << "])";
         } else {
-            oss << typeid(*this).name() << "(" << sid << ")";
+            oss << typeid(*this).name() << "(" << id << ")";
         }
         return oss.str();
     }
 
     std::map<std::string, std::string> to_dict() {
         std::map<std::string, std::string> dict;
-        dict["sid"] = std::to_string(sid);
+        dict["sid"] = std::to_string(id);
         dict["symbol"] = symbol;
         dict["asset_name"] = asset_name;
         // You would need to convert the time_points to string
@@ -129,7 +125,7 @@ public:
     void* notice_date;
     void* expiration_date;
 
-    Future(int64_t sid,
+    Future(unsigned int id,
            ExchangeInfo* exchange_info,
            std::string symbol = "",
            std::string root_symbol = "",

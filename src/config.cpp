@@ -5,7 +5,7 @@
 #include <memory>
 #include <filesystem>
 #include <set>
-
+#include "config.h"
 class FileLoadException : public std::runtime_error {
 public:
     explicit FileLoadException(const std::string& filename)
