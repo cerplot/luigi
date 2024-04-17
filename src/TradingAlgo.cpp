@@ -199,7 +199,7 @@ std::vector<Performance> TradingAlgorithm::run(DataPortal *data_portal = nullptr
     // Each iteration returns a perf dictionary
     std::vector<Performance> perfs;
     try {
-        Generator *generator = this->get_generator();
+        Generator *generator = get_generator();
         while (generator->has_next()) {
             perfs.push_back(generator->next());
         }
