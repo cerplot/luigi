@@ -16,3 +16,4 @@
 * Use the WAL (Write-Ahead Logging) Mode: WAL mode can provide more concurrency as readers do not block writers and a writer does not block readers. Reading and writing can proceed concurrently. WAL mode is especially suited for applications with more write transactions. You can enable it using the PRAGMA journal_mode=WAL; command.  
 * Use PRAGMA temp_store = MEMORY;: This setting stores temporary tables and indices, used by SQLite for processing queries, in memory rather than on disk. This can speed up operations that make heavy use of temporary tables or indices.  
   Use PRAGMA threads=N;: This setting can be used to set the maximum number of auxiliary threads that SQLite will spawn to help out with a query. For a multi-core system, this can be set to the number of cores. 
+* 
