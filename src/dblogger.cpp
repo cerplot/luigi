@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 
-/// Set affinity for current thread to be pinned to the provided core_id.
+// Set affinity for current thread to be pinned to the provided core_id.
 inline auto setThreadCore(int core_id) noexcept {
     cpu_set_t cpuset;
 

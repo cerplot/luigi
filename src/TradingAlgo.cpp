@@ -243,7 +243,7 @@ std::vector<Performance> TradingAlgorithm::_create_daily_stats(std::vector<Perfo
 std::vector<std::map<std::string, double>> TradingAlgorithm::calculate_capital_changes(
         std::string dt, std::string emission_rate, bool is_interday, double portfolio_value_adjustment = 0.0
 ) {
-    // If there is a capital change for a given dt, this means the the change
+    // If there is a capital change for a given dt, this means the change
     // occurs before `handle_data` on the given dt. In the case of the
     // change being a target value, the change will be computed on the
     // portfolio value according to prices at the given dt
@@ -384,7 +384,7 @@ void TradingAlgorithm::record(std::map<std::string, double> kwargs) {
     for (auto const &item: kwargs) {
         std::string name = item.first;
         double value = item.second;
-        this->recorded_vars[name] = value;
+        recorded_vars[name] = value;
     }
 }
 
@@ -392,17 +392,6 @@ class SetBenchmarkOutsideInitialize : public std::runtime_error {
 public:
     SetBenchmarkOutsideInitialize() : std::runtime_error("Cannot set benchmark after initialize.") {}
 };
-
-
-void TradingAlgorithm::set_benchmark(Asset *benchmark) {
-    // Set the benchmark asset.
-
-    if (this->initialized) {
-        throw SetBenchmarkOutsideInitialize();
-    }
-
-    this->benchmark_sid = benchmark->sid;
-}
 
 class ContinuousFuture {
     // This class needs to be implemented
@@ -453,7 +442,6 @@ std::vector<Equity *> symbols(std::vector<std::string> args, std::string country
 
 Asset *sid(int sid) {
     // Lookup an Asset by its unique asset identifier.
-
     return asset_finder.retrieve_asset(sid);
 }
 
@@ -645,7 +633,7 @@ void TradingAlgorithm::on_dt_changed(std::tm *dt) {
 
 std::tm *TradingAlgorithm::get_datetime(std::string tz) {
     std::tm *dt = datetime;
-    assert(dt->tm_zone == "UTC");  // Algorithm should have a utc datetime
+    assert(dt->tm_zone == "UTC");  // Algorithm should have utc datetime
     if (!tz.empty()) {
         // Convert dt to the specified timezone
         // This requires a timezone library such as date.h or Boost.DateTime
@@ -860,42 +848,14 @@ void TradingAlgorithm::set_do_not_order_list(std::vector<Asset *> restricted_lis
 
 void TradingAlgorithm::set_asset_restrictions(Restrictions *restrictions, std::string on_error = "fail") {
     TradingControl *control = new RestrictedListOrder(on_error, restrictions);
-    this->register_trading_control(control);
+    register_trading_control(control);
     this->restrictions |= restrictions;
 }
 
 void TradingAlgorithm::set_long_only(std::string on_error = "fail") {
-    this->register_trading_control(new LongOnly(on_error));
+    register_trading_control(new LongOnly(on_error));
 }
 
-std::map<std::string, std::vector<Asset *>>
-TradingAlgorithm::_pipeline_output(Pipeline *pipeline, int chunks, std::string name) {
-    std::tm *today = this->get_datetime();
-    std::map<std::string, std::vector<Asset *>> data;
-    try {
-        data = this->_pipeline_cache.get(name, today);
-    } catch (std::out_of_range &e) {
-        data = this->run_pipeline(pipeline, today, chunks);
-        this->_pipeline_cache.set(name, data, data.end()->first);
-    }
-    return data;
-}
-
-std::map<std::string, std::vector<Asset *>>
-TradingAlgorithm::run_pipeline(Pipeline *pipeline, std::tm *start_session, int chunksize) {
-    std::vector<std::tm *> sessions = this->trading_calendar.sessions;
-    int start_date_loc = std::distance(
-            sessions.begin(), std::find(sessions.begin(), sessions.end(), start_session));
-    std::tm *sim_end_session = this->sim_params.end_session;
-    int end_loc = std::min(start_date_loc + chunksize, std::distance(
-            sessions.begin(), std::find(sessions.begin(), sessions.end(), sim_end_session)));
-    std::tm *end_session = sessions[end_loc];
-    return this->engine.run_pipeline(pipeline, start_session, end_session);
-}
-
-std::string TradingAlgorithm::default_pipeline_domain(std::string calendar) {
-    return _DEFAULT_DOMAINS[calendar];
-}
 
 std::string TradingAlgorithm::default_fetch_csv_country_code(std::string calendar) {
     return _DEFAULT_FETCH_CSV_COUNTRY_CODES[calendar];

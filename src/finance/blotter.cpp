@@ -26,21 +26,13 @@ public:
         }
         return order_ids;
     }
-
     virtual void cancel(int order_id, bool relay_status = true) = 0;
-
     virtual void cancel_all_orders_for_asset(Asset* asset, bool warn = false, bool relay_status = true) = 0;
-
     virtual void execute_cancel_policy(std::string event) = 0;
-
     virtual void reject(int order_id, std::string reason = "") = 0;
-
     virtual void hold(int order_id, std::string reason = "") = 0;
-
     virtual void process_splits(std::vector<std::tuple<Asset*, double>> splits) = 0;
-
     virtual std::tuple<std::vector<Transaction*>, std::vector<Commission*>, std::vector<Order*>> get_transactions(BarData* bar_data) = 0;
-
     virtual void prune_orders(std::vector<Order*> closed_orders) = 0;
 
 private:
@@ -103,11 +95,9 @@ public:
         if (cur_order->open) {
             auto& order_list = open_orders_[cur_order->asset];
             order_list.erase(std::remove(order_list.begin(), order_list.end(), cur_order), order_list.end());
-
             new_orders_.erase(std::remove(new_orders_.begin(), new_orders_.end(), cur_order), new_orders_.end());
             cur_order->cancel();
             cur_order->dt = current_dt_;
-
             if (relay_status) {
                 new_orders_.push_back(cur_order);
             }
@@ -116,11 +106,9 @@ public:
 
     void cancel_all_orders_for_asset(Asset* asset, bool warn = false, bool relay_status = true) override {
         auto& orders = open_orders_[asset];
-
         for (auto& order : orders) {
             cancel(order->id, relay_status);
         }
-
         orders.clear();
     }
 
@@ -171,7 +159,6 @@ public:
             if (open_orders_.find(asset) == open_orders_.end()) {
                 continue;
             }
-
             auto& orders_to_modify = open_orders_[asset];
             for (auto& order : orders_to_modify) {
                 order->handle_split(ratio);

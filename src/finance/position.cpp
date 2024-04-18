@@ -2,6 +2,7 @@
 #include <ctime>
 #include <string>
 #include <vector>
+#include <map>
 
 class Position {
 private:
@@ -21,7 +22,7 @@ public:
     // cost_basis - average price at which the shares in the position were acquired
 
     std::map<std::string, double> earn_dividend(Dividend dividend) {
-        return {{"amount", this->amount * dividend.amount}};
+        return {{"amount", amount * dividend.amount}};
     }
 
     std::map<std::string, double> earn_stock_dividend(StockDividend stock_dividend) {
@@ -37,7 +38,7 @@ public:
         }
 
         // adjust the # of shares by the ratio
-        double raw_share_count = this->amount / ratio;
+        double raw_share_count = amount / ratio;
 
         // e.g., 33
         int full_share_count = std::floor(raw_share_count);
@@ -62,21 +63,21 @@ public:
     }
 
     void update(Transaction txn) {
-        if (this->asset != txn.asset) {
+        if (asset != txn.asset) {
             throw std::invalid_argument("Updating position with txn for a different asset");
         }
 
-        int total_shares = this->amount + txn.amount;
+        int total_shares = amount + txn.amount;
 
         if (total_shares == 0) {
-            this->cost_basis = 0.0;
+            cost_basis = 0.0;
         } else {
-            int prev_direction = std::copysign(1, this->amount);
+            int prev_direction = std::copysign(1, amount);
             int txn_direction = std::copysign(1, txn.amount);
 
             if (prev_direction != txn_direction) {
                 // we're covering a short or closing a position
-                if (std::abs(txn.amount) > std::abs(this->amount)) {
+                if (std::abs(txn.amount) > std::abs(amount)) {
                     // we've closed the position and gone short
                     // or covered the short position and gone long
                     this->cost_basis = txn.price;
@@ -88,8 +89,7 @@ public:
                 this->cost_basis = total_cost / total_shares;
             }
 
-            // Update the last sale price if txn is
-            // best data we have so far
+            // Update the last sale price if txn is the best data we have so far
             if (this->last_sale_date == 0 || txn.dt > this->last_sale_date) {
                 this->last_sale_price = txn.price;
                 this->last_sale_date = txn.dt;
@@ -106,21 +106,20 @@ public:
         if (cost == 0.0) {
             return;
         }
-
         // If we no longer hold this position, there is no cost basis to adjust.
-        if (this->amount == 0) {
+        if (amount == 0) {
             return;
         }
 
-        double prev_cost = this->cost_basis * this->amount;
+        double prev_cost = cost_basis * amount;
         double cost_to_use;
-        if (dynamic_cast<Future*>(asset) != nullptr) { // Assuming Future is a subclass of Asset
-            cost_to_use = cost / asset->price_multiplier; // Assuming price_multiplier is a public member of Asset
+        if (dynamic_cast<Future*>(asset) != nullptr) { // Future is a subclass of Asset
+            cost_to_use = cost / asset->price_multiplier; // price_multiplier is a public member of Asset
         } else {
             cost_to_use = cost;
         }
         double new_cost = prev_cost + cost_to_use;
-        this->cost_basis = new_cost / this->amount;
+        this->cost_basis = new_cost / amount;
     }
 
     std::string to_string() {

@@ -40,5 +40,5 @@ Transaction create_transaction(Order order, std::string dt, double price, int am
         throw std::runtime_error("Transaction magnitude must be at least 1.");
     }
 
-    return Transaction(order, amount, dt, price, order.id);
+    return Transaction(order.asset, amount, dt, price, order.id);
 }

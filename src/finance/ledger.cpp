@@ -63,8 +63,6 @@ private:
 public:
     PositionTracker(std::string data_frequency)
             : data_frequency(data_frequency), dirty_stats(true), stats(PositionStats::newStats()) {}
-
-
 };
 
 void PositionTracker::update_position(
