@@ -1,5 +1,6 @@
 #include <string>
 #include <map>
+#include <vector>
 #include "exchange_info.h
 
 class Asset {
@@ -33,12 +34,12 @@ public:
         return exchange_info->canonical_name;
     }
 
-    std::string exchange_full() {
+    std::string exchangeFull() {
         return exchange_info->name;
     }
 
-    std::string country_code() {
-        return exchange_info->country_code;
+    std::string countryCode() {
+        return exchange_info->countryCode;
     }
     int64_t getId() const {
         return id;
@@ -84,7 +85,7 @@ public:
         return oss.str();
     }
 
-    std::map<std::string, std::string> to_dict() {
+    std::map<std::string, std::string> toDict() {
         std::map<std::string, std::string> dict;
         dict["sid"] = std::to_string(id);
         dict["symbol"] = symbol;
@@ -108,7 +109,7 @@ public:
     }
 
     bool is_exchange_open(std::chrono::system_clock::time_point dt_minute) {
-        Calendar calendar = get_calendar(exchange->exchange_full());
+        Calendar calendar = get_calendar(exchange->exchangeFull());
         return calendar.is_open_on_minute(dt_minute);
     }
 };
@@ -157,7 +158,7 @@ public:
     // For the __reduce__ method, C++ doesn't support pickling or similar functionality out of the box.
     // You would need to implement serialization and deserialization manually or use a library.
 
-    std::map<std::string, void*> to_dict() {
+    std::map<std::string, void*> toDict() {
         std::map<std::string, void*> super_dict = Asset::to_dict();
         super_dict["root_symbol"] = &this->root_symbol;
         super_dict["notice_date"] = this->notice_date;
@@ -167,10 +168,7 @@ public:
 };
 
 
-#include <vector>
-
 std::vector<Asset> make_asset_array(int size, Asset asset) {
     std::vector<Asset> out(size, asset);
     return out;
 }
-

@@ -47,14 +47,14 @@ public:
         double fractional_share_count = raw_share_count - full_share_count;
 
         // adjust the cost basis to the nearest cent, e.g., 60.0
-        double new_cost_basis = std::round(this->cost_basis * ratio * 100) / 100;
+        double new_cost_basis = std::round(cost_basis * ratio * 100) / 100;
 
-        this->cost_basis = new_cost_basis;
-        this->amount = full_share_count;
+        cost_basis = new_cost_basis;
+        amount = full_share_count;
 
         double return_cash = std::round(fractional_share_count * new_cost_basis * 100) / 100;
 
-        std::cout << "after split: " << this->to_string() << std::endl;
+        std::cout << "after split: " << toString() << std::endl;
         std::cout << "returning cash: " << return_cash << std::endl;
 
         // return the leftover cash, which will be converted into cash
@@ -80,23 +80,23 @@ public:
                 if (std::abs(txn.amount) > std::abs(amount)) {
                     // we've closed the position and gone short
                     // or covered the short position and gone long
-                    this->cost_basis = txn.price;
+                    cost_basis = txn.price;
                 }
             } else {
-                double prev_cost = this->cost_basis * this->amount;
+                double prev_cost = cost_basis * amount;
                 double txn_cost = txn.amount * txn.price;
                 double total_cost = prev_cost + txn_cost;
-                this->cost_basis = total_cost / total_shares;
+                cost_basis = total_cost / total_shares;
             }
 
             // Update the last sale price if txn is the best data we have so far
-            if (this->last_sale_date == 0 || txn.dt > this->last_sale_date) {
-                this->last_sale_price = txn.price;
-                this->last_sale_date = txn.dt;
+            if (last_sale_date == 0 || txn.dt > last_sale_date) {
+                last_sale_price = txn.price;
+                last_sale_date = txn.dt;
             }
         }
 
-        this->amount = total_shares;
+        amount = total_shares;
     }
 
     void adjust_commission_cost_basis(Asset* asset, double cost) {
@@ -119,19 +119,19 @@ public:
             cost_to_use = cost;
         }
         double new_cost = prev_cost + cost_to_use;
-        this->cost_basis = new_cost / amount;
+        cost_basis = new_cost / amount;
     }
 
-    std::string to_string() {
+    std::string toString() {
         std::ostringstream oss;
-        oss << "Asset: " << asset->to_string() // Assuming Asset class has a to_string method
+        oss << "Asset: " << asset->toString()
             << ", Amount: " << amount
             << ", Cost Basis: " << cost_basis
             << ", Last Sale Price: " << last_sale_price;
         return oss.str();
     }
 
-    std::map<std::string, double> to_dict() {
+    std::map<std::string, double> toDict() {
         return {
                 {"sid", asset},
                 {"amount", amount},

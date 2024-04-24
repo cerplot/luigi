@@ -140,10 +140,6 @@ double jump(
     return *pptr - smoothed;
 }
 
-#include <vector>
-#include <cmath>
-#include <algorithm>
-
 double entropy(
         std::vector<double>& x,  // They are here
         int nbins   // Number of bins, at least 2

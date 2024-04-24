@@ -187,9 +187,6 @@ void TradingAlgorithm::_create_generator(SimParams sim_params) {
 
 
 Generator *TradingAlgorithm::get_generator() {
-    // Override this method to add new logic to the construction
-    // of the generator. Overrides can use the _create_generator
-    // method to get a standard construction generator.
     return _create_generator(sim_params);
 }
 
@@ -286,14 +283,13 @@ std::vector<std::map<std::string, double>> TradingAlgorithm::calculate_capital_c
     metrics_tracker.capital_change(capital_change_amount);
 
     std::vector<std::map<std::string, double>> result;
-    result.push_back({
-                             {"capital_change", {
-                                     {"date", dt},
-                                     {"type", "cash"},
-                                     {"target", target},
-                                     {"delta", capital_change_amount},
-                             }}
-                     });
+    result.push_back({{"capital_change", {
+        {"date", dt},
+        {"type", "cash"},
+        {"target", target},
+        {"delta", capital_change_amount},
+        }}
+    });
 
     return result;
 }
@@ -371,7 +367,6 @@ void TradingAlgorithm::schedule_function(
     } else {
         throw std::invalid_argument("Invalid calendar: " + calendar);
     }
-
     this->add_event(
             make_eventrule(date_rule, time_rule, cal, half_days),  // This function needs to be implemented
             func
@@ -812,7 +807,7 @@ void TradingAlgorithm::set_max_leverage(double max_leverage) {
 }
 
 void TradingAlgorithm::set_min_leverage(double min_leverage, std::tm *grace_period) {
-    std::tm *deadline = this->sim_params.start_session + grace_period;
+    std::tm *deadline = sim_params.start_session + grace_period;
     AccountControl *control = new MinLeverage(min_leverage, deadline);
     register_account_control(control);
 }
