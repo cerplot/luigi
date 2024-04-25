@@ -3,9 +3,11 @@ https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2929880/
 chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://pureadmin.qub.ac.uk/ws/files/122984423/Forward_Selection_Component_Analysis_Algorithms_and_Applications.pdf
 
 The Micro-Price: A High Frequency Estimator of Future Prices
-
 Machine Learning in Finance: From Theory to Practice 1st ed. 2020 Edition
 Numerical Methods in Finance with C++ (Mastering Mathematical Finance)
+
+* Subset Selection in Regression  By Alan Miller
+
 
 Market Prices and Returns
 

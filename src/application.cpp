@@ -63,7 +63,6 @@ void Application::waitForTermination() {
     while (!terminate_te) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-
     processor.stop = true;
 }
 
