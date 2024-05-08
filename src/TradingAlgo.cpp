@@ -23,7 +23,6 @@ public:
 };
 
 TradingAlgorithm::TradingAlgorithm(
-        SimParams sim_params,
         AssetFinder* asset_finder = nullptr,
         std::map<std::string, std::function<void()>> namespace_ = {},
         Calendar* trading_calendar = nullptr,
@@ -42,7 +41,7 @@ TradingAlgorithm::TradingAlgorithm(
     recorded_vars = {};
     logger = getLogger();
 
-    sim_params = sim_params;
+    sim_params = new SimParam(); // this should be read from config
     trading_calendar = sim_params->trading_calendar;
 
     metrics_tracker = nullptr;
@@ -56,9 +55,12 @@ TradingAlgorithm::TradingAlgorithm(
     event_manager = new EventManager(create_event_context);
     event_manager->add_event(new Event(
             new Always(),
-            // We pass handle_data to get the unbound method.
-            // We will explicitly pass the algorithm to bind it again.
             this->handle_data),
+            true
+    );
+    event_manager->add_event(new Event(
+                    new Tick(),
+                    this->calcIndicators),
             true
     );
 
@@ -76,9 +78,6 @@ TradingAlgorithm::TradingAlgorithm(
     restrictions = new NoRestrictions();
 }
 
-void TradingAlgorithm::init_engine(std::function<SimplePipelineEngine * ()> get_loader) {
-
-}
 
 void TradingAlgorithm::initialize() {
     // initialize the algorithm
@@ -100,13 +99,7 @@ void TradingAlgorithm::analyze(Performance perf) {
     // and is passed the context and the performance data.
 }
 
-std::string TradingAlgorithm::repr() {
-    /* this does not yet represent a string that can be used
-    to instantiate an exact copy of an algorithm.
-
-    However, it is getting close, and provides some value as something
-    that can be inspected interactively.
-     */
+std::string TradingAlgorithm::toString() {
     std::ostringstream repr;
     repr << "TradingAlgorithm("
          << "capital_base=" << capital_base << ", "
@@ -124,7 +117,7 @@ void TradingAlgorithm::_create_clock() {
     std::map<std::string, std::string> market_opens = trading_calendar.first_minutes[sim_params.sessions];
     bool minutely_emission = false;
 
-    minutely_emission = this->sim_params.emission_rate == "minute";
+    minutely_emission = sim_params.emission_rate == "minute";
 
     std::map<std::string, std::string> execution_opens;
     std::map<std::string, std::string> execution_closes;
@@ -136,7 +129,6 @@ void TradingAlgorithm::_create_clock() {
         execution_opens = market_opens;
         execution_closes = market_closes;
     }
-    // FIXME generalize these values
     std::map<std::string, std::string> before_trading_start_minutes = days_at_time(
             sim_params.sessions, time(8, 45), "US/Eastern", 0);
 
@@ -149,8 +141,11 @@ void TradingAlgorithm::_create_clock() {
     );
 }
 
-MetricsTracker TradingAlgorithm::_create_metrics_tracker() {
-    return MetricsTracker(
+void TradingAlgorithm::simulate(SimParams sim_params) {
+    if (sim_params != nullptr) {
+        this->sim_params = sim_params;
+    }
+    metrics_tracker = MetricsTracker(
             trading_calendar,
             sim_params.start_session,
             sim_params.end_session,
@@ -160,14 +155,6 @@ MetricsTracker TradingAlgorithm::_create_metrics_tracker() {
             asset_finder,
             _metrics_set
     );
-}
-
-void TradingAlgorithm::_create_generator(SimParams sim_params) {
-    if (sim_params != nullptr) {
-        this->sim_params = sim_params;
-    }
-
-    metrics_tracker = this->_create_metrics_tracker();
 
     // Set the dt initially to the period start by forcing it to change.
     on_dt_changed(this->sim_params.start_session);
@@ -177,17 +164,19 @@ void TradingAlgorithm::_create_generator(SimParams sim_params) {
         initialized = true;
     }
 
-    trading_client = new AlgorithmSimulator(
+    simulator = new AlgorithmSimulator(
             this, sim_params, data_portal,
             _create_clock(),
             restrictions);
     metrics_tracker.handle_start_of_simulation();
-    trading_client.transform();
+    simulator.run();
 }
 
 
-Generator *TradingAlgorithm::get_generator() {
-    return _create_generator(sim_params);
+Simulator *TradingAlgorithm::getSimulator() {
+    // Override this method to add new logic to the construction
+    // of the simulator depending on parameters.
+    return createSimulator(sim_params);
 }
 
 std::vector<Performance> TradingAlgorithm::run(DataPortal *data_portal = nullptr) {
@@ -200,8 +189,7 @@ std::vector<Performance> TradingAlgorithm::run(DataPortal *data_portal = nullptr
         while (generator->has_next()) {
             perfs.push_back(generator->next());
         }
-        // convert perf dict to pandas dataframe
-        std::vector<Performance> daily_stats = this->_create_daily_stats(perfs);
+        std::vector<Performance> daily_stats = _create_daily_stats(perfs);
         analyze(daily_stats);
     } catch (...) {
         data_portal = nullptr;
@@ -283,13 +271,14 @@ std::vector<std::map<std::string, double>> TradingAlgorithm::calculate_capital_c
     metrics_tracker.capital_change(capital_change_amount);
 
     std::vector<std::map<std::string, double>> result;
-    result.push_back({{"capital_change", {
-        {"date", dt},
-        {"type", "cash"},
-        {"target", target},
-        {"delta", capital_change_amount},
-        }}
-    });
+    result.push_back({
+                             {"capital_change", {
+                                     {"date", dt},
+                                     {"type", "cash"},
+                                     {"target", target},
+                                     {"delta", capital_change_amount},
+                             }}
+                     });
 
     return result;
 }
@@ -367,6 +356,7 @@ void TradingAlgorithm::schedule_function(
     } else {
         throw std::invalid_argument("Invalid calendar: " + calendar);
     }
+
     this->add_event(
             make_eventrule(date_rule, time_rule, cal, half_days),  // This function needs to be implemented
             func
@@ -807,7 +797,7 @@ void TradingAlgorithm::set_max_leverage(double max_leverage) {
 }
 
 void TradingAlgorithm::set_min_leverage(double min_leverage, std::tm *grace_period) {
-    std::tm *deadline = sim_params.start_session + grace_period;
+    std::tm *deadline = this->sim_params.start_session + grace_period;
     AccountControl *control = new MinLeverage(min_leverage, deadline);
     register_account_control(control);
 }

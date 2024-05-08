@@ -192,16 +192,16 @@ public:
         }
     }
     ORDER_STATUS getStatus() const {
-        if (this->open_amount == 0) {
+        if (open_amount == 0) {
             return ORDER_STATUS::FILLED;
-        } else if (this->_status == ORDER_STATUS::HELD && this->filled != 0) {
+        } else if (_status == ORDER_STATUS::HELD && filled != 0) {
             return ORDER_STATUS::OPEN;
         } else {
-            return this->_status;
+            return _status;
         }
     }
     void setStatus(ORDER_STATUS status) {
-        this->_status = status;
+        _status = status;
     }
     void cancel() {
         this->setStatus(ORDER_STATUS::CANCELLED);
@@ -228,7 +228,7 @@ public:
     }
 
     int getOpenAmount() const {
-        return this->amount - this->filled;
+        return amount - filled;
     }
 
     struct Visitor {
@@ -242,7 +242,7 @@ public:
 
     std::string repr() const {
         std::ostringstream oss;
-        auto dict = this->to_dict();
+        auto dict = to_dict();
         oss << "Order(";
         for (const auto& pair : dict) {
             oss << pair.first << ": " << std::visit(Visitor{}, pair.second) << ", ";

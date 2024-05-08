@@ -1,0 +1,104 @@
+Estimating the price impact of trades in a high-frequency microstructure model with jumps☆
+Author links open overlay panelEric Jondeau a, Jérôme Lahaye b, Michael Rockinger a
+a
+Swiss Finance Institute and University of Lausanne, Switzerland
+b
+Fordham University, New York, USA
+Received 24 January 2015, Accepted 7 September 2015, Available online 3 October 2015, Version of Record 17 December 2015.
+
+What do these dates mean?
+
+crossmark-logo
+Show less
+Add to Mendeley
+Share
+Cite
+https://doi.org/10.1016/j.jbankfin.2015.09.005
+Get rights and content
+Abstract
+We estimate a general microstructure model of the transitory and permanent impact of order flow on stock prices. Jumps are detected in both the transaction price (observation equation) and fundamental value (state equation). The model’s parameters and variances are updated in real time. Prices can be altered by both the size and direction of trades, and the effects of buy-initiated and sell-initiated trades are different. We estimate this model using tick-by-tick data for 12 large-capitalization stocks traded on the Euronext-Paris Bourse. We find that, at tick frequency, the overnight return, the intraday jumps, and the continuous innovations represent approximately
+, and
+ of the total variation of stock returns. The microstructure model explains on average
+ of the total variation. Once jumps are filtered and parameters are estimated in real time, we also find that the price impact of trades is symmetric on average. However, the price of highly liquid stocks with a large proportion of sell-initiated orders tends to be more sensitive to buy trades, whereas the price of less liquid stocks with a large proportion of buy-initiated orders tends to be more sensitive to sell trades.
+
+Introduction
+A main focus of the market microstructure literature is the formation of prices of securities traded at high frequency. In most of these models, the difference between the transaction price and the fundamental (or equilibrium) value of a security allows for identification of the main factors driving the price dynamics. The dynamics of the fundamental value is primarily driven by revisions in traders’ beliefs, which may have two sources: (1) new public information and (2) changes in order flow (Glosten and Milgrom, 1985, Glosten and Harris, 1988).
+
+In standard microstructure models (Glosten and Milgrom, 1985, or Kyle, 1985), transaction price departs from the fundamental value because of asymmetric information. Furthermore, transient discrepancies between transaction price and fundamental value reflecting dealer’s compensation for order processing or inventory costs (see also Roll (1984) and Amihud and Mendelson (1986)). The residual term then captures the effects of stochastic rounding errors.
+
+The first papers to estimate fully fledged versions of this model using transaction-level data are Brennan and Subrahmanyam (1996) and Madhavan and et al. (1997, thereafter MRR). Several extensions of the model have been proposed. Sadka (2006) introduces the size of trades as a driver of changes in order flow. Dufour and Engle, 2000, Engle and Sun, 2007 introduce the effect of duration between trades of a given stock as an important driver of the volatility of fundamental innovations, confirming the importance of a transaction-level analysis (following theoretical models of Diamond and Verrecchia (1987) and Easley and O’Hara (1992)). Other contributions estimating market microstructure models in tick time are Rydberg and Shephard, 2003, Frijns and Schotman, 2004, Bos, 2008.
+
+Although it is essential to understand how transaction prices are determined at the tick level, estimation of these models is plagued by the statistical properties of tick-by-tick data. These properties are the focus of another strand of literature that addresses “microstructure noise” in the measurement of return volatility at high frequency. In this literature, the object of interest is the volatility of the fundamental value. The difference between the observed price and the fundamental value is interpreted as noise caused by microstructure factors such as liquidity or information frictions, tick-size discretization, rounding errors, and so forth (see Bandi and Russel, 2008). The measure of the true variance (integrated variance) is thus contaminated by microstructure noise, so that its estimate (realized variance) diverges from the true variance. Diebold and Strasser (2013) have investigated the magnitude of the bias due to the correlation between the fundamental value and the microstructure noise in a set of structural models. Most statistical papers address this issue by reducing the sampling frequency to mitigate the effect of the noise (Andersen et al., 2001, Barndorff-Nielsen and Shephard, 2002). There is no consensus about the optimal sampling frequency, however, leading Aït-Sahalia et al. (2005) to conclude that “modeling the noise and using all the data is a better solution, even if one misspecifies the noise distribution”.
+
+An additional difficulty in the measurement of integrated variance is the presence of extreme price changes (or jumps) in the data process, jumps typically caused by large orders. Jumps constitute an additional, probably more severe, source of divergence of realized variance from integrated variance, as the former also incorporates the effects of jumps. In continuous-time models, bipower variation measures provide consistent estimates of integrated variance, even in the presence of stochastic volatility and large but infrequent jumps (Barndorff-Nielsen and Shephard, 2004, Barndorff-Nielsen and Shephard, 2006). The detection of jumps has also been investigated in a parametric framework by Johannes et al., 2009, Bos, 2008, Duan and Fulop, 2007, papers that rely on simulation techniques such as Markov Chain Monte Carlo algorithms or particle filters.
+
+To our knowledge, this paper is the first to estimate a complete microstructure model with time-variability of parameters and large but infrequent jumps. We start by extending the model proposed by MRR (1997) and Sadka (2006), and incorporating into it most of the tick data stylized facts. Our model describes the joint dynamics of the transaction price and the fundamental value: changes in beliefs are captured by innovations in order flow but also by innovations in order size (Sadka, 2006). As we use tick data, we can capture the effects of durations between trades on return volatility (Dufour and Engle, 2000). Following a recent contribution of Hameed et al. (2010), sell and buy orders are allowed to have asymmetric effects on prices. Our model also incorporates seasonal patterns of the variables and time-varying parameters and variances. The model parameters, the variances, and the fundamental value are updated in real time. Jumps are identified through an outlier detection procedure, without the need for parametric assumptions about their distribution, frequency, or size. This procedure allows us to detect jumps in real time in both fundamental value (permanent or innovation jumps) and transaction price (transitory or observation jumps) dynamics, following the approach of Maiz et al. (2009).
+
+Our estimation strategy relies on the particle filter technique, which estimates the unobservable fundamental value using the observed transaction price. Sadka (2006) uses OLS regressions to estimate model’s parameters. MRR estimate the complete model (with fundamental value dynamics) using GMM technique over different intraday trading intervals to allow parameter variability. We do not pursue these estimation approaches because our goal is to estimate the dynamics of the parameters and detect jumps in real time. Unlike the Kalman filter, the particle filter accommodates non-linear models and non-Gaussian innovations, for instance when innovations are perturbed by jumps. The particle filter also allows for sequential or online filtering, so that model parameters and variances can be estimated in real time after detection and deletion of jumps (Kitagawa, 1998).
+
+We illustrate our methodology using 12 of the largest-capitalization stocks traded on the Euronext-Paris Bourse. By focusing on all trades over a two-month period, with numbers of trades ranging between 686 and 4,468 per day, we identify several regularities across time (intradaily seasonality patterns) and across firms (differences in price impact). We find that, at tick frequency, overnight return, the intraday jumps, and the continuous innovations represent approximately
+, and
+ of the total variation of stock returns. The microstructure model explains on average
+ of the total variation. In addition, the estimates of the price impact of trades increase by 10 to
+ when the model’s parameters are time-varying and jumps are taken into account. We then investigate asymmetries in price impact, depending on whether the trade is buy- or sell-initiated. While previous work on block trades by institutional investors reports that buy trades have greater price impact than sell trades (Holthausen e al., 1987, Chan and Lakonishok, 1993, Keim and Madhavan, 1995), we find that this asymmetry can be reversed in the case of relatively less liquid firms with a large proportion of buy-initiated orders. This result is consistent with the theoretical analysis of Saar (2001).
+
+The rest of the paper is organized as follows. Section 2 presents the general microstructure model and summarizes our estimation methodology, which is described with more details in the Appendix. Section 3 presents our data set of large-capitalization stocks on Euronext-Paris and provides some preliminary results on the tick-by-tick price dynamics. Section 4 reports our results of the estimation of the microstructural model and analyzes the price impact of trades. Section 5 concludes.
+
+Section snippets
+A general model
+In this section, we describe our general microstructure model of price formation. As the model is formulated in tick time, we denote by
+ the time of the k-th trade on a given day. Observations are randomly spaced through time, so we introduce
+, the duration between trades
+ and k. We consider an efficient market in which the fundamental value of a stock, denoted
+, varies through time according to changes in the beliefs of market participants. We assume that revisions of beliefs
+
+Data
+Euronext-Paris is an electronic limit order market based on a trading platform called “Nouveau Système de Cotation (NSC)”. Limit orders consist of a limit price and a quantity to buy or sell at that price. Orders are submitted by investors through brokers and stored in the limit order book. The matching of orders and corresponding trades follows strict price and time priorities. Market orders (i.e., orders to buy or sell at the best price available in the book) are immediately executed and
+
+Microstructure model and price impact of trades
+We now turn to the estimation of the complete microstructure model with time-varying parameters and jump filtering. We start by presenting some results about the jumps detected with our particle filter approach. We then present the results for the complete model with time-varying parameters and jump filtering. This allows us to discuss the dynamic patterns of the price impact of trades.
+
+Conclusion
+In this paper, we have considered a market microstructure model in which stock price is modeled as gravitating around the fundamental value process. Differences between transaction price and fundamental value are explained by trade direction and trade size, whereas changes in the fundamental value are explained by surprises in trade direction and trade size. As price changes are also affected by (permanent and transitory) jumps, we develop an estimation strategy based on Bayesian OLS and
+
+References (60)
+Y. Amihud et al.
+Asset pricing and the bid-ask spread
+Journal of Financial Economics
+(1986)
+T.G. Andersen et al.
+Intraday periodicity and volatility persistence in financial markets
+Journal of Empirical Finance
+(1997)
+T. Bollerslev et al.
+Risk, jumps, and diversification
+Journal of Econometrics
+(2008)
+K. Boudt et al.
+Robust estimation of intraweek periodicity in volatility and jump detection
+Journal of Empirical Finance
+(2011)
+M.J. Brennan et al.
+Market microstructure and asset pricing: on the compensation for illiquidity in stock returns
+Journal of Financial Economics
+(1996)
+K. Christensen et al.
+Fact or friction: jumps at ultra high frequency
+Journal of Financial Economics
+(2014)
+F. De Jong et al.
+Price effects of trading and components of the bid-ask spread on the paris bourse
+Journal of Empirical Finance
+(1996)
+D.W. Diamond et al.
+Constraints on short-selling and asset price adjustment to private information
+Journal of Financial Economics
+(1987)
+L.R. Glosten et al.
+Estimating the components of the bid-ask spread
+Journal of Financial Economics
+(1988)
+L.R. Glosten et al.
+Bid, ask and transaction prices in a specialist market with heterogeneously informed traders
+Journal of Financial Economics
+(1985)

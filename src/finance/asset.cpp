@@ -21,7 +21,7 @@ public:
         this->id = id;
         this->exchange_info = exchange_info;
         this->symbol = symbol;
-        this->asset_name = asset_name;
+        this->name = asset_name;
         this->start_date = start_date;
         this->end_date = end_date;
         this->first_traded = first_traded;
@@ -29,7 +29,6 @@ public:
         this->tick_size = tick_size;
         this->price_multiplier = multiplier;
     }
-
     std::string exchange() {
         return exchange_info->canonical_name;
     }
@@ -50,7 +49,6 @@ public:
     int64_t getHash() const {
         return id;
     }
-
     bool operator==(const Asset& other) const {
         return id == other.id;
     }
@@ -58,19 +56,15 @@ public:
     bool operator!=(const Asset& other) const {
         return id != other.id;
     }
-
     bool operator<(const Asset& other) const {
         return id < other.id;
     }
-
     bool operator<=(const Asset& other) const {
         return id <= other.id;
     }
-
     bool operator>(const Asset& other) const {
         return id > other.id;
     }
-
     bool operator>=(const Asset& other) const {
         return id >= other.id;
     }
@@ -87,9 +81,9 @@ public:
 
     std::map<std::string, std::string> toDict() {
         std::map<std::string, std::string> dict;
-        dict["sid"] = std::to_string(id);
+        dict["id"] = std::to_string(id);
         dict["symbol"] = symbol;
-        dict["asset_name"] = asset_name;
+        dict["name"] = name;
         // You would need to convert the time_points to string
         // This is a placeholder, actual conversion might be different
         dict["start_date"] = std::to_string(start_date.time_since_epoch().count());

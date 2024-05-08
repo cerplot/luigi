@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
@@ -40,9 +41,6 @@ double atr(int lookback, std::vector<double>::iterator high, std::vector<double>
     return sum / lookback;
 }
 
-#include <vector>
-#include <algorithm>
-#include <cmath>
 
 void clean_tails(
         std::vector<double>& raw,      // They are here
@@ -96,8 +94,6 @@ void clean_tails(
     }
 }
 
-#include <vector>
-#include <algorithm>
 
 double range_expansion(
         int lookback,   // Window length for computing expansion indicator
@@ -141,30 +137,33 @@ double jump(
 }
 
 double entropy(
-        std::vector<double>& x,  // They are here
-        int nbins   // Number of bins, at least 2
+        std::vector<double>& x,  // indicator
+        int nbins   // Number of bins, at least 2. Too few bins can oversimplify the data, while too many bins can overfit to the noise.
 ) {
     int n = x.size();
-    std::vector<int> count(nbins, 0);
+    std::vector<int> count(nbins, 0); // This vector will be used to count the number of elements in each bin.
 
     double minval = *std::min_element(x.begin(), x.end());
     double maxval = *std::max_element(x.begin(), x.end());
 
+    // scaling factor that will be used to map the values in x to the range of the bins:
     double factor = (nbins - 1.e-10) / (maxval - minval + 1.e-60);
 
+    // the loop iterates over each value in x, scales it using the factor calculated above and the minimum value, and increments the corresponding bin count in the count vector.
     for (double& val : x) {
         int k = static_cast<int>(factor * (val - minval));
         ++count[k];
     }
 
-    double sum = 0.0;
+    double sum = 0.0;  //  This variable will be used to accumulate the entropy
+    // loop iterates over each bin in count. If the bin count is not zero, it calculates the probability of that bin (the bin count divided by the total number of elements n), multiplies the probability by its logarithm, and adds the result to sum.
     for (int i = 0; i < nbins; i++) {
         if (count[i]) {
             double p = static_cast<double>(count[i]) / n;
             sum += p * std::log(p);
         }
     }
-
+    // This line calculates the entropy by dividing the negative of sum by the logarithm of the number of bins. The negative sign is used because the probabilities are always less than or equal to 1, so their logarithms are non-positive. Dividing by the logarithm of the number of bins normalizes the entropy to the range [0, 1].
     return -sum / std::log(static_cast<double>(nbins));
 }
 
